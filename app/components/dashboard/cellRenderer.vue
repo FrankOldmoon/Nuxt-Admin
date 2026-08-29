@@ -283,7 +283,7 @@ const displayValue = computed(() => {
     >{{ displayValue.value }}</a>
     <div v-else-if="displayValue.kind === 'text'" class="whitespace-pre-wrap break-words">{{ displayValue.value }}</div>
     <div v-else-if="displayValue.kind === 'markdown'" class="max-h-96 overflow-y-auto rounded border border-default p-3">
-      <BaseCherryViewer :source="String(displayValue.value)" />
+      <BaseMarkdownViewer :source="String(displayValue.value)" />
     </div>
     <pre v-else-if="displayValue.kind === 'code'" class="overflow-auto text-xs bg-muted p-3 rounded max-h-64">{{ displayValue.value }}</pre>
   </template>

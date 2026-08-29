@@ -196,7 +196,7 @@ function removeFile(index: number) {
           class="w-full"
         />
         <!-- markdown: Cherry Markdown editor with toolbar + image upload -->
-        <BaseCherryEditor
+        <BaseMarkdownEditor
           v-else-if="field.type === 'markdown'"
           v-model="inputValue"
           :placeholder="field.placeholder ?? t('dashboard.crud.inputPlaceholder', { label: field.label })"

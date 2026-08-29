@@ -102,7 +102,9 @@
     "filters": "筛选",
     "clearFilters": "清除筛选",
     "all": "全部",
-    "value": "值"
+    "value": "值",
+    "fullscreen": "全屏编辑",
+    "exitFullscreen": "退出全屏"
   },
   "pagination": {
     "total": "共 {total} 项",
