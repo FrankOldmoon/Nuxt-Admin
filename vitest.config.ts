@@ -9,8 +9,7 @@ export default defineVitestConfig({
     environment: 'node',
     include: [
       'test/**/*.{test,spec}.{ts,js,mjs}',
-      'extends/blog/**/*.{test,spec}.{ts,js,mjs}',
-      'layers/Nuxt-Extend-Navigation/**/*.{test,spec}.{ts,js,mjs}'
+      'extends/blog/**/*.{test,spec}.{ts,js,mjs}'
     ],
     exclude: ['**/.DS_Store', '**/node_modules/**', '**/.nuxt/**', '**/.output/**'],
     setupFiles: ['test/setup/global.ts'],
