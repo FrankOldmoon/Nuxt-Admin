@@ -17,7 +17,7 @@ function genKey(): string {
   return 'm-' + keyCounter++
 }
 
-function flatFromMenu(items: DashboardMenuItem[]): MenuFlatNode[] {
+export function flatFromMenu(items: DashboardMenuItem[]): MenuFlatNode[] {
   const result: MenuFlatNode[] = []
   const parentStack: string[] = []
 
@@ -41,7 +41,7 @@ function flatFromMenu(items: DashboardMenuItem[]): MenuFlatNode[] {
   return result
 }
 
-function menuFromFlat(nodes: MenuFlatNode[]): DashboardMenuItem[] {
+export function menuFromFlat(nodes: MenuFlatNode[]): DashboardMenuItem[] {
   const result: DashboardMenuItem[] = []
   const idMap = new Map<string, string>()
   let idx = 0
