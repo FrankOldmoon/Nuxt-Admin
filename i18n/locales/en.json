@@ -483,6 +483,7 @@
       "permanentDelete": "Permanent delete",
       "permanentDeleteConfirm": "Permanent delete cannot be undone. Confirm?",
       "createSuccess": "Created successfully",
+      "created": "Created {label}",
       "updateSuccess": "Updated successfully",
       "saveFailed": "Save failed",
       "deleted": "Deleted",
@@ -520,7 +521,10 @@
       "seedCount": "Row count",
       "seedDone": "Inserted {count} rows",
       "seedFailed": "Seed failed",
-      "richtextHint": "Rich text (HTML)"
+      "richtextHint": "Rich text (HTML)",
+      "createNew": "Create new…",
+      "createNewPlaceholder": "Enter name and press Enter",
+      "createFailed": "Create failed"
     },
     "menu": {
       "overview": "Overview",

@@ -39,7 +39,7 @@ export const postMeta: TableMeta = {
         { label: 'Archived', value: 'archived' }
       ]
     },
-    { key: 'categoryId', label: 'Category', type: 'relation', nullable: true, showInForm: true, showInTable: true, showInDetail: true, editable: true, relation: { table: 'categories', labelKey: 'name', valueKey: 'id' } },
+    { key: 'categoryId', label: 'Category', type: 'relation', nullable: true, showInForm: true, showInTable: true, showInDetail: true, editable: true, relation: { table: 'categories', labelKey: 'name', valueKey: 'id', creatable: true, slugField: 'url' } },
     { key: 'authorId', label: 'Author', type: 'relation', nullable: true, showInForm: true, showInTable: true, showInDetail: true, editable: true, relation: { table: 'users', labelKey: 'name', valueKey: 'id' } },
     { key: 'publishedAt', label: 'Published at', type: 'datetime', nullable: true, showInForm: true, showInTable: true, showInDetail: true, editable: true },
     { key: 'createdAt', label: 'Created at', type: 'datetime', nullable: false, showInForm: false, showInTable: true, showInDetail: true, editable: false },

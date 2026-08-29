@@ -483,6 +483,7 @@
       "permanentDelete": "永久删除",
       "permanentDeleteConfirm": "永久删除无法恢复，确认？",
       "createSuccess": "创建成功",
+      "created": "已创建 {label}",
       "updateSuccess": "更新成功",
       "saveFailed": "保存失败",
       "deleted": "已删除",
@@ -520,7 +521,10 @@
       "seedCount": "行数",
       "seedDone": "已插入 {count} 条",
       "seedFailed": "填充失败",
-      "richtextHint": "富文本（HTML）"
+      "richtextHint": "富文本（HTML）",
+      "createNew": "新建…",
+      "createNewPlaceholder": "输入名称后按回车",
+      "createFailed": "创建失败"
     },
     "menu": {
       "overview": "概览",

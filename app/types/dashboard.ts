@@ -34,6 +34,19 @@ export interface FieldRelation {
   labelKey: string
   /** Column to use as the option value (e.g. "id") */
   valueKey: string
+  /**
+   * When true, the form field renders a searchable combobox that allows
+   * typing a new value to create a record in the related table on the fly.
+   * The new record is created via POST /api/dashboard/data/{table} with
+   * the `labelKey` as the field name.
+   */
+  creatable?: boolean
+  /**
+   * When `creatable` is true and the target table has a required slug/URL
+   * column, set this to the column name (e.g. `"url"`). The component will
+   * auto-generate a slug from the label value when creating a new record.
+   */
+  slugField?: string
 }
 
 export interface FieldValidation {

@@ -251,9 +251,28 @@ function removeFile(index: number) {
           @update:model-value="(v) => update(formatDatetimeInput(v, field.nullable))"
           class="w-full"
         />
-        <!-- select / relation -->
+        <!-- select -->
         <USelectMenu
-          v-else-if="field.type === 'select' || field.type === 'relation'"
+          v-else-if="field.type === 'select'"
+          v-model="inputValue"
+          value-key="value"
+          :items="options ?? field.options ?? []"
+          :placeholder="field.placeholder ?? t('dashboard.crud.selectPlaceholder', { label: field.label })"
+          class="w-full"
+        />
+        <!-- relation (creatable) — searchable combobox with inline create -->
+        <BaseRelationCreateSelect
+          v-else-if="field.type === 'relation' && field.relation?.creatable"
+          :table="field.relation.table"
+          :label-key="field.relation.labelKey"
+          :slug-field="field.relation.slugField"
+          v-model="inputValue"
+          :options="options ?? field.options ?? []"
+          :placeholder="field.placeholder ?? t('dashboard.crud.selectPlaceholder', { label: field.label })"
+        />
+        <!-- relation (plain) -->
+        <USelectMenu
+          v-else-if="field.type === 'relation'"
           v-model="inputValue"
           value-key="value"
           :items="options ?? field.options ?? []"
