@@ -253,9 +253,8 @@ function removeFile(index: number) {
           class="w-full"
         />
         <!-- markdown: edit raw markdown source with image paste support -->
-        <div class="relative w-full">
+        <div v-else-if="field.type === 'markdown'" class="relative w-full">
           <UTextarea
-            v-else-if="field.type === 'markdown'"
             v-model="inputValue"
             :id="`field-${field.key}`"
             :placeholder="field.placeholder ?? t('dashboard.crud.inputPlaceholder', { label: field.label })"
