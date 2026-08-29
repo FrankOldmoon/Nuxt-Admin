@@ -56,7 +56,7 @@ const items = computed(() => [
       :label="showLabel ? displayName : undefined"
       :trailing-icon="showLabel ? 'i-lucide-chevron-down' : undefined"
       :title="displayName"
-      :class="fit ? 'inline-flex items-center justify-center px-2.5' : 'w-full h-full justify-center items-center'"
+      :class="fit ? 'inline-flex items-center justify-center px-2.5' : 'w-full justify-center items-center'"
       :aria-label="displayName"
     />
   </UDropdownMenu>
