@@ -310,7 +310,7 @@ function refreshL4() {
         <!-- Always render the `markdown` field as formatted Markdown in the detail view. -->
         <template #detail-markdown="{ value }">
           <div class="max-h-72 overflow-y-auto rounded border border-default p-3">
-            <BaseMarkdownViewer v-if="value" :source="String(value)" />
+            <BaseCherryViewer v-if="value" :source="String(value)" />
             <span v-else class="text-muted">-</span>
           </div>
         </template>
