@@ -80,32 +80,30 @@ const customComponent = computed<Component | null>(() => {
 const isUnknownTable = computed(() => !tableInfo.value)
 
 // ---------- Load per-table field metadata for generic CRUD tables ----------
-const tableMetaState = shallowRef<TableMetaWithOptions | null>(null)
-const tableMetaError = ref<string>('')
-const metaLoading = ref(false)
+// Use `useAsyncData` (keyed by active table) so the SSR result is serialized
+// into the payload and hydrated on the client. A plain `cGet` call would only
+// run on the client, desyncing SSR vs client render and causing a hydration
+// mismatch ("server rendered more child nodes than client").
+const {
+  data: tableMetaState,
+  error: metaError,
+  pending: metaLoading
+} = useAsyncData<TableMetaWithOptions | null>(
+  () => `dash-meta-${activeTable.value}`,
+  async () => {
+    const tableName = activeTable.value
+    // Skip for custom tables or empty table names (resolve to null).
+    if (!tableName || isCustomTable.value) return null
+    return await cGet<TableMetaWithOptions>(`/api/dashboard/meta/${tableName}`)
+  },
+  { watch: [activeTable] }
+)
 
-async function reloadTableMeta() {
-  const tableName = activeTable.value
-  // Skip for custom tables or empty table names
-  if (!tableName || isCustomTable.value) {
-    tableMetaState.value = null
-    tableMetaError.value = ''
-    return
-  }
-  metaLoading.value = true
-  try {
-    const res = await cGet<TableMetaWithOptions>(`/api/dashboard/meta/${tableName}`)
-    tableMetaState.value = res
-    tableMetaError.value = ''
-  } catch (e) {
-    tableMetaState.value = null
-    tableMetaError.value = extractErrorMessage(e, t('dashboard.table.loadMetaFailed'))
-  } finally {
-    metaLoading.value = false
-  }
-}
-
-watch(activeTable, reloadTableMeta, { immediate: true })
+// Normalize the async error into a displayable message (auto-fetched on
+// navigation since `watch: [activeTable]` re-runs the loader above).
+const tableMetaError = computed(() =>
+  metaError.value ? extractErrorMessage(metaError.value, t('dashboard.table.loadMetaFailed')) : ''
+)
 </script>
 
 <template>
