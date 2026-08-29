@@ -53,7 +53,7 @@ async function onMarkdownPaste(event: ClipboardEvent) {
       const mdLink = `![image](/api/files/serve/${path})`
       // Append the markdown image syntax to the current value
       const current = String(inputValue.value ?? '')
-      emit('update:modelValue', current + (current ? '\n' : '') + mdLink)
+      inputValue.value = current + (current ? '\n' : '') + mdLink
       toast.add({ title: t('dashboard.crud.imageUploaded'), color: 'success' })
     }
   } catch (e) {
