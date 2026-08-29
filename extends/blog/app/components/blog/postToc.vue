@@ -28,7 +28,8 @@ function scan() {
   if (!rootEl) return
   const nodes = Array.from(rootEl.querySelectorAll('h1, h2, h3'))
   const list: Array<{ id: string, text: string, level: 1 | 2 | 3 }> = []
-  nodes.forEach((el, i) => {
+  nodes.forEach((node, i) => {
+    const el = node as HTMLElement
     const level = Number(el.tagName[1]) as 1 | 2 | 3
     const id = slugify((el.textContent || '').trim(), i)
     el.id = id

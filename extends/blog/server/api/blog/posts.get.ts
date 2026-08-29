@@ -76,13 +76,14 @@ export default defineEventHandler(async (event): Promise<BlogListResult> => {
     endClause
   )
 
-  const [{ total }] = await db
+  const [totalRow] = await db
     .select({ total: count() })
     .from(posts)
     .leftJoin(categories, eq(posts.categoryId, categories.id))
     .where(whereClause)
+  const total = totalRow?.total ?? 0
 
-  const items = await db
+  const items = (await db
     .select({
       id: posts.id,
       title: posts.title,
@@ -106,7 +107,7 @@ export default defineEventHandler(async (event): Promise<BlogListResult> => {
     .where(whereClause)
     .orderBy(orderByClause, desc(posts.id))
     .limit(pageSize)
-    .offset(offset)
+    .offset(offset)) as unknown as BlogListItem[]
 
   return { items, page, pageSize, total }
 })

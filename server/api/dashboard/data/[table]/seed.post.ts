@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 405, message: `Custom table "${table}" cannot be seeded via generic API` })
   }
 
-  const body = await readBody<{ count?: number | string }>(event).catch(() => ({}))
+  const body = await readBody<Record<string, unknown>>(event).catch(() => undefined)
   const count = Math.min(100, Math.max(1, Number(body?.count ?? 10) || 10))
 
   const ids = await seedTable(meta, count, toDataScopeActor(actor))

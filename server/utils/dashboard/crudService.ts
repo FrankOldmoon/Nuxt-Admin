@@ -22,7 +22,6 @@ import { resolveFileNamesByPath } from '~~/server/utils/files'
 import {
   and,
   between,
-  count,
   desc,
   eq,
   getTableColumns,
@@ -466,7 +465,7 @@ export async function listTableData<T = Record<string, unknown>>(
   } catch { /* ignore */ }
 
   const [countRows, rows] = await Promise.all([
-    db.select({ value: count() }).from(tbl).where(where),
+    db.select({ value: sql<number>`count(*)` }).from(tbl).where(where),
     db.select().from(tbl).where(where).orderBy(...orderByClauses).limit(q.limit).offset(q.offset)
   ] as const)
 
@@ -726,8 +725,8 @@ export async function seedTable(
     if (!relReg || visited.has(relReg.meta.table)) continue
     const relTbl = relReg.getTable(schema as unknown as Record<string, unknown>) as PgTableWithColumns<any> | undefined
     if (!relTbl) continue
-    const [{ c }] = await db.select({ c: count() }).from(relTbl) as Array<{ c: number }>
-    if (Number(c) === 0) {
+    const [countRow] = await db.select({ c: sql<number>`count(*)` }).from(relTbl)
+    if (Number(countRow?.c ?? 0) === 0) {
       await seedTable(relReg.meta, 3, actor, undefined, visited)
     }
   }
