@@ -106,6 +106,12 @@
     "fullscreen": "Fullscreen",
     "exitFullscreen": "Exit fullscreen"
   },
+  "treeEditor": {
+    "addRoot": "Add root",
+    "addChild": "Add child",
+    "addSibling": "Add sibling",
+    "delete": "Delete"
+  },
   "pagination": {
     "total": "{total} items",
     "range": "{from}-{to}",
@@ -463,6 +469,7 @@
       "menuLoadFailed": "Failed to load menu",
       "recordsUnit": "items",
       "distribution": "Records by table",
+      "proportion": "Record Proportion",
       "hint": "About"
     },
     "table": {
@@ -559,7 +566,10 @@
       "rowMissingLabel": "Row {row} is missing a label",
       "configDesc": "Dashboard sidebar menu configuration (order/icon/label/hidden can be managed in this JSON or via the editor UI)",
       "configResetDesc": "Dashboard sidebar menu configuration (reset to default)",
-      "customSuffix": "·custom"
+      "customSuffix": "·custom",
+      "editMenuItem": "Edit Menu Item",
+      "url": "URL Path",
+      "quickSelectTable": "Quick select table"
     },
     "excel": {
       "import": "Import",

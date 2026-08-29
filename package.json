@@ -28,6 +28,7 @@
     "browser-image-compression": "^2.0.2",
     "cherry-markdown": "^0.11.10",
     "drizzle-orm": "^0.45.2",
+    "echarts": "^6.1.0",
     "highlight.js": "^11.12.0",
     "katex": "^0.18.4",
     "markdown-it": "^15.0.0",
@@ -36,7 +37,8 @@
     "pg": "^8.23.0",
     "sharp": "^0.35.3",
     "tailwindcss": "^4.3.3",
-    "vue-advanced-cropper": "^2.8.9"
+    "vue-advanced-cropper": "^2.8.9",
+    "vuedraggable": "^4.1.0"
   },
   "devDependencies": {
     "@nuxt/eslint": "^1.16.0",

@@ -10,6 +10,7 @@
  * read cleanly as `/dashboard/roles`, `/dashboard/users`, etc.
  */
 import type { DashboardMenuItem } from '~/types/dashboard'
+import type { EChartsOption } from 'echarts'
 
 definePageMeta({ middleware: 'admin', layout: 'dashboard', keepalive: true })
 const { t } = useI18n()
@@ -57,6 +58,40 @@ function labelForTable(t: string, scope: SlotScope) {
 function iconForTable(t: string, scope: SlotScope) {
   return scope.menu.find(m => m.table === t)?.icon ?? 'i-lucide-circle-dashed'
 }
+
+// ECharts options
+const barOption = computed<EChartsOption>(() => {
+  const labels = overviewTargets.value.map(t => labelForTable(t, { menu: metaData.value?.menu ?? [], metaError: null }))
+  const values = overviewTargets.value.map(t => overview.value?.[t] ?? 0)
+  return {
+    tooltip: { trigger: 'axis' },
+    grid: { left: 40, right: 20, top: 20, bottom: 30 },
+    xAxis: { type: 'category', data: labels, axisLabel: { rotate: 30, fontSize: 11 } },
+    yAxis: { type: 'value', minInterval: 1 },
+    series: [{
+      type: 'bar',
+      data: values,
+      itemStyle: { borderRadius: [4, 4, 0, 0], color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: '#3b82f6' }, { offset: 1, color: '#93c5fd' }] } }
+    }]
+  }
+})
+
+const pieOption = computed<EChartsOption>(() => {
+  const data = overviewTargets.value
+    .map(t => ({ name: labelForTable(t, { menu: metaData.value?.menu ?? [], metaError: null }), value: overview.value?.[t] ?? 0 }))
+    .filter(d => d.value > 0)
+  return {
+    tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
+    series: [{
+      type: 'pie',
+      radius: ['30%', '60%'],
+      center: ['50%', '50%'],
+      data,
+      label: { show: true, formatter: '{b}' },
+      emphasis: { itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: 'rgba(0,0,0,0.5)' } }
+    }]
+  }
+})
 </script>
 
 <template>
@@ -104,36 +139,31 @@ function iconForTable(t: string, scope: SlotScope) {
           </UCard>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
-          <!-- Record count distribution per table -->
-          <UCard class="lg:col-span-2">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+          <!-- Bar chart: record counts per table -->
+          <UCard>
             <template #header>
               <div class="flex items-center gap-2">
                 <UIcon name="i-lucide-bar-chart-3" class="h-5 w-5 text-primary" />
                 <span class="font-medium">{{ t('dashboard.overview.distribution') }}</span>
               </div>
             </template>
-            <BaseMiniBars
-              :items="overviewTargets.map(t => ({
-                label: labelForTable(t, { menu, metaError }),
-                icon: iconForTable(t, { menu, metaError }),
-                value: overview?.[t] ?? 0
-              }))"
-            />
+            <BaseEchart :option="barOption" height="300px" />
           </UCard>
 
-          <!-- Explanation -->
+          <!-- Pie chart: record distribution -->
           <UCard>
             <template #header>
               <div class="flex items-center gap-2">
-                <UIcon name="i-lucide-info" class="h-5 w-5 text-primary" />
-                <span class="font-medium">{{ t('dashboard.overview.hint') }}</span>
+                <UIcon name="i-lucide-pie-chart" class="h-5 w-5 text-primary" />
+                <span class="font-medium">{{ t('dashboard.overview.proportion') }}</span>
               </div>
             </template>
-            <p class="text-sm text-muted">{{ t('dashboard.overview.description') }}</p>
+            <BaseEchart :option="pieOption" height="300px" />
           </UCard>
         </div>
 
+        <!-- Quick entry -->
         <UCard>
           <template #header>
             <h2 class="text-lg font-semibold">{{ t('dashboard.overview.quickEntry') }}</h2>

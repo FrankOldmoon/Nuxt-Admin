@@ -149,6 +149,10 @@ export interface DashboardMenuItem {
   order?: number
   /** Hidden from the sidebar (still accessible via URL) */
   hidden?: boolean
+  /** Direct URL path — overrides the default /dashboard/<table> route */
+  url?: string
+  /** Parent item key for hierarchical menu (null = root level) */
+  parentId?: string | null
   /**
    * True when this is a system default (not admin-customized) menu entry —
    * the label is resolved through i18n (`dashboard.tables.<table>`).

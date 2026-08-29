@@ -106,6 +106,12 @@
     "fullscreen": "全屏编辑",
     "exitFullscreen": "退出全屏"
   },
+  "treeEditor": {
+    "addRoot": "添加根节点",
+    "addChild": "添加子节点",
+    "addSibling": "添加同级",
+    "delete": "删除"
+  },
   "pagination": {
     "total": "共 {total} 项",
     "range": "{from}-{to}",
@@ -463,6 +469,7 @@
       "menuLoadFailed": "菜单加载失败",
       "recordsUnit": "条",
       "distribution": "各表记录数",
+      "proportion": "记录占比",
       "hint": "关于"
     },
     "table": {
@@ -559,7 +566,10 @@
       "rowMissingLabel": "第 {row} 行缺少标签",
       "configDesc": "Dashboard 左侧菜单配置（顺序/图标/标签/隐藏均可在此 JSON 中管理，或使用编辑器 UI）",
       "configResetDesc": "Dashboard 左侧菜单配置（已重置为默认）",
-      "customSuffix": "·自定义"
+      "customSuffix": "·自定义",
+      "editMenuItem": "编辑菜单项",
+      "url": "URL 路径",
+      "quickSelectTable": "快速选择已有表"
     },
     "excel": {
       "import": "导入",

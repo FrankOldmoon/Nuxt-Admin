@@ -58,9 +58,13 @@ const CUSTOM_PAGE_MAP: Record<string, Component> = {
   configs: markRaw(DashboardConfigsPage)
 }
 
-function navigate(table: string) {
-  if (activeTable.value === table) return
-  navigateTo(`/dashboard/${table}`)
+function navigate(path: string) {
+  if (path.startsWith('/') || path.startsWith('http')) {
+    navigateTo(path)
+    return
+  }
+  if (activeTable.value === path) return
+  navigateTo(`/dashboard/${path}`)
 }
 
 // ---------- Load full metadata (menu + tables list with custom flags) ----------

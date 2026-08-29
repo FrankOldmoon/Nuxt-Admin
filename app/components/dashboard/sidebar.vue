@@ -23,7 +23,7 @@ const { menuLabel } = useDashboardLabels()
 const mobileOpen = ref(false)
 
 function go(item: DashboardMenuItem) {
-  emit('navigate', item.table)
+  emit('navigate', item.url || item.table)
   mobileOpen.value = false
 }
 </script>

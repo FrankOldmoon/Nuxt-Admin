@@ -22,7 +22,7 @@ const { data: metaData, error: metaError, refresh: refreshMeta } = await useDash
 
 const menu = computed<DashboardMenuItem[]>(() => metaData.value?.menu ?? [])
 
-function onSidebarNavigate(table: string) { emit('navigate', table) }
+function onSidebarNavigate(path: string) { emit('navigate', path) }
 </script>
 
 <template>
