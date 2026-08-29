@@ -1,11 +1,11 @@
 {
   "site": {
-    "title": "Nuxt AI",
-    "description": "A collection of AI tech demos built with Nuxt v4."
+    "title": "Nuxt Admin",
+    "description": "A production-grade, metadata-driven admin framework built with Nuxt 4."
   },
   "home": {
     "welcome": "Hello World",
-    "heroDescription": "A minimal Nuxt starter with Nuxt UI, i18n and server API ready.",
+    "heroDescription": "A metadata-driven admin framework with CRUD, RBAC, SSO, real-time and LLM features.",
     "hero": {
       "badge": "Metadata-driven admin framework",
       "title": "Build enterprise back-office systems, faster",
@@ -29,9 +29,9 @@
         "title": "Security & SSO",
         "desc": "Captcha, failed-login lockout, last-login tracking and third-party sign-in via GitHub OAuth2."
       },
-      "dictionary": {
-        "title": "Extensible Metadata",
-        "desc": "Metadata-driven tables, forms and permissions that scale with your data."
+      "metadata": {
+        "title": "Schema Auto-discovery",
+        "desc": "Any Drizzle table becomes a full CRUD page instantly; a registry lets you override API or UI per table."
       },
       "realtime": {
         "title": "Real-time Notifications",
@@ -45,9 +45,9 @@
         "title": "i18n Ready",
         "desc": "English and Chinese built in, switchable from the header at any time."
       },
-      "structure": {
-        "title": "DB Structure Viewer",
-        "desc": "Browse the whole schema with a read-only information_schema explorer."
+      "config": {
+        "title": "Menu & System Config",
+        "desc": "Edit the sidebar menu in place and fine-tune SMTP, security, upload and LLM settings from one panel."
       }
     },
     "sectionTech": "Powered by",

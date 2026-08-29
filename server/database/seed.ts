@@ -8,8 +8,8 @@ import {
 } from './schema'
 
 const DEFAULT_CONFIGS = [
-  { key: 'site.title', value: 'Nuxt AI', type: 'string', description: 'Site title' },
-  { key: 'site.description', value: 'A collection of AI tech demos built with Nuxt v4.', type: 'string', description: 'Site description' },
+  { key: 'site.title', value: 'Nuxt Admin', type: 'string', description: 'Site title' },
+  { key: 'site.description', value: 'A production-grade, metadata-driven admin framework built with Nuxt 4.', type: 'string', description: 'Site description' },
   { key: 'site.allowRegistration', value: 'true', type: 'boolean', description: 'Allow public registration' },
   { key: 'mail.from', value: 'no-reply@example.com', type: 'string', description: 'From address for outgoing mail' },
   { key: 'mail.host', value: '', type: 'string', description: 'SMTP host' },

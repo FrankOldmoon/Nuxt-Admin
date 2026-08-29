@@ -1,11 +1,11 @@
 {
   "site": {
-    "title": "Nuxt AI",
-    "description": "使用 Nuxt v4 构建的 AI 技术演示集合。"
+    "title": "Nuxt Admin",
+    "description": "基于 Nuxt 4 的生产级、元数据驱动的管理系统框架。"
   },
   "home": {
     "welcome": "你好，世界",
-    "heroDescription": "一个简洁的 Nuxt 启动项目，已配置 Nuxt UI、国际化和服务端 API。",
+    "heroDescription": "元数据驱动的管理系统框架，内置 CRUD、RBAC、SSO、实时通信与 LLM 能力。",
     "hero": {
       "badge": "元数据驱动的管理端框架",
       "title": "更快地构建企业级后台系统",
@@ -29,9 +29,9 @@
         "title": "安全与 SSO",
         "desc": "验证码、登录失败锁定、最后登录信息追踪，以及 GitHub OAuth2 第三方登录。"
       },
-      "dictionary": {
-        "title": "可扩展元数据",
-        "desc": "由元数据驱动的表格、表单与权限，随数据规模一起伸缩。"
+      "metadata": {
+        "title": "Schema 自动发现",
+        "desc": "任意 Drizzle 表即可瞬间得到完整 CRUD 页面；通过注册表可按表覆盖 API 或 UI。"
       },
       "realtime": {
         "title": "实时通知",
@@ -45,9 +45,9 @@
         "title": "多语言支持",
         "desc": "内置中英文，随时可从顶部栏切换。"
       },
-      "structure": {
-        "title": "数据库结构浏览",
-        "desc": "通过只读的 information_schema 探针浏览整个表结构。"
+      "config": {
+        "title": "菜单与系统配置",
+        "desc": "就地编辑侧边栏菜单，并在同一面板中调整 SMTP、安全、上传与 LLM 等设置。"
       }
     },
     "sectionTech": "技术栈",

@@ -2,8 +2,7 @@
 
 一个基于 **Nuxt 4 + Nuxt UI** 的通用管理系统基座（Admin Framework）。核心亮点是**元数据驱动（metadata-driven）的通用 CRUD**：仅仅定义一张 Drizzle 表，即可自动获得列表、表单、详情、筛选、排序、导入导出、软删除等完整后台能力，无需为每张表编写页面与接口。同时预留了清晰的**模块化扩展点**，方便扩展出题库、教学等业务子模块。
 
-> 仓库名含 "AI" 沿用历史命名，实际项目通用名称为「Nuxt Admin」。
-> 当前仓库为**后台基座**；其它业务模块（如教学/题库）可通过本文档「模块化扩展」一节的接口接入。
+> 当前仓库为**后台基座**；其它业务模块（如教学/题库）可通过本文档「模块化扩展」一节的接口（`registerDrizzleSchema` / `registerDashboardTable`）接入。
 
 ---
 
@@ -27,6 +26,7 @@
 
 ### 认证与用户中心
 - 注册 / 登录 / 登出 / 忘记密码 / 重置密码 / 邮箱验证，支持开关公开注册（`configs`）。
+- **OAuth2 第三方登录**（SSO）：内置 GitHub 提供方，支持「绑定既有账号 → 邮箱匹配 → 自动开户（可选）」的登录策略，回调地址、开关、自动开户角色均在「系统配置」中管理；采用 HMAC 签名的 `state` 防 CSRF，账号与本地用户一一对应、可多提供方绑定。
 - **持久化、可撤销会话令牌**（`tokens` 表），`httpOnly` Cookie 会话。
 - 基于**共享角色表**的 RBAC（`admin` / `user`），`requireUser` / `requireAdmin` 服务端守卫 + `auth` / `admin` 前端路由中间件。
 - 个人中心：资料修改、头像上传（压缩 + 裁剪）、改密码；管理端可查看用户**最后登录时间与 IP**。
@@ -42,6 +42,7 @@
 - **软删除 / 恢复 / 永久删除** 与回收站视图。
 - **搜索性能**：`pg_trgm` GIN 三角索引覆盖常用搜索列（`ilike '%...%'`），索引缺失时自动回退顺序扫描。
 - **大量自定义插槽 / 钩子**：`#toolbar`、`#form-content`、`#detail-content`、`#table-{field}`、`transformPayload`、`apiBase`（其它模块可复用通用 CRUD 渲染）。
+- **个性化定制阶梯**：从“零代码”到“整页接管”可渐进式定制 —— L0 通用 CRUD → L1 `tableOverrides` 注册表自定义列表/完整 CRUD API → L2 单元格/详情/表单 slot 覆盖 → L3 自定义工具栏与筛选 → L4 独立页面文件完全接管。以 `templates` 表作为演示样例，开关存于 `configs`，可逐一开关对比效果。
 
 ### 系统配置（`/dashboard/configs`，自定义页面）
 分 Tab 管理 `configs` 表（键值 + 类型）：
@@ -72,7 +73,7 @@
 上传（大小 / MIME 白名单可配）、本地存储、下载 / serve、按用户维度记录、软删除。
 
 ### 国际化
-`i18n/locales/en.json`、`zh.json` 双语，`no_prefix` 策略 + 浏览器语言检测 + Cookie 持久化；后端标签以中文为主，前端经 `t('dashboard.fields.${key}')` 补充。
+`i18n/locales/en.json`、`zh.json` 双语，默认语言为 **en**（`no_prefix` + 浏览器语言检测 + Cookie 持久化）；菜单、字段、按钮等文案经 `t('dashboard.tables.…')` / `t('dashboard.fields.…')` 补全，后端提供 fallback 标签，新增表/字段无需写死中文。
 
 ---
 
@@ -93,25 +94,26 @@
 │   ├── layouts/            # dashboard、default
 │   ├── middleware/         # auth、guest、admin
 │   ├── pages/              # login/register/forgot|reset-password/profile/messages/notifications；
-│   │                       # dashboard/index、dashboard/[table]、users、files
+│   │                       # dashboard/index、dashboard/[table]、users、files、templates
 │   ├── types/  utils/  app.config.ts  app.vue
 │
 ├── server/                 # 服务端（Nitro + Drizzle）
 │   ├── api/
-│   │   ├── auth/           # 登录/注册/登出/me/改密/改资料/邮箱验证/重置密码
+│   │   ├── auth/           # 登录/注册/登出/me/改密/改资料/邮箱验证/重置密码/oauth（providers·login·callback）
 │   │   ├── config/         # 系统配置（index/public/put）
 │   │   ├── dashboard/
 │   │   │   ├── meta/       # 表元数据（列表 / 单表，含自定义标记、菜单）
-│   │   │   └── data/       # 通用 CRUD / files / users 的逻辑
+│   │   │   ├── data/       # 通用 CRUD 分发器 + tableOverrides 按表分发的自定义逻辑
+│   │   │   └── templates/  # templates 演示样例的开关读写（个性化定制阶梯）
 │   │   ├── files/          # 上传 / 下载 / serve
 │   │   ├── llm/            # chat（Post）、ws（流式）
 │   │   ├── notifications/  # 收件箱、未读数、标已读、创建
 │   │   ├── messages/       # 联系人、历史、未读数、搜索
 │   │   └── ws.ts           # WebSocket 网关（通知/私信/在线/LLM）
 │   ├── database/           # schema / migrate / seed / ensure（自动建库）
-│   ├── utils/              # auth、session、tokens、users、files、mail、notifications、messages、llm、
+│   ├── utils/              # auth、session、tokens、users、files、mail、notifications、messages、llm、oauth、
 │   │                       # rateLimit、password(Reset)、email-verification、fileStorage、configs、pagination；
-│   │                       # dashboard/ 下的 crudService、tables（自动发现 + 注册表）
+│   │                       # dashboard/ 下的 crudService、tables（自动发现 + 注册表）、tableOverrides（定制注册表）
 │   └── plugins/  database.ts
 │
 ├── modules/<your-module>/      # （可选）业务模块，经 registerDashboardTable / registerDrizzleSchema 接入
@@ -218,4 +220,4 @@ pnpm test:coverage   # 覆盖率
 
 ## 项目状态与扩展点建议
 
-当前基座功能完整、测试充分。已内置：操作审计日志、LLM 连通性测试、动态概览统计、pg_trgm 全文索引、用户最后登录信息展示。后续可增强方向：字段/角色级权限、仪表盘统计图表、深色模式、数据备份恢复等。
+当前基座功能完整、测试充分。已内置：OAuth2 第三方登录、LLM 连通性测试、动态概览统计、pg_trgm 全文索引、用户最后登录信息展示。后续可增强方向：字段/角色级权限、仪表盘统计图表、深色模式、数据备份恢复等。

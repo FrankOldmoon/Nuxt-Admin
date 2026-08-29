@@ -5,7 +5,7 @@ const { fetchUser } = useAuth()
 // Public site config (site.title / site.description) from the database
 const { data: publicConfig } = await usePublicConfig()
 
-const title = computed(() => publicConfig.value?.configs?.['site.title'] || 'Nuxt AI')
+const title = computed(() => publicConfig.value?.configs?.['site.title'] || 'Nuxt Admin')
 const description = computed(() => publicConfig.value?.configs?.['site.description'] || '')
 
 // Load current user once on app init (SSR + client hydration)

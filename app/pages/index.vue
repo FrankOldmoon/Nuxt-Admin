@@ -14,11 +14,11 @@ const features = [
   { icon: 'i-lucide-table-2', key: 'crud' },
   { icon: 'i-lucide-shield-check', key: 'rbac' },
   { icon: 'i-lucide-lock-keyhole', key: 'security' },
-  { icon: 'i-lucide-database-zap', key: 'dictionary' },
+  { icon: 'i-lucide-database-zap', key: 'metadata' },
   { icon: 'i-lucide-bell', key: 'realtime' },
   { icon: 'i-lucide-bot', key: 'llm' },
   { icon: 'i-lucide-languages', key: 'i18n' },
-  { icon: 'i-lucide-folder-tree', key: 'structure' }
+  { icon: 'i-lucide-settings-2', key: 'config' }
 ] as const
 
 const tech = [
@@ -60,7 +60,7 @@ const tech = [
           size="xl"
           color="neutral"
           variant="soft"
-          to="https://github.com/nuxt/nuxt"
+          to="https://github.com/FrankOldmoon/Nuxt-Admin"
           target="_blank"
         >
           {{ t('home.hero.ctaSecondary') }}
