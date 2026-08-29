@@ -524,7 +524,10 @@
       "richtextHint": "富文本（HTML）",
       "createNew": "新建…",
       "createNewPlaceholder": "输入名称后按回车",
-      "createFailed": "创建失败"
+      "createFailed": "创建失败",
+      "uploadingImage": "上传图片中…",
+      "imageUploaded": "图片已上传",
+      "uploadFailed": "上传失败"
     },
     "menu": {
       "overview": "概览",

@@ -22,6 +22,63 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const toast = useToast()
+const mdUploading = ref(false)
+
+// When pasting an image into a markdown field, upload it and insert the
+// markdown image syntax at the cursor position.
+async function onMarkdownPaste(event: ClipboardEvent) {
+  const items = event.clipboardData?.items
+  if (!items) return
+  let imageFile: File | null = null
+  for (const item of items) {
+    if (item.type.startsWith('image/')) {
+      imageFile = item.getAsFile()
+      break
+    }
+  }
+  if (!imageFile) return
+  event.preventDefault()
+
+  mdUploading.value = true
+  try {
+    const formData = new FormData()
+    formData.append('files', imageFile)
+    const res = await $fetch<Array<{ path: string }>>('/api/files/upload', {
+      method: 'POST',
+      body: formData
+    })
+    const path = res?.[0]?.path
+    if (path) {
+      const mdLink = `![image](/api/files/serve/${path})`
+      // Insert at cursor position in the textarea
+      const textarea = (event.target as HTMLElement)?.closest('textarea')
+      if (textarea) {
+        const start = textarea.selectionStart
+        const end = textarea.selectionEnd
+        const current = String(textarea.value ?? '')
+        const before = current.substring(0, start)
+        const after = current.substring(end)
+        const newVal = before + mdLink + after
+        emit('update:modelValue', newVal)
+        // Restore cursor position after the inserted link
+        nextTick(() => {
+          textarea.focus()
+          textarea.setSelectionRange(start + mdLink.length, start + mdLink.length)
+        })
+      } else {
+        // Fallback: append to end
+        const current = String(inputValue.value ?? '')
+        emit('update:modelValue', current + (current ? '\n' : '') + mdLink)
+      }
+      toast.add({ title: t('dashboard.crud.imageUploaded'), color: 'success' })
+    }
+  } catch (e) {
+    toast.add({ title: t('dashboard.crud.uploadFailed'), color: 'error', description: extractErrorMessage(e) })
+  } finally {
+    mdUploading.value = false
+  }
+}
 
 // The table name is provided by a parent, used to resolve i18n field labels
 const dashboardTableName = inject<string | undefined>('dashboardTableName', undefined)
@@ -195,15 +252,24 @@ function removeFile(index: number) {
           :rows="5"
           class="w-full"
         />
-        <!-- markdown: edit raw markdown source -->
-        <UTextarea
-          v-else-if="field.type === 'markdown'"
-          v-model="inputValue"
-          :id="`field-${field.key}`"
-          :placeholder="field.placeholder ?? t('dashboard.crud.inputPlaceholder', { label: field.label })"
-          :rows="12"
-          class="w-full font-mono text-sm"
-        />
+        <!-- markdown: edit raw markdown source with image paste support -->
+        <div class="relative w-full">
+          <UTextarea
+            v-else-if="field.type === 'markdown'"
+            v-model="inputValue"
+            :id="`field-${field.key}`"
+            :placeholder="field.placeholder ?? t('dashboard.crud.inputPlaceholder', { label: field.label })"
+            :rows="12"
+            class="w-full font-mono text-sm"
+            @paste="onMarkdownPaste"
+          />
+          <div v-if="mdUploading" class="absolute inset-0 flex items-center justify-center rounded-md bg-white/80 dark:bg-elevated/80">
+            <span class="flex items-center gap-2 text-sm text-muted">
+              <span class="inline-block h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              {{ t('dashboard.crud.uploadingImage') }}
+            </span>
+          </div>
+        </div>
         <!-- number -->
         <UInput
           v-else-if="field.type === 'number'"

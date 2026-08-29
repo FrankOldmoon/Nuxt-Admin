@@ -524,7 +524,10 @@
       "richtextHint": "Rich text (HTML)",
       "createNew": "Create new…",
       "createNewPlaceholder": "Enter name and press Enter",
-      "createFailed": "Create failed"
+      "createFailed": "Create failed",
+      "uploadingImage": "Uploading image…",
+      "imageUploaded": "Image uploaded",
+      "uploadFailed": "Upload failed"
     },
     "menu": {
       "overview": "Overview",
