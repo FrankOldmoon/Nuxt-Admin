@@ -2,12 +2,16 @@ import { defineVitestConfig } from '@nuxt/test-utils/config'
 
 // 默认项目在 node 环境运行纯函数单元测试（test/** 下非 test/nuxt/ 的文件）。
 // defineVitestConfig 会自动创建一个名为 "nuxt" 的额外项目，
-// 使用 Nuxt 运行时环境，专门匹配 {test,tests}/nuxt/**.* 下的文件（composables / 组件测试）。
+// 使用 Nuxt 运行时环境，专门匹配 {test,tests}/nuxt/**.* 的文件（composables / 组件测试）。
 export default defineVitestConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['test/**/*.{test,spec}.{ts,js,mjs}'],
+    include: [
+      'test/**/*.{test,spec}.{ts,js,mjs}',
+      'extends/blog/**/*.{test,spec}.{ts,js,mjs}',
+      'layers/Nuxt-Extend-Navigation/**/*.{test,spec}.{ts,js,mjs}'
+    ],
     exclude: ['**/.DS_Store', '**/node_modules/**', '**/.nuxt/**', '**/.output/**'],
     setupFiles: ['test/setup/global.ts'],
     testTimeout: 30000,
