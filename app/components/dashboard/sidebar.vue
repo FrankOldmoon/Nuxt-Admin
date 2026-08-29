@@ -32,9 +32,9 @@ function go(item: DashboardMenuItem) {
   <!-- ============ Desktop sidebar (md+) ============ -->
   <aside class="hidden md:flex w-64 shrink-0 flex-col gap-1 side-border-r bg-card py-4 px-3 h-[calc(100vh-var(--header-height,0px))] sticky top-[calc(var(--header-height,0px))] overflow-y-auto no-scrollbar">
     <!-- Account block (shared w/ home header): user menu · language · home -->
-    <div class="mb-3 px-2 pt-2 pb-2.5 rounded-lg bg-muted/40 border border-default space-y-1">
+    <div class="mb-3 px-2 pt-1.5 pb-2 rounded-lg bg-muted/40 border border-default space-y-0.5">
       <AppUserMenu align="end" />
-      <div class="flex items-center gap-1 border-t border-default pt-1.5">
+      <div class="flex items-center gap-1 border-t border-default pt-1">
         <AppLanguageSelect show-label />
         <AppHomeButton class="ml-auto" />
       </div>
