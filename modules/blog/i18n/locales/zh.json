@@ -1,0 +1,47 @@
+{
+  "dashboard": {
+    "tables": {
+      "posts": "文章",
+      "categories": "分类"
+    },
+    "fields": {
+      "posts": {
+        "id": "ID",
+        "title": "标题",
+        "slug": "别名",
+        "excerpt": "摘要",
+        "contentMarkdown": "内容（Markdown）",
+        "coverUrl": "封面图 URL",
+        "status": "状态",
+        "categoryId": "分类",
+        "authorId": "作者",
+        "publishedAt": "发布时间",
+        "createdAt": "创建时间",
+        "updatedAt": "更新时间"
+      },
+      "categories": {
+        "id": "ID",
+        "name": "名称",
+        "slug": "别名",
+        "description": "描述",
+        "createdAt": "创建时间",
+        "updatedAt": "更新时间"
+      }
+    }
+  },
+  "blog": {
+    "title": "博客",
+    "subtitle": "来自团队的故事、指南与笔记。",
+    "back": "返回博客",
+    "readMore": "阅读全文",
+    "empty": "还没有文章，去后台发布一篇吧。",
+    "meta": "发布于 {date}",
+    "by": "作者：{author}",
+    "draft": "草稿（未发布）",
+    "status": {
+      "draft": "草稿",
+      "published": "已发布",
+      "archived": "已归档"
+    }
+  }
+}

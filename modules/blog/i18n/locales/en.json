@@ -1,0 +1,47 @@
+{
+  "dashboard": {
+    "tables": {
+      "posts": "Posts",
+      "categories": "Categories"
+    },
+    "fields": {
+      "posts": {
+        "id": "ID",
+        "title": "Title",
+        "slug": "Slug",
+        "excerpt": "Excerpt",
+        "contentMarkdown": "Content (Markdown)",
+        "coverUrl": "Cover image URL",
+        "status": "Status",
+        "categoryId": "Category",
+        "authorId": "Author",
+        "publishedAt": "Published at",
+        "createdAt": "Created at",
+        "updatedAt": "Updated at"
+      },
+      "categories": {
+        "id": "ID",
+        "name": "Name",
+        "slug": "Slug",
+        "description": "Description",
+        "createdAt": "Created at",
+        "updatedAt": "Updated at"
+      }
+    }
+  },
+  "blog": {
+    "title": "Blog",
+    "subtitle": "Stories, guides and notes from the team.",
+    "back": "Back to blog",
+    "readMore": "Read more",
+    "empty": "No posts yet. Publish one from the admin dashboard.",
+    "meta": "Published {date}",
+    "by": "by {author}",
+    "draft": "Draft (not published)",
+    "status": {
+      "draft": "Draft",
+      "published": "Published",
+      "archived": "Archived"
+    }
+  }
+}
