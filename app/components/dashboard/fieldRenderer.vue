@@ -51,9 +51,22 @@ async function onMarkdownPaste(event: ClipboardEvent) {
     const path = res?.[0]?.path
     if (path) {
       const mdLink = `![image](/api/files/serve/${path})`
-      // Append the markdown image syntax to the current value
-      const current = String(inputValue.value ?? '')
-      inputValue.value = current + (current ? '\n' : '') + mdLink
+      // Insert at cursor position in the textarea
+      const textarea = (event.target as HTMLElement)?.closest('textarea') || document.getElementById(`field-${props.field.key}`) as HTMLTextAreaElement | null
+      if (textarea) {
+        const start = textarea.selectionStart
+        const end = textarea.selectionEnd
+        const before = textarea.value.substring(0, start)
+        const after = textarea.value.substring(end)
+        textarea.value = before + mdLink + after
+        textarea.dispatchEvent(new Event('input', { bubbles: true }))
+        textarea.setSelectionRange(start + mdLink.length, start + mdLink.length)
+        textarea.focus()
+      } else {
+        // Fallback: append to end of v-model value
+        const current = String(inputValue.value ?? '')
+        inputValue.value = current + (current ? '\n' : '') + mdLink
+      }
       toast.add({ title: t('dashboard.crud.imageUploaded'), color: 'success' })
     }
   } catch (e) {
@@ -236,14 +249,13 @@ function removeFile(index: number) {
           class="w-full"
         />
         <!-- markdown: edit raw markdown source with image paste support -->
-        <div v-else-if="field.type === 'markdown'" class="relative w-full">
+        <div v-else-if="field.type === 'markdown'" class="relative w-full" @paste="onMarkdownPaste">
           <UTextarea
             v-model="inputValue"
             :id="`field-${field.key}`"
             :placeholder="field.placeholder ?? t('dashboard.crud.inputPlaceholder', { label: field.label })"
             :rows="12"
             class="w-full font-mono text-sm"
-            @paste="onMarkdownPaste"
           />
           <div v-if="mdUploading" class="absolute inset-0 flex items-center justify-center rounded-md bg-white/80 dark:bg-elevated/80">
             <span class="flex items-center gap-2 text-sm text-muted">
