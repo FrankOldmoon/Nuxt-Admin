@@ -17,6 +17,7 @@
 import { eq } from 'drizzle-orm'
 import { db } from '../../../../server/database'
 import { configs as configsTable, roles as rolesTable } from '../../../../server/database/schema'
+import { getConfigValue } from '../../../../server/utils/configs'
 import {
   registerDrizzleSchema,
   registerDashboardTable,
@@ -27,8 +28,19 @@ import { runBlogMigrations } from '../database/migrate'
 import { postMeta, categoryMeta } from '../utils/fields'
 
 const DASHBOARD_MENU_KEY = 'dashboard.menu'
+const BLOG_ENABLED_KEY = 'blog.enabled'
 
 export default defineNitroPlugin(async () => {
+  // Master switch — controlled from the host's System Config > General
+  // (`blog.enabled`). When disabled, the blog registers nothing (no schema,
+  // migrations, tables, menu entries or seed data). Safe to boot either way;
+  // this keeps the config from ever loading a module the admin turned off.
+  const enabled = await getConfigValue(BLOG_ENABLED_KEY, true).catch(() => true)
+  if (!enabled) {
+    console.log('[blog] disabled via config (blog.enabled=false) — skipping setup')
+    return
+  }
+
   console.log('[blog] initializing blog module')
 
   // 1. Make the blog tables discoverable by the generic dashboard.

@@ -80,6 +80,15 @@ const displayValue = computed(() => {
       const path = (obj?.path as string) ?? String(v)
       return { kind: 'image' as const, value: resolveImageSrc(path) }
     }
+    case 'icon': {
+      const s = String(v).trim()
+      if (s.startsWith('<svg')) return { kind: 'icon' as const, iconKind: 'svg' as const, value: s }
+      if (s.startsWith('i-')) return { kind: 'icon' as const, iconKind: 'iconify' as const, value: s }
+      if (/^https?:\/\//i.test(s) || s.startsWith('/') || s.startsWith('data:')) {
+        return { kind: 'icon' as const, iconKind: 'url' as const, value: resolveImageSrc(s) }
+      }
+      return { kind: 'text' as const, value: s }
+    }
     case 'file': {
       const obj = (v && typeof v === 'object') ? (v as Record<string, unknown>) : null
       const path = (obj?.path as string) ?? String(v)
@@ -159,6 +168,13 @@ const displayValue = computed(() => {
       </template>
       <img :src="displayValue.value" :alt="field.label" class="h-10 w-10 shrink-0 cursor-zoom-in rounded border object-cover">
     </UTooltip>
+    <!-- icon field: inline SVG / Iconify class / image URL -->
+    <div v-else-if="displayValue.kind === 'icon'" class="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-md border border-default bg-muted/40">
+      <img v-if="displayValue.iconKind === 'url'" :src="displayValue.value" :alt="field.label" class="h-full w-full object-contain">
+      <UIcon v-else-if="displayValue.iconKind === 'iconify'" :name="displayValue.value" class="h-5 w-5 text-muted" />
+      <!-- svg rendered as raw HTML -->
+      <span v-else-if="displayValue.iconKind === 'svg'" class="flex h-full w-full items-center justify-center" v-html="displayValue.value"></span>
+    </div>
     <a
       v-else-if="displayValue.kind === 'file'"
       :href="displayValue.value"
@@ -227,6 +243,11 @@ const displayValue = computed(() => {
       </template>
       <img :src="displayValue.value" :alt="field.label" class="max-h-80 max-w-full cursor-zoom-in rounded bg-muted object-contain">
     </UTooltip>
+    <div v-else-if="displayValue.kind === 'icon'" class="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-default bg-muted/40">
+      <img v-if="displayValue.iconKind === 'url'" :src="displayValue.value" :alt="field.label" class="h-full w-full object-contain">
+      <UIcon v-else-if="displayValue.iconKind === 'iconify'" :name="displayValue.value" class="h-7 w-7 text-muted" />
+      <span v-else-if="displayValue.iconKind === 'svg'" class="flex h-full w-full items-center justify-center" v-html="displayValue.value"></span>
+    </div>
     <a
       v-else-if="displayValue.kind === 'file'"
       :href="displayValue.value"

@@ -1,6 +1,6 @@
 /**
  * Independent `blog` module (Nuxt layer), mounted by the host project via
- * `extends: ['./modules/blog']` in the root nuxt.config.ts.
+ * `extends: ['./extends/blog']` in the root nuxt.config.ts.
  *
  * This layer owns EVERYTHING blog-related: its pages, server API, database
  * schema/migrations and its own i18n locale files below `./i18n/locales`.

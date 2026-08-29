@@ -3,15 +3,15 @@
 This folder is an **independent Nuxt layer** that mounts onto the host admin
 project. It owns everything blog-related — pages, API, database schema +
 migrations and i18n — and contains **zero** blog references inside the host
-codebase. Use it as a template when adding a new module (e.g. `modules/forum`,
-`modules/ecommerce`).
+codebase. Use it as a template when adding a new module (e.g. `extends/forum`,
+`extends/ecommerce`).
 
 ## How it is mounted
 
 The host project only adds one line in its root `nuxt.config.ts`:
 
 ```ts
-extends: ['./modules/blog']
+extends: ['./extends/blog']
 ```
 
 Nothing else in the host knows about `blog`. Every future module follows the
@@ -20,7 +20,7 @@ same pattern.
 ## Directory anatomy
 
 ```
-modules/blog/
+extends/blog/
 ├── nuxt.config.ts              # Declares this layer's own i18n locale files
 ├── i18n/locales/{en,zh}.json   # Module i18n (dashboard tables/fields + UI keys)
 ├── app/
@@ -196,8 +196,8 @@ exists. (See the seed implementation in `server/utils/dashboard/crudService.ts`:
 
 ## Copying for a new module
 
-1. Copy this folder to `modules/<name>`, rename package-scoped identifiers.
-2. Update the host: replace `extends: ['./modules/blog']` (or add another line).
+1. Copy this folder to `extends/<name>`, rename package-scoped identifiers.
+2. Update the host: replace `extends: ['./extends/blog']` (or add another line).
 3. Edit `server/plugins/<name>.ts` to register your schema/tables/menu/seed.
 4. Keep every host import relative and commented; never add `<name>` text into
    `app/`, `server/`, or `i18n/` of the host.

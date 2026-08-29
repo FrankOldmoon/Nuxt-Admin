@@ -52,13 +52,14 @@ async function testLlm() {
   }
 }
 
-// Group configs by key prefix, with site.title and site.description ordered first
+// Group configs by key prefix, with site.title/site.description and blog.enabled ordered first
 const generalConfigs = computed(() => {
-  const priority = ['site.title', 'site.description']
+  const priority = ['site.title', 'site.description', 'blog.enabled']
   const items = configs.value.filter(c =>
     c.key.startsWith('site.')
     || c.key.startsWith('security.')
     || c.key.startsWith('upload.')
+    || c.key.startsWith('blog.')
   )
   return [...items].sort((a, b) => {
     const ai = priority.indexOf(a.key)

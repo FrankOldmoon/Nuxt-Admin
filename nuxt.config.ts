@@ -6,10 +6,10 @@ import { join } from 'node:path'
 // Format: one layer path per line; blank lines and `#` comments are ignored.
 // Because the file is NOT tracked by git, downstream users can add their own
 // layers here without ever merging with upstream changes to this config file.
-// Upstream defaults (`./modules/blog`) stay hardcoded below.
+// Upstream defaults (`./extends/blog`) stay hardcoded below.
 //   e.g.
-//   # my private module
-//   ./modules/my-layer
+//   # my private layer
+//   ./extends/my-layer
 const LOCAL_EXTENDS_FILE = join(process.cwd(), 'extends.local.txt')
 
 function readLocalExtends(): string[] {
@@ -21,10 +21,10 @@ function readLocalExtends(): string[] {
 }
 
 export default defineNuxtConfig({
-  // Mount the demo blog module as an independent layer. Each future module
-  // is added the same way: one `./modules/<name>` line here and nothing else
+  // Mount the demo blog layer as an independent Nuxt layer. Each future layer
+  // is added the same way: one `./extends/<name>` line here and nothing else
   // in the host codebase.
-  extends: ['./modules/blog', ...readLocalExtends()],
+  extends: ['./extends/blog', ...readLocalExtends()],
 
   modules: ['@nuxt/eslint', '@nuxt/ui', '@nuxtjs/i18n'],
 

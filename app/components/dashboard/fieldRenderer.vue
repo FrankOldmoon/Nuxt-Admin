@@ -180,6 +180,12 @@ function removeFile(index: number) {
           type="url"
           class="w-full"
         />
+        <!-- icon: Iconify class, inline SVG, or image URL — reusable icon field -->
+        <BaseIconPicker
+          v-else-if="field.type === 'icon'"
+          :model-value="String(inputValue ?? '')"
+          @update:model-value="update"
+        />
         <!-- textarea -->
         <UTextarea
           v-else-if="field.type === 'textarea'"

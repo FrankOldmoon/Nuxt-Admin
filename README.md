@@ -117,7 +117,7 @@
 │   │                       # dashboard/ 下的 crudService、tables（自动发现 + 注册表）、tableOverrides（定制注册表）
 │   └── plugins/  database.ts
 │
-├── modules/<your-module>/      # （可选）业务模块，经 registerDashboardTable / registerDrizzleSchema 接入
+├── extends/<your-layer>/      # （可选）业务模块，以 Nuxt layer 形式经 registerDashboardTable / registerDrizzleSchema 接入
 ├── i18n/locales/           # en.json / zh.json
 ├── test/                   # e2e（API）、unit（app/server）、nuxt（组件/composable/页面）、helpers
 ├── drizzle.config.ts  nuxt.config.ts  vitest.config.ts  ecosystem.config.cjs  .env.example

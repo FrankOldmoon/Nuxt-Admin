@@ -146,3 +146,7 @@ vite.config.ts.timestamp-*
 # Downstream users add their own layers here to avoid merge conflicts with
 # upstream changes to nuxt.config.ts — it is read via readLocalExtends().
 extends.local.txt
+
+# Independent Nuxt layer checkouts (e.g. cloned navigation site). Each folder
+# is its own repo; referenced from extends.local.txt, never committed here.
+layers/

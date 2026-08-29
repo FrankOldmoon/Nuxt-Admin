@@ -11,6 +11,7 @@ const DEFAULT_CONFIGS = [
   { key: 'site.title', value: 'Nuxt Admin', type: 'string', description: 'Site title' },
   { key: 'site.description', value: 'A production-grade, metadata-driven admin framework built with Nuxt 4.', type: 'string', description: 'Site description' },
   { key: 'site.allowRegistration', value: 'true', type: 'boolean', description: 'Allow public registration' },
+  { key: 'blog.enabled', value: 'true', type: 'boolean', description: 'Enable the blog module (registers its tables, API and sidebar menu)' },
   { key: 'mail.from', value: 'no-reply@example.com', type: 'string', description: 'From address for outgoing mail' },
   { key: 'mail.host', value: '', type: 'string', description: 'SMTP host' },
   { key: 'mail.port', value: '587', type: 'number', description: 'SMTP port' },

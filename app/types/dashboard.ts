@@ -20,6 +20,7 @@ export type FieldType =
   | 'relation'
   | 'json'
   | 'many-to-many'
+  | 'icon'
 
 export interface FieldOption {
   label: string
