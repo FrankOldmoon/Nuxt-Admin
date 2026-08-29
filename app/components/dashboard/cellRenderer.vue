@@ -56,8 +56,9 @@ function normalizeTags(v: unknown): string[] {
 }
 
 const displayValue = computed(() => {
-  const v = props.value
   const f = props.field
+  // Apply the field's custom getter (if registered) before display.
+  let v = applyFieldGetter(f.getter, props.value)
   if (v === null || v === undefined || v === '') {
     return { kind: 'empty' as const }
   }
@@ -122,6 +123,8 @@ const displayValue = computed(() => {
         return { kind: 'text' as const, value: String(v) }
       }
     }
+    case 'markdown':
+      return { kind: 'markdown' as const, value: String(v) }
     case 'textarea':
     case 'text':
     default:
@@ -193,6 +196,9 @@ const displayValue = computed(() => {
       <span class="truncate block max-w-[240px]">{{ displayValue.value }}</span>
     </UTooltip>
     <span v-else-if="displayValue.kind === 'text'">{{ displayValue.value }}</span>
+    <div v-else-if="displayValue.kind === 'markdown'" class="line-clamp-2 max-w-[320px] overflow-hidden text-xs text-muted">
+      {{ String(displayValue.value).slice(0, 120) }}{{ String(displayValue.value).length > 120 ? '…' : '' }}
+    </div>
     <UTooltip v-else-if="displayValue.kind === 'code'" :text="t('dashboard.crud.clickToCopy')">
       <code class="truncate block max-w-[260px] text-xs bg-muted px-2 py-1 rounded">{{ (displayValue.value as string).slice(0, 40) + ((displayValue.value as string).length > 40 ? '…' : '') }}</code>
     </UTooltip>
@@ -255,6 +261,9 @@ const displayValue = computed(() => {
       class="text-primary hover:underline break-all"
     >{{ displayValue.value }}</a>
     <div v-else-if="displayValue.kind === 'text'" class="whitespace-pre-wrap break-words">{{ displayValue.value }}</div>
+    <div v-else-if="displayValue.kind === 'markdown'" class="max-h-96 overflow-y-auto rounded border border-default p-3">
+      <BaseMarkdownViewer :source="String(displayValue.value)" />
+    </div>
     <pre v-else-if="displayValue.kind === 'code'" class="overflow-auto text-xs bg-muted p-3 rounded max-h-64">{{ displayValue.value }}</pre>
   </template>
 </template>

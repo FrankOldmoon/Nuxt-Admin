@@ -19,11 +19,11 @@ export const postMeta: TableMeta = {
   fields: [
     { key: 'id', label: 'ID', type: 'number', nullable: false, showInForm: false, showInTable: true, showInDetail: true, editable: false },
     { key: 'title', label: 'Title', type: 'text', nullable: false, showInForm: true, showInTable: true, showInDetail: true, editable: true, validation: { required: true, maxLength: 255 } },
-    { key: 'slug', label: 'Slug', type: 'text', nullable: false, showInForm: true, showInTable: true, showInDetail: true, editable: true, validation: { required: true, maxLength: 255 }, helpText: 'Lowercase URL segment, e.g. my-first-post' },
+    { key: 'url', label: 'Url', type: 'text', nullable: false, showInForm: true, showInTable: true, showInDetail: true, editable: true, validation: { required: true, maxLength: 255 } },
     { key: 'excerpt', label: 'Excerpt', type: 'textarea', nullable: true, showInForm: true, showInTable: false, showInDetail: true, editable: true },
-    { key: 'contentMarkdown', label: 'Content (Markdown)', type: 'textarea', nullable: true, showInForm: true, showInTable: false, showInDetail: true, editable: true, widthClass: 'w-48' },
-    { key: 'coverUrl', label: 'Cover image URL', type: 'hyperlink', nullable: true, showInForm: true, showInTable: false, showInDetail: true, editable: true, placeholder: 'https://…' },
-    { key: 'tags', label: 'Tags', type: 'tags', nullable: false, showInForm: true, showInTable: true, showInDetail: true, editable: true, helpText: 'Comma separated, e.g. vue,nuxt' },
+    { key: 'contentMarkdown', label: 'Content (Markdown)', type: 'markdown', nullable: true, showInForm: true, showInTable: false, showInDetail: true, editable: true, widthClass: 'w-48' },
+    { key: 'coverUrl', label: 'Cover image', type: 'image', nullable: true, showInForm: true, showInTable: true, showInDetail: true, editable: true },
+    { key: 'tags', label: 'Tags', type: 'tags', nullable: false, showInForm: true, showInTable: true, showInDetail: true, editable: true },
     {
       key: 'status',
       label: 'Status',
@@ -47,7 +47,7 @@ export const postMeta: TableMeta = {
   ],
   features: {
     softDelete: true,
-    search: ['title', 'slug', 'excerpt'],
+    search: ['title', 'url', 'excerpt'],
     defaultSort: { field: 'publishedAt', order: 'desc' },
     dataScope: { ownerColumn: 'authorId' }
   }
@@ -61,14 +61,14 @@ export const categoryMeta: TableMeta = {
   fields: [
     { key: 'id', label: 'ID', type: 'number', nullable: false, showInForm: false, showInTable: true, showInDetail: true, editable: false },
     { key: 'name', label: 'Name', type: 'text', nullable: false, showInForm: true, showInTable: true, showInDetail: true, editable: true, validation: { required: true, maxLength: 120 } },
-    { key: 'slug', label: 'Slug', type: 'text', nullable: false, showInForm: true, showInTable: true, showInDetail: true, editable: true, validation: { required: true, maxLength: 160 } },
+    { key: 'url', label: 'Url', type: 'text', nullable: false, showInForm: true, showInTable: true, showInDetail: true, editable: true, validation: { required: true, maxLength: 160 } },
     { key: 'description', label: 'Description', type: 'textarea', nullable: true, showInForm: true, showInTable: false, showInDetail: true, editable: true },
     { key: 'createdAt', label: 'Created at', type: 'datetime', nullable: false, showInForm: false, showInTable: true, showInDetail: true, editable: false },
     { key: 'updatedAt', label: 'Updated at', type: 'datetime', nullable: false, showInForm: false, showInTable: false, showInDetail: true, editable: false }
   ],
   features: {
     softDelete: false,
-    search: ['name', 'slug', 'description'],
+    search: ['name', 'url', 'description'],
     defaultSort: { field: 'id', order: 'asc' }
   }
 }

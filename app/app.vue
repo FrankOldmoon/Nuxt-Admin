@@ -2,6 +2,13 @@
 const { locale } = useI18n()
 const { fetchUser } = useAuth()
 
+// Register demo field transformers (used by FieldMeta getter/setter keys, e.g.
+// templates.price). See app/composables/useFieldTransform.ts for the API.
+registerFieldTransform('currency', {
+  getter: (v) => (typeof v === 'number' ? `¥${v.toFixed(2)}` : v),
+  setter: (v) => (typeof v === 'string' ? Number(v.replace(/[^\d.-]/g, '')) : v),
+})
+
 // Public site config (site.title / site.description) from the database
 const { data: publicConfig } = await usePublicConfig()
 

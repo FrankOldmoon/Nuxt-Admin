@@ -306,7 +306,12 @@ const templatesFields: FieldMeta[] = [
     showInForm: true, showInTable: true, showInDetail: true, editable: true,
     validation: { min: 0, step: 0.01 },
     helpText: 'Unit price in the default currency. Rendered with a slot override when L2 is on.',
-    widthClass: 'w-32'
+    widthClass: 'w-32',
+    // Demo custom getter/setter: cell & detail show "¥<price>"; saving the
+    // form strips the currency symbol back to a number. See
+    // app/composables/useFieldTransform.ts + app/app.vue.
+    getter: 'currency',
+    setter: 'currency'
   },
   {
     key: 'stock', label: 'Stock', type: 'number', nullable: false,

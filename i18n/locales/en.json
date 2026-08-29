@@ -31,7 +31,7 @@
       },
       "metadata": {
         "title": "Schema Auto-discovery",
-        "desc": "Any Drizzle table becomes a full CRUD page instantly; a registry lets you override API or UI per table."
+        "desc": "Any Drizzle table becomes a full CRUD page instantly; a registry lets you override API or UI per table, and add per-field getter/setter transforms."
       },
       "realtime": {
         "title": "Real-time Notifications",
@@ -514,6 +514,12 @@
       "jsonExport": "Export JSON",
       "jsonExported": "JSON exported",
       "jsonExportFailed": "Export failed",
+      "seed": "Seed",
+      "seedTitle": "Seed {name} data",
+      "seedDescription": "Insert generated rows into this table. Values are produced from each field's type (text, number, select, relation, ...). Relation fields pick existing records from the related tables.",
+      "seedCount": "Row count",
+      "seedDone": "Inserted {count} rows",
+      "seedFailed": "Seed failed",
       "richtextHint": "Rich text (HTML)"
     },
     "menu": {

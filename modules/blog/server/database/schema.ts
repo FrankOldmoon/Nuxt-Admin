@@ -25,19 +25,19 @@ export const categories = pgTable('categories',
   {
     id: serial('id').primaryKey(),
     name: varchar('name', { length: 120 }).notNull(),
-    slug: varchar('slug', { length: 160 }).notNull().unique(),
+    url: varchar('url', { length: 160 }).notNull().unique(),
     description: text('description'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
-  (t) => [index('categories_slug_idx').on(t.slug)]
+  (t) => [index('categories_url_idx').on(t.url)]
 )
 
 export const posts = pgTable('posts',
   {
     id: serial('id').primaryKey(),
     title: varchar('title', { length: 255 }).notNull(),
-    slug: varchar('slug', { length: 255 }).notNull().unique(),
+    url: varchar('url', { length: 255 }).notNull().unique(),
     excerpt: text('excerpt'),
     contentMarkdown: text('content_markdown'),
     coverUrl: text('cover_url'),
@@ -46,8 +46,15 @@ export const posts = pgTable('posts',
     tags: jsonb('tags').$type<string[]>().notNull().default([]),
     // draft | published | archived
     status: varchar('status', { length: 32 }).notNull().default('draft'),
+    // View count, incremented whenever the post detail is served.
+    viewCount: integer('view_count').notNull().default(0),
     categoryId: integer('category_id').references(() => categories.id, { onDelete: 'set null' }),
-    authorId: integer('author_id').references(() => users.id, { onDelete: 'set null' }),
+    // author_id intentionally keeps NO database-level FK to the host users
+    // table: the module owns its tables and must not depend on the host
+    // migration having run first (boot order between host and layer is not
+    // guaranteed). The relation is still resolved by the dashboard's FieldMeta
+    // (relation: { table: 'users' }), without a DB constraint.
+    authorId: integer('author_id'),
     publishedAt: timestamp('published_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
@@ -56,7 +63,7 @@ export const posts = pgTable('posts',
     deletedAt: timestamp('deleted_at', { withTimezone: true })
   },
   (t) => [
-    index('posts_slug_idx').on(t.slug),
+    index('posts_url_idx').on(t.url),
     index('posts_status_idx').on(t.status),
     index('posts_category_idx').on(t.categoryId),
     index('posts_author_idx').on(t.authorId)

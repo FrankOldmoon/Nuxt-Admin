@@ -4,6 +4,7 @@
 export type FieldType =
   | 'text'
   | 'textarea'
+  | 'markdown'
   | 'number'
   | 'boolean'
   | 'date'
@@ -72,6 +73,21 @@ export interface FieldMeta {
   helpText?: string
   /** Column width hint in table (px, Tailwind class, or fraction) */
   widthClass?: string
+  /**
+   * Optional key of a registered field transformer (see `registerFieldTransform`
+   * in `app/composables/useFieldTransform.ts`) whose `getter` re-shapes the raw
+   * stored value for display (cells + detail) and whose `setter` re-shapes the
+   * form value back into the API/storage format before create/update.
+   *
+   * Only the transformer KEY is stored here (string) — functions cannot be
+   * serialised through the `/api/dashboard/meta` JSON endpoint, so the actual
+   * functions live in a client-side registry keyed by this string.
+   *
+   * Example:
+   *   { key: 'price', ..., getter: 'currency', setter: 'currency' }
+   */
+  getter?: string
+  setter?: string
 }
 
 export interface TableFeatures {

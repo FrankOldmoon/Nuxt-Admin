@@ -85,6 +85,115 @@ registerDashboardTable({ meta: categoryMeta, getTable: () => blogSchema.categori
 3. `utils/fields.ts` — add a `FieldMeta` entry (type `tags`, `text`, `select`, …).
 4. `i18n/locales/{en,zh}.json` — add `dashboard.fields.posts.tags`.
 
+## Creating a new table (end to end)
+
+A table becomes fully editable in the host's generic dashboard (list, filters,
+sorting, add/edit form, detail, soft-delete, seed, import/export, RBAC) with
+**no host code changes** — you only declare metadata. Four files are involved:
+
+```
+schema.ts   →  migrate.ts   →  utils/fields.ts  →  i18n/locales/*.json
+（列定义）      （建表语句）        （FieldMeta 元数据）        （列标签文案）
+```
+
+1. **`database/schema.ts`** — export a `pgTable`. Columns use Drizzle types:
+   `serial`, `integer`, `varchar`, `text`, `boolean`, `date`, `time`, `timestamp`,
+   `jsonb`, `doublePrecision`. Add `deletedAt: timestamp(...)` for soft-delete
+   (the generic CRUD auto-enables it).
+2. **`database/migrate.ts`** — add a `CREATE TABLE IF NOT EXISTS ...;` block and
+   (for existing DBs) matching `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...;`
+   statements, then call it from `server/plugins/<name>.ts` during startup.
+3. **`server/utils/fields.ts`** — export a `TableMeta` and pass it to
+   `registerDashboardTable({ meta, getTable: () => schema.theTable }, { menuOrder })`.
+4. **`i18n/locales/*.json`** — add `dashboard.tables.<table>` (list/menu label)
+   and `dashboard.fields.<table>.<key>` (field labels).
+
+## Writing column metadata so the CRUD auto-recognises it
+
+Every column gets a **`FieldMeta`** entry whose `type` drives the entire UI
+rendering automatically — form input, table cell, detail label, filter
+operators and the type-driven seeder. Choose the type that matches the column:
+
+| `type` | Database column | Form control | Notes |
+| --- | --- | --- | --- |
+| `text` | `varchar/text` | text input | truncated cell |
+| `textarea` | `text` | multiline textarea | multi-line cell |
+| `markdown` | `text` | tall monospace textarea | **detail auto-renders** via `BaseMarkdownViewer` |
+| `number` | `int/float` | number input | |
+| `boolean` | `boolean` | switch | |
+| `date` | `date` | date picker | |
+| `datetime` | `timestamp` | datetime-local | stores ISO string |
+| `time` | `time` | time input | |
+| `select` | `varchar/number` | dropdown of `options` | must supply `options` |
+| `relation` | `integer FK` | dropdown from related table | needs `relation: { table, labelKey, valueKey }` |
+| `image` | `varchar path` | uploader + preview | served via `/api/files/serve/` |
+| `file` / `files` | `varchar path` / `jsonb[]` | uploader (+ multi) | |
+| `hyperlink` | `varchar` | URL input | clickable link cell/URL form |
+| `tags` | `jsonb string[]` | tag input | badge cell, `@>` filters |
+| `json` | `jsonb` | JSON textarea | code cell |
+| `many-to-many` | pivot table | multi-select | needs `userIds`-style virtual field (see below) |
+| `password` | `varchar hash` | password input | only set on create |
+
+Per-field flags: `nullable`, `showInForm`, `showInTable`, `showInDetail`,
+`editable`, `validation` (`required`, `maxLength`, `min`, `max`, `pattern`),
+`helpText`, `placeholder`, `widthClass`, plus a per-field `#form-<key>` /
+`#table-<key>` / `#detail-<key>` slot if you need a bespoke widget.
+
+**Custom getter/setter transforms** — if a column's stored value differs from
+what should be displayed/edited, set `getter` / `setter` (a *string key*) on the
+`FieldMeta`, then register the actual functions via `registerFieldTransform(key,
+{ getter, setter })` (see `app/composables/useFieldTransform.ts`). Cells &
+detail render through the getter automatically; saving the form runs the setter
+before persistence. Example (main project `templates.price`):
+```ts
+{ key: 'price', type: 'number', ..., getter: 'currency', setter: 'currency' }
+// app/app.vue
+registerFieldTransform('currency', {
+  getter: (v) => (typeof v === 'number' ? `¥${v.toFixed(2)}` : v),
+  setter: (v) => (typeof v === 'string' ? Number(v.replace(/[^\d.-]/g, '')) : v),
+})
+```
+This works for module tables too — register the transform in your module's
+frontend (`app/plugins/*` or a component `setup`).
+
+`features` on the `TableMeta` configures list behaviour:
+- `softDelete: true` — restore/trash UI (also auto-detected from `deletedAt`).
+- `search: ['title', 'url']` — which columns the top search box matches.
+- `defaultSort`.
+- `detail: false` — hide the view-detail action.
+- `dataScope: { ownerColumn: 'authorId' }` — together with a role whose
+  `dataScope: 'self'`, non-admins only see/edit their own rows.
+
+> **many-to-many:** define a pivot `pgTable` with two `*_id` FKs (e.g.
+> `post_users` with `post_id`, `user_id`). The host auto-discovers it and adds
+> a virtual `type: 'many-to-many'` field; add a matching `FieldMeta` entry
+> (e.g. `{ key: 'users', type: 'many-to-many', relation: {...} }`) to make it
+> editable in the form.
+
+## Writing a seed file (type-driven by default)
+
+Every generic table gets a **Seed button** (top-right of the dashboard, next to
+Export) for free. It posts `{ count }` to `/api/dashboard/data/<table>/seed`;
+by default that endpoint generates rows from the **column metadata** — each
+field type produces a believable value:
+
+- `text`/`textarea`/`markdown` — generated words / markdown doc
+- `number` — random int; `boolean` — coin flip
+- `date`/`datetime` — recent past date
+- `select` — random option; `relation` — random existing related row
+- `tags`/`json` — generated array / object
+- `image`/`file`/`files` — null (nothing to upload for fake data)
+
+Because seeding is **driven purely by `FieldMeta.type`**, a new table becomes
+seedable with **zero extra seed code** — you only need to declare good column
+types. For richer, table-specific content you can override the seeder: add a
+`seed(event)` hook to a `TableCrudHandler` in
+`server/utils/dashboard/tableOverrides/<table>.ts` (register it in
+`tableOverrides.ts`), which receives the raw h3 `event` and returns the same
+`{ inserted, ids }` shape. The generic behaviour runs whenever no override
+exists. (See the seed implementation in `server/utils/dashboard/crudService.ts`:
+`makeSeedRow` + `seedTable`.)
+
 ## Copying for a new module
 
 1. Copy this folder to `modules/<name>`, rename package-scoped identifiers.

@@ -117,6 +117,25 @@ async function runExport() {
   await exportTableExcel(props.meta, baseUrl.value, filters.value, trashed.value)
 }
 
+// --- Seed UI ---
+const seedOpen = ref(false)
+const seedCount = ref(10)
+const seeding = ref(false)
+
+async function runSeed() {
+  try {
+    seeding.value = true
+    const res = await cPost<{ ok: boolean, inserted: number }>(`${baseUrl.value}/seed`, { count: seedCount.value })
+    toast.add({ title: t('dashboard.crud.seedDone', { count: res.inserted }), color: 'success' })
+    seedOpen.value = false
+    await refresh(true)
+  } catch (e) {
+    toast.add({ title: extractErrorMessage(e, t('dashboard.crud.seedFailed')), color: 'error' })
+  } finally {
+    seeding.value = false
+  }
+}
+
 /** Export all data under the current filters as a JSON file (button only appears when jsonExport is enabled) */
 async function exportJson() {
   try {
@@ -223,6 +242,20 @@ async function save() {
           if (f.type === 'password' && !payload[f.key]) delete payload[f.key]
         }
       }
+    }
+    // Apply each field's custom setter (if registered) so the form value is
+    // re-shaped to its storage/API format before validation + persist.
+    for (const f of props.meta.fields) {
+      if (!f.setter) continue
+      if (!(f.key in payload)) continue
+      payload[f.key] = applyFieldSetter(f.setter, payload[f.key])
+    }
+    // Client-side validation against meta.validation (mirrors the backend).
+    const errs = validateForm(props.meta, payload, modalMode.value)
+    if (Object.keys(errs).length > 0) {
+      fieldErrors.value = errs
+      errorMsg.value = Object.values(errs).join('; ')
+      return
     }
     if (modalMode.value === 'create') {
       await cPost(`${baseUrl.value}`, payload)
@@ -339,6 +372,14 @@ defineExpose({ refresh })
               :label="t('dashboard.excel.export')"
               :loading="exporting"
               @click="runExport"
+            />
+            <UButton
+              v-if="!trashed && can(meta.table, 'create')"
+              icon="i-lucide-wand-2"
+              variant="ghost"
+              color="success"
+              :label="t('dashboard.crud.seed')"
+              @click="seedOpen = true"
             />
             <UButton
               v-if="can(meta.table, 'create')"
@@ -513,5 +554,34 @@ defineExpose({ refresh })
       :api-base="apiBase"
       @imported="refresh"
     />
+
+    <!-- Seed modal: insert N generated rows -->
+    <UModal
+      :open="seedOpen"
+      :title="t('dashboard.crud.seedTitle', { name: meta.label.slice(0, -1) })"
+      @update:open="seedOpen = $event"
+    >
+      <template #body>
+        <div class="space-y-4">
+          <p class="text-sm text-muted">{{ t('dashboard.crud.seedDescription') }}</p>
+          <div class="flex items-center gap-3">
+            <span class="shrink-0 text-sm">{{ t('dashboard.crud.seedCount') }}</span>
+            <UInput
+              v-model.number="seedCount"
+              type="number"
+              min="1"
+              max="100"
+              class="w-32"
+            />
+          </div>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex justify-end gap-2">
+          <UButton color="neutral" variant="ghost" :label="t('common.cancel')" @click="seedOpen = false" />
+          <UButton color="success" :label="t('dashboard.crud.seed')" :loading="seeding" @click="runSeed" />
+        </div>
+      </template>
+    </UModal>
   </UContainer>
 </template>

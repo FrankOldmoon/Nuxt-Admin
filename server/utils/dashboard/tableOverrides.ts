@@ -58,6 +58,7 @@ export interface TableCrudHandler {
   batch?: (event: H3Event) => unknown
   import?: (event: H3Event) => unknown
   upload?: (event: H3Event) => unknown
+  seed?: (event: H3Event) => unknown
 }
 
 const enrichments = new Map<string, TableListOverride>()

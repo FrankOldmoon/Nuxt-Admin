@@ -17,22 +17,23 @@ const DDL = `
 CREATE TABLE IF NOT EXISTS categories (
   id          serial PRIMARY KEY,
   name        varchar(120)  NOT NULL,
-  slug        varchar(160)  NOT NULL UNIQUE,
+  url         varchar(160)  NOT NULL UNIQUE,
   description text,
   created_at  timestamptz   NOT NULL DEFAULT now(),
   updated_at  timestamptz   NOT NULL DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS categories_slug_idx ON categories (slug);
+CREATE INDEX IF NOT EXISTS categories_url_idx ON categories (url);
 
 CREATE TABLE IF NOT EXISTS posts (
   id               serial PRIMARY KEY,
   title            varchar(255) NOT NULL,
-  slug             varchar(255) NOT NULL UNIQUE,
+  url              varchar(255) NOT NULL UNIQUE,
   excerpt          text,
   content_markdown text,
   cover_url        text,
   tags             jsonb        NOT NULL DEFAULT '[]',
   status           varchar(32)  NOT NULL DEFAULT 'draft',
+  view_count       integer      NOT NULL DEFAULT 0,
   category_id      integer REFERENCES categories(id) ON DELETE SET NULL,
   -- author_id intentionally keeps NO database-level FK to the host
   -- users table: the module owns its tables, so it must not depend on the
@@ -45,7 +46,7 @@ CREATE TABLE IF NOT EXISTS posts (
   updated_at       timestamptz  NOT NULL DEFAULT now(),
   deleted_at       timestamptz
 );
-CREATE INDEX IF NOT EXISTS posts_slug_idx    ON posts (slug);
+CREATE INDEX IF NOT EXISTS posts_url_idx    ON posts (url);
 CREATE INDEX IF NOT EXISTS posts_status_idx  ON posts (status);
 CREATE INDEX IF NOT EXISTS posts_category_idx ON posts (category_id);
 CREATE INDEX IF NOT EXISTS posts_author_idx  ON posts (author_id);
@@ -53,6 +54,21 @@ CREATE INDEX IF NOT EXISTS posts_author_idx  ON posts (author_id);
 -- Upgrade path for databases where the posts table already exists (created
 -- before the tags column was introduced): ALTER is idempotent.
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS tags jsonb NOT NULL DEFAULT '[]';
+
+-- Upgrade path: view_count column (for views-based sorting).
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS view_count integer NOT NULL DEFAULT 0;
+
+-- Upgrade path: the slug column was renamed to url. On a database that predates
+-- the rename, the slug column still exists and carries the data, so move it.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='posts' AND column_name='slug') THEN
+    ALTER TABLE posts RENAME COLUMN slug TO url;
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='categories' AND column_name='slug') THEN
+    ALTER TABLE categories RENAME COLUMN slug TO url;
+  END IF;
+END $$;
 `
 
 /**

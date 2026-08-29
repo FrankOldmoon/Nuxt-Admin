@@ -5,6 +5,11 @@ const { t } = useI18n()
 const { isLoggedIn } = useAuth()
 const { unreadNotifications, unreadMessages } = useWebSocket()
 
+// Site title comes from the configs table (site.title, editable by admin),
+// falling back to the i18n translation only when unset.
+const { data: publicConfig } = usePublicConfig()
+const siteTitle = computed(() => publicConfig.value?.configs?.['site.title'] || t('site.title'))
+
 const authModalOpen = ref(false)
 const authModalMode = ref<AuthMode>('login')
 
@@ -22,7 +27,7 @@ function openAuth(mode: AuthMode = 'login') {
         class="flex items-center gap-2"
       >
         <AppLogo class="h-6 w-auto" />
-        <span class="font-bold text-highlighted">{{ t('site.title') }}</span>
+        <span class="font-bold text-highlighted">{{ siteTitle }}</span>
       </NuxtLink>
 
       <AppLanguageSelect />
@@ -68,7 +73,9 @@ function openAuth(mode: AuthMode = 'login') {
           </template>
         </UButton>
 
-        <AppUserMenu align="end" />
+        <!-- Compact: still shows avatar + name, but wraps its own width
+             instead of stretching across the header -->
+        <AppUserMenu align="end" fit />
       </template>
 
       <template v-else>
@@ -82,13 +89,31 @@ function openAuth(mode: AuthMode = 'login') {
       </template>
 
       <UButton
-        to="https://github.com"
+        to="https://github.com/FrankOldmoon/Nuxt-Admin"
         target="_blank"
         icon="i-simple-icons-github"
         aria-label="GitHub"
         color="neutral"
         variant="ghost"
       />
+    </template>
+
+    <!-- Center area: rendered by the header's default slot, geometrically
+         centered between the symmetric left/right regions on lg+ screens.
+         Extension point for layers (see AppHeaderModules). -->
+    <slot name="header-modules">
+      <AppHeaderModules />
+    </slot>
+
+    <!-- Mobile menu body: shown when tapping the header toggle; re-exposes the
+         header-modules (e.g. Blog button) that are hidden by the center on
+         small screens. -->
+    <template #body>
+      <div class="flex flex-col gap-1 p-3">
+        <slot name="header-modules">
+          <AppHeaderModules />
+        </slot>
+      </div>
     </template>
   </UHeader>
 

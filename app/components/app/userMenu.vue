@@ -9,9 +9,13 @@ withDefaults(defineProps<{
   align?: 'start' | 'end'
   /** Show the user's name next to the avatar (vs icon-only avatar) */
   showLabel?: boolean
+  /** Fit content width (compact, wrapped around the button). Default (false)
+   *  stretches to fill the parent (used in the dashboard sidebar account card). */
+  fit?: boolean
 }>(), {
   align: 'start',
-  showLabel: true
+  showLabel: true,
+  fit: false
 })
 
 const { t } = useI18n()
@@ -43,7 +47,7 @@ const items = computed(() => [
     :items="items"
     mode="hover"
     :content="{ align }"
-    class="w-full"
+    :class="fit ? 'inline-block' : 'w-full'"
   >
     <UButton
       :avatar="{ src: avatarSrc, alt: displayName, size: 'sm' }"
@@ -51,7 +55,9 @@ const items = computed(() => [
       variant="ghost"
       :label="showLabel ? displayName : undefined"
       :trailing-icon="showLabel ? 'i-lucide-chevron-down' : undefined"
-      class="w-full justify-start"
+      :title="displayName"
+      :class="fit ? 'inline-flex items-center justify-center px-2.5' : 'w-full h-full justify-center items-center'"
+      :aria-label="displayName"
     />
   </UDropdownMenu>
 </template>

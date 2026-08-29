@@ -36,6 +36,19 @@ CREATE TABLE "notifications" (
 	"created_by" integer NOT NULL,
 	"target_user_ids" integer[],
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone
+);
+--> statement-breakpoint
+CREATE TABLE "oauth_accounts" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"user_id" integer NOT NULL,
+	"provider" varchar(40) NOT NULL,
+	"provider_account_id" varchar(255) NOT NULL,
+	"email" varchar(255),
+	"name" varchar(255),
+	"avatar_url" varchar(500),
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
@@ -52,8 +65,11 @@ CREATE TABLE "roles" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"name" varchar(50) NOT NULL,
 	"description" varchar(255),
+	"permissions" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"data_scope" varchar(20) DEFAULT 'all' NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone
 );
 --> statement-breakpoint
 CREATE TABLE "template_users" (
@@ -65,19 +81,24 @@ CREATE TABLE "template_users" (
 --> statement-breakpoint
 CREATE TABLE "templates" (
 	"id" serial PRIMARY KEY NOT NULL,
-	"name" varchar(200) NOT NULL,
-	"description" text,
-	"version" integer DEFAULT 1 NOT NULL,
-	"is_public" boolean DEFAULT true NOT NULL,
-	"publish_date" date,
-	"reviewed_at" timestamp with time zone,
-	"homepage_url" varchar(500),
-	"cover_img" varchar(500),
-	"tags" jsonb,
+	"name" varchar(100) NOT NULL,
+	"sku" varchar(50),
+	"price" double precision,
+	"stock" integer DEFAULT 0 NOT NULL,
+	"status" varchar(20) DEFAULT 'active' NOT NULL,
+	"cover_image" varchar(500),
+	"doc_file" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"user_id" integer,
-	"deleted_at" timestamp with time zone,
+	"tags" jsonb DEFAULT '[]'::jsonb NOT NULL,
+	"description" text,
+	"meta" jsonb,
+	"markdown" text,
+	"released_at" timestamp with time zone,
+	"launch_date" date,
+	"opening_time" time,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"deleted_at" timestamp with time zone
 );
 --> statement-breakpoint
 CREATE TABLE "tokens" (
@@ -104,6 +125,8 @@ CREATE TABLE "users" (
 	"birthday" date,
 	"last_login_at" timestamp with time zone,
 	"last_login_ip" varchar(45),
+	"failed_login_count" integer DEFAULT 0 NOT NULL,
+	"locked_until" timestamp with time zone,
 	"deleted_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
@@ -113,6 +136,7 @@ ALTER TABLE "files" ADD CONSTRAINT "files_user_id_users_id_fk" FOREIGN KEY ("use
 ALTER TABLE "notification_reads" ADD CONSTRAINT "notification_reads_notification_id_notifications_id_fk" FOREIGN KEY ("notification_id") REFERENCES "public"."notifications"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "notification_reads" ADD CONSTRAINT "notification_reads_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "notifications" ADD CONSTRAINT "notifications_created_by_users_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
+ALTER TABLE "oauth_accounts" ADD CONSTRAINT "oauth_accounts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "private_messages" ADD CONSTRAINT "private_messages_sender_id_users_id_fk" FOREIGN KEY ("sender_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "private_messages" ADD CONSTRAINT "private_messages_receiver_id_users_id_fk" FOREIGN KEY ("receiver_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
 ALTER TABLE "template_users" ADD CONSTRAINT "template_users_template_id_templates_id_fk" FOREIGN KEY ("template_id") REFERENCES "public"."templates"("id") ON DELETE cascade ON UPDATE cascade;--> statement-breakpoint
@@ -125,11 +149,13 @@ CREATE UNIQUE INDEX "files_hash_idx" ON "files" USING btree ("hash");--> stateme
 CREATE INDEX "files_user_id_idx" ON "files" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "notification_reads_notif_user_idx" ON "notification_reads" USING btree ("notification_id","user_id");--> statement-breakpoint
 CREATE INDEX "notifications_created_by_idx" ON "notifications" USING btree ("created_by");--> statement-breakpoint
+CREATE UNIQUE INDEX "oauth_accounts_provider_account_idx" ON "oauth_accounts" USING btree ("provider","provider_account_id");--> statement-breakpoint
+CREATE INDEX "oauth_accounts_user_idx" ON "oauth_accounts" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "private_messages_sender_receiver_idx" ON "private_messages" USING btree ("sender_id","receiver_id","created_at");--> statement-breakpoint
 CREATE INDEX "private_messages_receiver_sender_idx" ON "private_messages" USING btree ("receiver_id","sender_id","created_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "roles_name_idx" ON "roles" USING btree ("name");--> statement-breakpoint
 CREATE UNIQUE INDEX "template_users_pair_idx" ON "template_users" USING btree ("template_id","user_id");--> statement-breakpoint
-CREATE INDEX "templates_name_idx" ON "templates" USING btree ("name");--> statement-breakpoint
+CREATE INDEX "templates_status_idx" ON "templates" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "templates_user_idx" ON "templates" USING btree ("user_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "tokens_token_hash_idx" ON "tokens" USING btree ("token_hash");--> statement-breakpoint
 CREATE INDEX "tokens_user_type_idx" ON "tokens" USING btree ("user_id","type");--> statement-breakpoint

@@ -505,6 +505,7 @@ export async function insertRow(meta: TableMeta, payload: Record<string, unknown
       } catch { /* ignore — skip if the column doesn't exist */ }
     }
   }
+  throwOnInvalid(meta, payload, 'create')
   const inserted = await db.insert(tbl).values(castForDbInsert(meta, payload, new Date())).returning()
   const row = inserted[0] as Record<string, unknown>
   if (row && row.id !== undefined && meta.fields.some(f => f.type === 'many-to-many')) {
@@ -515,9 +516,241 @@ export async function insertRow(meta: TableMeta, payload: Record<string, unknown
   return row
 }
 
+/**
+ * Validate a form payload against each field's `meta.validation` rule
+ * (required / minLength / maxLength / min / max / pattern). Throws an h3
+ * 400 `createError` with a field→message map when any rule fails.
+ *
+ * Invoked on create and update so the backend enforces the same rules the
+ * frontend shows. Fields without a `validation` block are left to the DB.
+ */
+export function throwOnInvalid(
+  meta: TableMeta,
+  payload: Record<string, unknown>,
+  mode: 'create' | 'update' = 'create'
+): void {
+  const errors: Record<string, string> = {}
+  for (const f of meta.fields) {
+    const rule = f.validation
+    if (!rule) continue
+    const key = f.key
+    const raw = payload[key]
+    const v = (raw ?? '') as unknown
+    const isEmpty = v === undefined || v === null || v === ''
+    // On update, an omitted field means "leave unchanged" — only validate it
+    // when the client actually sent a value (or when it's a create).
+    if (mode === 'update' && !(key in payload)) continue
+
+    if (rule.required && isEmpty) {
+      errors[key] = `Field "${key}" is required`
+      continue
+    }
+    if (isEmpty) continue // non-required empty → nothing else to check
+
+    if (typeof v === 'string') {
+      if (rule.minLength != null && v.length < rule.minLength) {
+        errors[key] = `Field "${key}" must be at least ${rule.minLength} characters`
+        continue
+      }
+      if (rule.maxLength != null && v.length > rule.maxLength) {
+        errors[key] = `Field "${key}" must be at most ${rule.maxLength} characters`
+        continue
+      }
+      if (rule.pattern && !new RegExp(rule.pattern).test(v)) {
+        errors[key] = `Field "${key}" has an invalid format`
+        continue
+      }
+    }
+
+    if (f.type === 'number' && typeof v !== 'boolean') {
+      const n = Number(v)
+      if (!Number.isNaN(n)) {
+        if (rule.min != null && n < rule.min) errors[key] = `Field "${key}" must be >= ${rule.min}`
+        else if (rule.max != null && n > rule.max) errors[key] = `Field "${key}" must be <= ${rule.max}`
+      }
+    }
+  }
+
+  if (Object.keys(errors).length > 0) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: 'Validation failed',
+      message: Object.values(errors).join('; '),
+      data: { fieldErrors: errors }
+    })
+  }
+}
+
+// ------- Generic type-driven seeding -------
+
+/** Words used to build believable values for text-like seed fields. */
+const SEED_WORDS = [
+  'crimson', 'golden', 'misty', 'hollow', 'bright', 'distant', 'silent', 'radiant',
+  'swift', 'gentle', 'wild', 'calm', 'ancient', 'modern', 'quiet', 'vivid'
+]
+const SEED_NOUNS = [
+  'river', 'forest', 'mountain', 'city', 'garden', 'harbor', 'valley', 'meadow',
+  'ocean', 'desert', 'village', 'castle', 'market', 'gallery', 'archive', 'studio'
+]
+
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)]!
+}
+function randInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min
+}
+function seedText(): string {
+  return `${pick(SEED_WORDS)} ${pick(SEED_NOUNS)}`
+}
+function seedUrl(): string {
+  return `https://example.com/${pick(SEED_WORDS)}-${pick(SEED_NOUNS)}`
+}
+
+/**
+ * Generate a single realistic payload row for a table, driven purely by the
+ * field metadata (`FieldMeta.type`). Relation/select fields pick from the
+ * provided option lists; auto fields (id, createdAt, updatedAt, password) are
+ * skipped so the generic insert fills them.
+ */
+export function makeSeedRow(meta: TableMeta, options: Record<string, FieldOption[]>, index: number): Record<string, unknown> {
+  const payload: Record<string, unknown> = {}
+  for (const f of meta.fields) {
+    if (!f.showInForm || !f.editable) continue
+    if (f.type === 'many-to-many') continue
+    if (['id'].includes(f.key)) continue
+    if (['password', 'createdAt', 'updatedAt', 'deletedAt'].includes(f.key)) continue
+
+    const opts = (f.type === 'select' || f.type === 'relation')
+      ? (options[f.key] ?? f.options ?? [])
+      : (f.options ?? [])
+
+    switch (f.type) {
+      case 'text':
+      case 'textarea':
+        payload[f.key] = `${seedText()} ${f.key}-${index}`
+        break
+      case 'markdown':
+        payload[f.key] = [
+          `# ${seedText()} ${index}`,
+          '',
+          `## Overview`,
+          `This is seeded content for the **${f.key}** field (row ${index}).`,
+          `- A bullet point`,
+          `- Another bullet point`,
+          '',
+          '```ts',
+          'const demo = true',
+          '```'
+        ].join('\n')
+        break
+      case 'hyperlink':
+        payload[f.key] = seedUrl()
+        break
+      case 'number':
+        payload[f.key] = randInt(1, 999)
+        break
+      case 'boolean':
+        payload[f.key] = Math.random() > 0.5
+        break
+      case 'date':
+        payload[f.key] = new Date(Date.now() - randInt(1, 365 * 3) * 86400000)
+        break
+      case 'datetime':
+        payload[f.key] = new Date(Date.now() - randInt(0, 365 * 3) * 86400000)
+        break
+      case 'time':
+        payload[f.key] = '00:00'
+        break
+      case 'image':
+      case 'file':
+      case 'files':
+        payload[f.key] = null
+        break
+      case 'tags': {
+        const count = randInt(1, 4)
+        const arr: string[] = []
+        for (let i = 0; i < count; i++) arr.push((f.options?.[i]?.value ?? pick(SEED_WORDS)).toString())
+        payload[f.key] = arr
+        break
+      }
+      case 'json':
+        payload[f.key] = { [f.key]: index, note: seedText() }
+        break
+      case 'select':
+      case 'relation': {
+        const value = opts[randInt(0, Math.max(0, opts.length - 1))]?.value
+        payload[f.key] = value == null ? null : value
+        break
+      }
+      default:
+        payload[f.key] = `${seedText()} ${index}`
+    }
+  }
+  return payload
+}
+
+/** Seed `count` rows into `meta`'s table using type-driven values. Returns the inserted ids. */
+export async function seedTable(
+  meta: TableMeta,
+  count: number,
+  actor?: DataScopeActor,
+  relationOptions?: Record<string, FieldOption[]>,
+  visited: Set<string> = new Set()
+): Promise<Array<number | string>> {
+  // Plan B for relations: before seeding this table, ensure every related
+  // table (via `relation` fields) has at least one row. If a referenced table
+  // is empty, seed it first (recursively) so relation fields can pick a real
+  // value instead of silently becoming null (e.g. posts.categoryId when the
+  // categories table is empty). `visited` prevents infinite recursion between
+  // mutually-referencing tables.
+  if (visited.has(meta.table)) return []
+  visited.add(meta.table)
+
+  // Related tables we may need to backfill. The host `users` table is excluded:
+  // it has NOT NULL password/username/email columns the generic seeder cannot
+  // produce safely, and owner relations (e.g. posts.authorId) are filled by the
+  // dataScope ownerColumn instead.
+  const related = new Set<string>()
+  for (const f of meta.fields) {
+    if (f.type !== 'relation' || !f.relation) continue
+    const relTable = f.relation.table
+    if (relTable === 'users') continue
+    const reg = getRegisteredTable(relTable)
+    if (reg && reg.meta.table !== meta.table) related.add(relTable)
+  }
+
+  // Backfill any related table that currently has zero rows, then re-query
+  // the options so this table's relation fields see real values.
+  for (const relTable of related) {
+    const relReg = getRegisteredTable(relTable)
+    if (!relReg || visited.has(relReg.meta.table)) continue
+    const relTbl = relReg.getTable(schema as unknown as Record<string, unknown>) as PgTableWithColumns<any> | undefined
+    if (!relTbl) continue
+    const [{ c }] = await db.select({ c: count() }).from(relTbl) as Array<{ c: number }>
+    if (Number(c) === 0) {
+      await seedTable(relReg.meta, 3, actor, undefined, visited)
+    }
+  }
+
+  const options = relationOptions ?? await loadRelationOptions(meta)
+
+  // When the table has an owner column (e.g. posts.authorId), always assign it
+  // to the seeding actor so seeded rows have an owner — never a null author.
+  const ownerKey = meta.features.dataScope?.ownerColumn
+  const ids: Array<number | string> = []
+  for (let i = 0; i < count; i++) {
+    const payload = makeSeedRow(meta, options, i)
+    if (ownerKey && actor) payload[ownerKey] = actor.userId
+    const row = await insertRow(meta, payload, actor)
+    if (row && row.id !== undefined) ids.push(row.id as number | string)
+  }
+  return ids
+}
+
 export async function updateRow(meta: TableMeta, id: number | string, payload: Record<string, unknown>, actor?: DataScopeActor): Promise<Record<string, unknown> | null> {
   const tbl = resolveTable(meta)
   const idCol = col(tbl, 'id')
+  throwOnInvalid(meta, payload, 'update')
   const set = castForDbUpdate(meta, payload, new Date())
   if (Object.keys(set).length > 0) {
     const where = await applyDataScope(meta, tbl, actor, eq(idCol, id as any))

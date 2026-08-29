@@ -16,7 +16,7 @@
  */
 import { eq } from 'drizzle-orm'
 import { db } from '../../../../server/database'
-import { configs as configsTable } from '../../../../server/database/schema'
+import { configs as configsTable, roles as rolesTable } from '../../../../server/database/schema'
 import {
   registerDrizzleSchema,
   registerDashboardTable,
@@ -36,6 +36,10 @@ export default defineNitroPlugin(async () => {
 
   // 2. Create/upgrade the blog tables (idempotent).
   await runBlogMigrations()
+
+  // 2b. Ensure the `author` role exists (idempotent) so authors can manage
+  //     their own posts via the dashboard RBAC.
+  await ensureAuthorRole()
 
   // 3. Register the tables into the host CRUD + admin sidebar menu.
   registerDashboardTable(
@@ -58,6 +62,27 @@ export default defineNitroPlugin(async () => {
   // 5. Seed sample data when the blog is empty (idempotent).
   await seedDefaults()
 })
+
+async function ensureAuthorRole(): Promise<void> {
+  try {
+    const existing = await db
+      .select({ id: rolesTable.id })
+      .from(rolesTable)
+      .where(eq(rolesTable.name, 'author'))
+      .limit(1)
+    if (existing.length > 0) return
+
+    await db.insert(rolesTable).values({
+      name: 'author',
+      description: 'Blog author — manages their own posts',
+      permissions: ['posts:read', 'posts:create', 'posts:update', 'posts:delete', 'categories:read'],
+      dataScope: 'self'
+    })
+    console.log('[blog] ensured author role')
+  } catch (e) {
+    console.warn('[blog] ensure author role failed (ignored):', e)
+  }
+}
 
 async function ensureMenu(): Promise<void> {
   try {
@@ -123,13 +148,13 @@ async function seedDefaults(): Promise<void> {
 
     const [category] = await db
       .insert(blogSchema.categories)
-      .values({ name: 'News', slug: 'news', description: 'Latest updates from the project.' })
+      .values({ name: 'News', url: 'news', description: 'Latest updates from the project.' })
       .returning({ id: blogSchema.categories.id })
     if (!category) return
 
     await db.insert(blogSchema.posts).values({
       title: 'Welcome to the Blog module',
-      slug: 'welcome-to-the-blog-module',
+      url: 'welcome-to-the-blog-module',
       excerpt: 'A fully self-contained Nuxt layer that plugs into the generic dashboard.',
       contentMarkdown: `This is **blog** — an example of an independent module.
 

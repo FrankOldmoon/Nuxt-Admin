@@ -189,6 +189,15 @@ function removeFile(index: number) {
           :rows="5"
           class="w-full"
         />
+        <!-- markdown: edit raw markdown source -->
+        <UTextarea
+          v-else-if="field.type === 'markdown'"
+          v-model="inputValue"
+          :id="`field-${field.key}`"
+          :placeholder="field.placeholder ?? t('dashboard.crud.inputPlaceholder', { label: field.label })"
+          :rows="12"
+          class="w-full font-mono text-sm"
+        />
         <!-- number -->
         <UInput
           v-else-if="field.type === 'number'"

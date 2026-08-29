@@ -31,7 +31,7 @@
       },
       "metadata": {
         "title": "Schema 自动发现",
-        "desc": "任意 Drizzle 表即可瞬间得到完整 CRUD 页面；通过注册表可按表覆盖 API 或 UI。"
+        "desc": "任意 Drizzle 表即可瞬间得到完整 CRUD 页面；通过注册表可按表覆盖 API 或 UI，还能为字段定制 getter/setter 转换。"
       },
       "realtime": {
         "title": "实时通知",
@@ -514,6 +514,12 @@
       "jsonExport": "导出 JSON",
       "jsonExported": "已导出 JSON",
       "jsonExportFailed": "导出失败",
+      "seed": "填充",
+      "seedTitle": "填充 {name} 数据",
+      "seedDescription": "向该表格插入生成的模拟数据。系统会根据每个字段的类型（文本、数字、下拉、关联等）自动生成对应值，关联字段会从关联表已有记录中选取。",
+      "seedCount": "行数",
+      "seedDone": "已插入 {count} 条",
+      "seedFailed": "填充失败",
       "richtextHint": "富文本（HTML）"
     },
     "menu": {
