@@ -81,7 +81,8 @@ const tabs = computed(() => [
   { label: t('settings.tabGeneral'), icon: 'i-lucide-settings', slot: 'general' },
   { label: t('settings.tabMail'), icon: 'i-lucide-mail', slot: 'mail' },
   { label: t('settings.tabLlm'), icon: 'i-lucide-bot', slot: 'llm' },
-  { label: t('settings.tabMenu'), icon: 'i-lucide-menu', slot: 'menu' }
+  { label: t('settings.tabMenu'), icon: 'i-lucide-menu', slot: 'menu' },
+  { label: t('settings.tabNavigation'), icon: 'i-lucide-navigation', slot: 'navigation' }
 ])
 
 // Translate a config key like "site.title" to a friendly label via i18n.
@@ -341,6 +342,12 @@ void refresh
       <template #menu>
         <UCard>
           <DashboardMenuEditor />
+        </UCard>
+      </template>
+
+      <template #navigation>
+        <UCard>
+          <DashboardNavigationEditor />
         </UCard>
       </template>
     </UTabs>

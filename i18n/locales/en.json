@@ -193,6 +193,14 @@
     "tabMail": "SMTP",
     "tabLlm": "LLM",
     "tabMenu": "Menu",
+    "tabNavigation": "Navigation",
+    "navigation": {
+      "desc": "Configure the header navigation links on the home page, with drag-and-drop sorting and multi-level hierarchy.",
+      "configDesc": "Home page header navigation config (label/url/order/hidden)",
+      "saved": "Navigation config saved",
+      "saveFailed": "Failed to save navigation config",
+      "editItem": "Edit Navigation Item"
+    },
     "llmTest": "Test Connection",
     "llmTestHint": "Click to verify the configured LLM endpoint (baseUrl / apiKey) is reachable.",
     "llmTestOk": "Connection OK",

@@ -193,6 +193,14 @@
     "tabMail": "SMTP",
     "tabLlm": "大模型",
     "tabMenu": "菜单",
+    "tabNavigation": "导航",
+    "navigation": {
+      "desc": "配置首页 header 中间的导航链接，支持拖拽排序和多层级。",
+      "configDesc": "首页 header 导航配置（label/url/order/hidden）",
+      "saved": "导航配置已保存",
+      "saveFailed": "保存导航配置失败",
+      "editItem": "编辑导航项"
+    },
     "llmTest": "测试连接",
     "llmTestHint": "点击测试以验证当前的 LLM 配置（baseUrl / apiKey）是否可以连通。",
     "llmTestOk": "连接成功",

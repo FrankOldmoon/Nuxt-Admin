@@ -10,6 +10,25 @@ const { unreadNotifications, unreadMessages } = useWebSocket()
 const { data: publicConfig } = usePublicConfig()
 const siteTitle = computed(() => publicConfig.value?.configs?.['site.title'] || t('site.title'))
 
+// Header navigation links from site.navigation config
+interface HeaderNavItem {
+  label: string
+  url: string
+  order?: number
+  hidden?: boolean
+  parentId?: string | null
+}
+const navItems = computed<HeaderNavItem[]>(() => {
+  const raw = publicConfig.value?.configs?.['site.navigation']
+  if (!raw) return []
+  try {
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed as HeaderNavItem[] : []
+  } catch {
+    return []
+  }
+})
+
 const authModalOpen = ref(false)
 const authModalMode = ref<AuthMode>('login')
 
@@ -98,21 +117,31 @@ function openAuth(mode: AuthMode = 'login') {
       />
     </template>
 
-    <!-- Center area: rendered by the header's default slot, geometrically
-         centered between the symmetric left/right regions on lg+ screens.
-         Extension point for layers (see AppHeaderModules). -->
-    <slot name="header-modules">
-      <AppHeaderModules />
-    </slot>
+    <!-- Center area: navigation links from site.navigation config -->
+    <template #center>
+      <nav class="flex items-center gap-1">
+        <ULink
+          v-for="item in navItems.filter(i => !i.hidden)"
+          :key="item.label + item.url"
+          :to="item.url"
+          class="px-3 py-1.5 rounded-md text-sm font-medium text-muted hover:text-primary hover:bg-muted/50 transition-colors"
+        >
+          {{ item.label }}
+        </ULink>
+      </nav>
+    </template>
 
-    <!-- Mobile menu body: shown when tapping the header toggle; re-exposes the
-         header-modules (e.g. Blog button) that are hidden by the center on
-         small screens. -->
+    <!-- Mobile menu body: re-exposes the nav links hidden on small screens -->
     <template #body>
       <div class="flex flex-col gap-1 p-3">
-        <slot name="header-modules">
-          <AppHeaderModules />
-        </slot>
+        <ULink
+          v-for="item in navItems.filter(i => !i.hidden)"
+          :key="item.label + item.url"
+          :to="item.url"
+          class="px-3 py-2 rounded-md text-sm font-medium text-muted hover:text-primary hover:bg-muted/50 transition-colors"
+        >
+          {{ item.label }}
+        </ULink>
       </div>
     </template>
   </UHeader>

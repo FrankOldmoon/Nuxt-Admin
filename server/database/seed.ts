@@ -47,6 +47,15 @@ const DEFAULT_CONFIGS = [
     type: 'json',
     description: 'Dashboard left-side menu configuration (JSON array, each item contains table/label/icon/order/hidden)'
   },
+  {
+    key: 'site.navigation',
+    value: JSON.stringify([
+      { label: 'Blog', url: '/blog', order: 10 },
+      { label: 'Dashboard', url: '/dashboard', order: 20 }
+    ]),
+    type: 'json',
+    description: 'Home page header navigation links (JSON array, each item contains label/url/order/hidden)'
+  },
   // ---- LLM (OpenAI-compatible) configs ----
   { key: 'llm.apiKey', value: '', type: 'string', description: 'API key for the OpenAI-compatible API' },
   { key: 'llm.baseUrl', value: 'https://api.openai.com/v1', type: 'string', description: 'Base URL for the OpenAI-compatible API' },
