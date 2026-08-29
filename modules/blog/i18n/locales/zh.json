@@ -12,6 +12,7 @@
         "excerpt": "摘要",
         "contentMarkdown": "内容（Markdown）",
         "coverUrl": "封面图 URL",
+        "tags": "标签",
         "status": "状态",
         "categoryId": "分类",
         "authorId": "作者",

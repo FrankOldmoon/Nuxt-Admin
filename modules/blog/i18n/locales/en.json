@@ -12,6 +12,7 @@
         "excerpt": "Excerpt",
         "contentMarkdown": "Content (Markdown)",
         "coverUrl": "Cover image URL",
+        "tags": "Tags",
         "status": "Status",
         "categoryId": "Category",
         "authorId": "Author",

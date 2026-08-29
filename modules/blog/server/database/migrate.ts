@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS posts (
   excerpt          text,
   content_markdown text,
   cover_url        text,
+  tags             jsonb        NOT NULL DEFAULT '[]',
   status           varchar(32)  NOT NULL DEFAULT 'draft',
   category_id      integer REFERENCES categories(id) ON DELETE SET NULL,
   -- author_id intentionally keeps NO database-level FK to the host
@@ -48,6 +49,10 @@ CREATE INDEX IF NOT EXISTS posts_slug_idx    ON posts (slug);
 CREATE INDEX IF NOT EXISTS posts_status_idx  ON posts (status);
 CREATE INDEX IF NOT EXISTS posts_category_idx ON posts (category_id);
 CREATE INDEX IF NOT EXISTS posts_author_idx  ON posts (author_id);
+
+-- Upgrade path for databases where the posts table already exists (created
+-- before the tags column was introduced): ALTER is idempotent.
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS tags jsonb NOT NULL DEFAULT '[]';
 `
 
 /**

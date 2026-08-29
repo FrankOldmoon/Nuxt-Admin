@@ -12,6 +12,7 @@
 import {
   index,
   integer,
+  jsonb,
   pgTable,
   serial,
   text,
@@ -40,6 +41,9 @@ export const posts = pgTable('posts',
     excerpt: text('excerpt'),
     contentMarkdown: text('content_markdown'),
     coverUrl: text('cover_url'),
+    // Free-form tags, stored as a JSON array of strings (matches the host's
+    // `tags` convention so the generic dashboard renders the `tags` field).
+    tags: jsonb('tags').$type<string[]>().notNull().default([]),
     // draft | published | archived
     status: varchar('status', { length: 32 }).notNull().default('draft'),
     categoryId: integer('category_id').references(() => categories.id, { onDelete: 'set null' }),

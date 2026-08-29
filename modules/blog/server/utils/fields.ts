@@ -23,6 +23,7 @@ export const postMeta: TableMeta = {
     { key: 'excerpt', label: 'Excerpt', type: 'textarea', nullable: true, showInForm: true, showInTable: false, showInDetail: true, editable: true },
     { key: 'contentMarkdown', label: 'Content (Markdown)', type: 'textarea', nullable: true, showInForm: true, showInTable: false, showInDetail: true, editable: true, widthClass: 'w-48' },
     { key: 'coverUrl', label: 'Cover image URL', type: 'hyperlink', nullable: true, showInForm: true, showInTable: false, showInDetail: true, editable: true, placeholder: 'https://…' },
+    { key: 'tags', label: 'Tags', type: 'tags', nullable: false, showInForm: true, showInTable: true, showInDetail: true, editable: true, helpText: 'Comma separated, e.g. vue,nuxt' },
     {
       key: 'status',
       label: 'Status',
