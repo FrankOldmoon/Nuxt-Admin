@@ -51,26 +51,9 @@ async function onMarkdownPaste(event: ClipboardEvent) {
     const path = res?.[0]?.path
     if (path) {
       const mdLink = `![image](/api/files/serve/${path})`
-      // Insert at cursor position in the textarea (find by id)
-      const textarea = document.getElementById(`field-${props.field.key}`) as HTMLTextAreaElement | null
-      if (textarea) {
-        const start = textarea.selectionStart
-        const end = textarea.selectionEnd
-        const current = String(textarea.value ?? '')
-        const before = current.substring(0, start)
-        const after = current.substring(end)
-        const newVal = before + mdLink + after
-        emit('update:modelValue', newVal)
-        // Restore cursor position after the inserted link
-        nextTick(() => {
-          textarea.focus()
-          textarea.setSelectionRange(start + mdLink.length, start + mdLink.length)
-        })
-      } else {
-        // Fallback: append to end
-        const current = String(inputValue.value ?? '')
-        emit('update:modelValue', current + (current ? '\n' : '') + mdLink)
-      }
+      // Append the markdown image syntax to the current value
+      const current = String(inputValue.value ?? '')
+      emit('update:modelValue', current + (current ? '\n' : '') + mdLink)
       toast.add({ title: t('dashboard.crud.imageUploaded'), color: 'success' })
     }
   } catch (e) {
