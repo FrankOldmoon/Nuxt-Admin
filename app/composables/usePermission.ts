@@ -8,20 +8,20 @@
  */
 export type TableAction = 'read' | 'create' | 'update' | 'delete'
 
+export function permMatches(perm: string, table: string, action?: TableAction): boolean {
+  if (perm === '*') return true
+  const idx = perm.indexOf(':')
+  if (idx < 0) return perm === table // plain table name → all actions on that table
+  const t = perm.slice(0, idx)
+  const a = perm.slice(idx + 1)
+  if (t !== table) return false
+  if (action === undefined) return true // no action specified → table match is enough
+  return a === action
+}
+
 export function usePermission() {
   const { user } = useAuth()
   const isAdmin = computed(() => user.value?.role?.name === 'admin')
-
-  function permMatches(perm: string, table: string, action?: TableAction): boolean {
-    if (perm === '*') return true
-    const idx = perm.indexOf(':')
-    if (idx < 0) return perm === table // plain table name → all actions on that table
-    const t = perm.slice(0, idx)
-    const a = perm.slice(idx + 1)
-    if (t !== table) return false
-    if (action === undefined) return true // no action specified → table match is enough
-    return a === action
-  }
 
   /** Whether the current user has `action` permission on `table` (no action means any operation on that table). */
   function can(table: string, action?: TableAction): boolean {
