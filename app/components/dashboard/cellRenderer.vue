@@ -55,6 +55,21 @@ function normalizeTags(v: unknown): string[] {
   return []
 }
 
+/** Extract plain text from a Tiptap JSON document for compact previews. */
+function richTextPreview(v: unknown): string {
+  const doc = v && typeof v === 'object' ? (v as Record<string, unknown>) : null
+  if (!doc) return ''
+  const parts: string[] = []
+  const walk = (node: Record<string, unknown>) => {
+    if (!node) return
+    if (node.type === 'text' && typeof node.text === 'string') parts.push(node.text as string)
+    const content = node.content
+    if (Array.isArray(content)) content.forEach(walk)
+  }
+  walk(doc)
+  return parts.join(' ')
+}
+
 const displayValue = computed(() => {
   const f = props.field
   // Apply the field's custom getter (if registered) before display.
@@ -132,8 +147,8 @@ const displayValue = computed(() => {
         return { kind: 'text' as const, value: String(v) }
       }
     }
-    case 'markdown':
-      return { kind: 'markdown' as const, value: String(v) }
+    case 'richEditor':
+      return { kind: 'richEditor' as const, value: v }
     case 'textarea':
     case 'text':
     default:
@@ -212,8 +227,8 @@ const displayValue = computed(() => {
       <span class="truncate block max-w-[240px]">{{ displayValue.value }}</span>
     </UTooltip>
     <span v-else-if="displayValue.kind === 'text'">{{ displayValue.value }}</span>
-    <div v-else-if="displayValue.kind === 'markdown'" class="line-clamp-2 max-w-[320px] overflow-hidden text-xs text-muted">
-      {{ String(displayValue.value).slice(0, 120) }}{{ String(displayValue.value).length > 120 ? '…' : '' }}
+    <div v-else-if="displayValue.kind === 'richEditor'" class="line-clamp-2 max-w-[320px] overflow-hidden text-xs text-muted">
+      {{ richTextPreview(displayValue.value).slice(0, 120) }}{{ richTextPreview(displayValue.value).length > 120 ? '…' : '' }}
     </div>
     <UTooltip v-else-if="displayValue.kind === 'code'" :text="t('dashboard.crud.clickToCopy')">
       <code class="truncate block max-w-[260px] text-xs bg-muted px-2 py-1 rounded">{{ (displayValue.value as string).slice(0, 40) + ((displayValue.value as string).length > 40 ? '…' : '') }}</code>
@@ -282,8 +297,9 @@ const displayValue = computed(() => {
       class="text-primary hover:underline break-all"
     >{{ displayValue.value }}</a>
     <div v-else-if="displayValue.kind === 'text'" class="whitespace-pre-wrap break-words">{{ displayValue.value }}</div>
-    <div v-else-if="displayValue.kind === 'markdown'" class="max-h-96 overflow-y-auto rounded border border-default p-3">
-      <BaseMarkdownViewer :source="String(displayValue.value)" />
+    <div v-else-if="displayValue.kind === 'richEditor'" class="max-h-96 overflow-y-auto rounded border border-default p-3">
+      <BaseUeditorRender v-if="displayValue.value" :json="displayValue.value" />
+      <span v-else class="text-muted">-</span>
     </div>
     <pre v-else-if="displayValue.kind === 'code'" class="overflow-auto text-xs bg-muted p-3 rounded max-h-64">{{ displayValue.value }}</pre>
   </template>

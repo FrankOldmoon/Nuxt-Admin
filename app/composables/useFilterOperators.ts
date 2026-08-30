@@ -142,7 +142,8 @@ const FIELD_TYPE_OPERATORS: Record<FieldType, FilterOperatorMeta[]> = {
   select: SELECT_OPS,
   tags: TAGS_OPS,
   json: JSON_OPS,
-  markdown: TEXT_OPS,
+  // richEditor fields store Tiptap JSON (jsonb) — no meaningful text filters.
+  richEditor: [],
   icon: TEXT_OPS,
   'many-to-many': MANY_TO_MANY_OPS
 }

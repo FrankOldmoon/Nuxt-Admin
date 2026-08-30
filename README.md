@@ -41,7 +41,7 @@
 - **导入导出**：Excel 导入 / 导出、JSON 导入 / 导出（遵循当前筛选条件）。
 - **软删除 / 恢复 / 永久删除** 与回收站视图。
 - **搜索性能**：`pg_trgm` GIN 三角索引覆盖常用搜索列（`ilike '%...%'`），索引缺失时自动回退顺序扫描。
-- **大量自定义插槽 / 钩子**：`#toolbar`、`#form-content`、`#detail-content`、`#table-{field}`、`transformPayload`、`apiBase`（其它模块可复用通用 CRUD 渲染）。
+- **大量自定义插槽 / 钩子**：`#toolbar`、`#form-override`、`#detail-override`、`#table-{field}`、`transformPayload`、`apiBase`（其它模块可复用通用 CRUD 渲染）。
 - **字段级 getter/setter 转换**：`FieldMeta` 可声明 `getter` / `setter`（字符串 key），通过 `registerFieldTransform()` 注册映射函数；表格/详情展示自动走 getter（如 `price` → `¥100.00`），表单保存前自动走 setter（`¥100.00` → `100`），无需手写 slot。见 `app/composables/useFieldTransform.ts` 与 `templates.price` 演示。
 - **个性化定制阶梯**：从“零代码”到“整页接管”可渐进式定制 —— L0 通用 CRUD → L1 `tableOverrides` 注册表自定义列表/完整 CRUD API → L2 单元格/详情/表单 slot 覆盖 → L3 自定义工具栏与筛选 → L4 独立页面文件完全接管。以 `templates` 表作为演示样例，开关存于 `configs`，可逐一开关对比效果。
 
@@ -188,7 +188,7 @@ pnpm preview
 - `registerDashboardTable(reg, { menuOrder })`：显式注册表的 `TableMeta`（可覆盖字段顺序 / 标签 / 类型 / 校验 / 关系）；传 `menuOrder` 则同时加入默认侧边菜单，不传则可保持模块内部表不出现在主菜单。
 - `registerDrizzleSchema` + Drizzle pivot 约定：自动识别**多对多**并注入虚拟字段。
 - 自定义整页逻辑：标记 `custom: true` + 在 `[table].vue` 的 `CUSTOM_PAGE_MAP` 映射组件（如 `configs` → `configsPage.vue`）。
-- 复用通用页面（`custom: false`）时，可用 `#toolbar` / `#form-content` / `#detail-content` 插槽与 `transformPayload` 钩子做轻定制，或用 `apiBase` 指向模块自己的通用 CRUD 命名空间。字段级展示/存储转换同样可用：在 `FieldMeta` 上声明 `getter` / `setter` key，并在模块前端注册对应转换函数。
+- 复用通用页面（`custom: false`）时，可用 `#toolbar` / `#form-override` / `#detail-override` 插槽与 `transformPayload` 钩子做轻定制，或用 `apiBase` 指向模块自己的通用 CRUD 命名空间。字段级展示/存储转换同样可用：在 `FieldMeta` 上声明 `getter` / `setter` key，并在模块前端注册对应转换函数。
 
 模块 API 仅需 `requireUser` / `requireAdmin`，即可复用主项目的 session 会话、RBAC、公告/私信/WebSocket 等基础设施。
 

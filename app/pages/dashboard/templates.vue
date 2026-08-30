@@ -307,10 +307,10 @@ function refreshL4() {
             <UBadge v-for="tg in (value ?? [])" :key="String(tg)" :label="String(tg)" color="neutral" variant="subtle" size="sm" />
           </div>
         </template>
-        <!-- Always render the `markdown` field as formatted Markdown in the detail view. -->
-        <template #detail-markdown="{ value }">
+        <!-- Always render the `content` field as rich text (Tiptap JSON) in the detail view. -->
+        <template #detail-content="{ value }">
           <div class="max-h-72 overflow-y-auto rounded border border-default p-3">
-            <BaseMarkdownViewer v-if="value" :source="String(value)" />
+            <BaseUeditorRender v-if="value" :json="value" />
             <span v-else class="text-muted">-</span>
           </div>
         </template>

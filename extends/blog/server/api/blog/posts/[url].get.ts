@@ -31,7 +31,7 @@ export default defineEventHandler(async (event) => {
       title: posts.title,
       url: posts.url,
       excerpt: posts.excerpt,
-      contentMarkdown: posts.contentMarkdown,
+      content: posts.content,
       coverUrl: posts.coverUrl,
       tags: posts.tags,
       status: posts.status,

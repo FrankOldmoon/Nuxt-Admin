@@ -21,7 +21,7 @@ export const postMeta: TableMeta = {
     { key: 'title', label: 'Title', type: 'text', nullable: false, showInForm: true, showInTable: true, showInDetail: true, editable: true, validation: { required: true, maxLength: 255 } },
     { key: 'url', label: 'Url', type: 'text', nullable: false, showInForm: true, showInTable: true, showInDetail: true, editable: true, validation: { required: true, maxLength: 255 } },
     { key: 'excerpt', label: 'Excerpt', type: 'textarea', nullable: true, showInForm: true, showInTable: false, showInDetail: true, editable: true },
-    { key: 'contentMarkdown', label: 'Content (Markdown)', type: 'markdown', nullable: true, showInForm: true, showInTable: false, showInDetail: true, editable: true, widthClass: 'w-48' },
+    { key: 'content', label: 'Content', type: 'richEditor', nullable: true, showInForm: true, showInTable: false, showInDetail: true, editable: true, widthClass: 'w-48' },
     { key: 'coverUrl', label: 'Cover image', type: 'image', nullable: true, showInForm: true, showInTable: true, showInDetail: true, editable: true },
     { key: 'tags', label: 'Tags', type: 'tags', nullable: false, showInForm: true, showInTable: true, showInDetail: true, editable: true },
     {

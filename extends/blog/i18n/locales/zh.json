@@ -10,7 +10,7 @@
         "title": "标题",
         "url": "URL",
         "excerpt": "摘要",
-        "contentMarkdown": "内容（Markdown）",
+        "content": "内容",
         "coverUrl": "封面图",
         "tags": "标签",
         "status": "状态",

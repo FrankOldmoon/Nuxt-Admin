@@ -168,9 +168,23 @@ async function seedDefaults(): Promise<void> {
       title: 'Welcome to the Blog module',
       url: 'welcome-to-the-blog-module',
       excerpt: 'A fully self-contained Nuxt layer that plugs into the generic dashboard.',
-      contentMarkdown: `This is **blog** — an example of an independent module.
-
-It owns its own pages, API, database tables, migrations and i18n, and registers its tables into the host's generic CRUD dashboard.`,
+      content: {
+        type: 'doc',
+        content: [
+          { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Welcome to the Blog module' }] },
+          { type: 'paragraph', content: [
+            { type: 'text', text: 'This is ' },
+            { type: 'text', text: 'blog', marks: [{ type: 'bold' }] },
+            { type: 'text', text: ' — an example of an independent module.' }
+          ] },
+          { type: 'paragraph', content: [{ type: 'text', text: 'It owns its own pages, API, database tables, migrations and i18n, and registers its tables into the host\'s generic CRUD dashboard.' }] },
+          { type: 'bulletList', content: [
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Own pages & API' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Own database tables & migrations' }] }] },
+            { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Registers into the host\'s generic CRUD' }] }] }
+          ] }
+        ]
+      },
       status: 'published',
       categoryId: category.id,
       publishedAt: new Date()

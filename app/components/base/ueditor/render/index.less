@@ -1,0 +1,73 @@
+@import "../../../../../node_modules/@umoteam/editor/dist/umo-editor.css";
+
+.umo-page-content .render {
+  min-height: 100% !important
+}
+
+// 渲染模式列表样式
+// Tailwind preflight 把 ul/ol 的 padding 与 list-style 清零；渲染又用原生 <ul>/<ol>，
+// 与编辑器的自定义 .umo-list-item 不同，需在此恢复缩进与编号。
+.umo-editor-render {
+  p {
+    margin: 0;
+  }
+  // 恢复列表缩进：padding-inline-start 给数字/圆点留位，否则标记符挤到左边缘、内容不缩进
+  ul,
+  ol {
+    margin: 0;
+    padding-inline-start: 1.5em;
+  }
+  // 十进制有序列表：用 CSS 计数器实现层级编号（1. / 2.1. / 2.2.），与编辑器一致
+  ol[data-type='decimal'] {
+    list-style: none;
+    counter-reset: olc;
+  }
+  ol[data-type='decimal'] > li {
+    counter-increment: olc;
+    position: relative;
+  }
+  ol[data-type='decimal'] > li::before {
+    content: counters(olc, ".") ". ";
+    position: absolute;
+    right: 100%;
+    margin-right: 0.4em;
+    white-space: nowrap;
+    color: inherit;
+  }
+  // 任务列表：无项目符号（复选框由 task-item 渲染）
+  ul[data-type='taskList'] {
+    list-style: none;
+  }
+}
+
+.umo-editor-render {
+  transform-origin: 0 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  background-color: var(--umo-page-background);
+  min-height: 100px;
+  overflow: visible !important;
+  color: var(--umo-text-color);
+
+  .umo-page-node-content {
+    position: relative;
+    box-sizing: border-box;
+    min-height: 100px;
+  }
+
+  // 渲染模式下允许 iframe 内容可交互（滚动/点击）
+  .umo-node-iframe iframe {
+    pointer-events: auto !important;
+  }
+}
+
+// Nuxt 暗黑模式：UMO 自身的暗黑变量挂在 [theme-mode=dark]，
+// 而 Nuxt 用 <html>.dark 类，两者不互通，导致暗黑下文字仍是深色。
+// 这里在 .dark 下把 UMO 文字变量桥接到白色（无闪烁，首帧即生效）。
+
+.dark .umo-editor-render {
+    --umo-content-text-color: #fff !important;
+    color: #fff !important;
+}

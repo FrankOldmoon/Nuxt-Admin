@@ -73,7 +73,7 @@ registerDashboardTable({ meta: categoryMeta, getTable: () => blogSchema.categori
   (auto-detected from `deletedAt`) and per-field labels resolved from your own
   i18n (`dashboard.tables.<table>` / `dashboard.fields.<table>.<field>`).
 - **Public front pages** (`app/pages/blog/*`) run their own routes and reuse
-  host UI (`UContainer`, `UCard`) and `BaseMarkdownViewer`; their i18n comes
+  host UI (`UContainer`, `UCard`) and `BaseUeditorRender` (Tiptap JSON body); their i18n comes
   from this module's locale files.
 
 ## Adding a new column (e.g. the `tags` example)
@@ -118,7 +118,7 @@ operators and the type-driven seeder. Choose the type that matches the column:
 | --- | --- | --- | --- |
 | `text` | `varchar/text` | text input | truncated cell |
 | `textarea` | `text` | multiline textarea | multi-line cell |
-| `markdown` | `text` | tall monospace textarea | **detail auto-renders** via `BaseMarkdownViewer` |
+| `richEditor` | `jsonb` | Tiptap rich text editor (`BaseRichEditor`) | **detail auto-renders** via `BaseUeditorRender` |
 | `number` | `int/float` | number input | |
 | `boolean` | `boolean` | switch | |
 | `date` | `date` | date picker | |

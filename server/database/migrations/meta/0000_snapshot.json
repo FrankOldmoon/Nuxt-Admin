@@ -885,9 +885,9 @@
           "primaryKey": false,
           "notNull": false
         },
-        "markdown": {
-          "name": "markdown",
-          "type": "text",
+        "content": {
+          "name": "content",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": false
         },

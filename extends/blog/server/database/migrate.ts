@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS posts (
   title            varchar(255) NOT NULL,
   url              varchar(255) NOT NULL UNIQUE,
   excerpt          text,
-  content_markdown text,
+  content          jsonb,
   cover_url        text,
   tags             jsonb        NOT NULL DEFAULT '[]',
   status           varchar(32)  NOT NULL DEFAULT 'draft',
@@ -57,6 +57,38 @@ ALTER TABLE posts ADD COLUMN IF NOT EXISTS tags jsonb NOT NULL DEFAULT '[]';
 
 -- Upgrade path: view_count column (for views-based sorting).
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS view_count integer NOT NULL DEFAULT 0;
+
+-- Upgrade path: the post body column was renamed from content_markdown (text)
+-- to content (jsonb) to store Tiptap JSON documents. On a database that
+-- predates the rename, add content, migrate any existing markdown text into
+-- a simple JSON paragraph (preserving the text), then drop the old column.
+-- Guarded so it is safe to re-run on every boot (content_markdown may already
+-- be gone on databases where this has already been applied).
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_name = 'posts' AND column_name = 'content_markdown') THEN
+    ALTER TABLE posts ADD COLUMN IF NOT EXISTS content jsonb;
+    UPDATE posts
+      SET content = jsonb_build_object(
+            'type', 'doc',
+            'content', jsonb_build_array(
+              jsonb_build_object(
+                'type', 'paragraph',
+                'content', jsonb_build_array(
+                  jsonb_build_object('type', 'text', 'text', COALESCE(content_markdown, ''))
+                )
+              )
+            )
+          )
+      WHERE content IS NULL
+        AND content_markdown IS NOT NULL
+        AND content_markdown <> '';
+    ALTER TABLE posts DROP COLUMN IF EXISTS content_markdown;
+  ELSE
+    ALTER TABLE posts ADD COLUMN IF NOT EXISTS content jsonb;
+  END IF;
+END $$;
 
 -- Upgrade path: the slug column was renamed to url. On a database that predates
 -- the rename, the slug column still exists and carries the data, so move it.

@@ -494,8 +494,8 @@ defineExpose({ refresh })
       <template #form>
         <!-- Full form override slot: when provided, completely replaces DashboardCrudForm -->
         <slot
-          v-if="slots['form-content']"
-          name="form-content"
+          v-if="slots['form-override']"
+          name="form-override"
           :form="form"
           :mode="modalMode"
           :errors="fieldErrors"
@@ -529,8 +529,8 @@ defineExpose({ refresh })
       <template #detail>
         <!-- Full detail override slot: when provided, completely replaces DashboardCrudDetail -->
         <slot
-          v-if="slots['detail-content']"
-          name="detail-content"
+          v-if="slots['detail-override']"
+          name="detail-override"
           :item="detailItem"
           :loading="detailLoading"
         />

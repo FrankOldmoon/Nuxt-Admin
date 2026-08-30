@@ -4,7 +4,7 @@
 export type FieldType =
   | 'text'
   | 'textarea'
-  | 'markdown'
+  | 'richEditor'
   | 'number'
   | 'boolean'
   | 'date'

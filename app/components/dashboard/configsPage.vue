@@ -15,7 +15,7 @@ interface ConfigItem {
   updatedAt: string
 }
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 const toast = useToast()
 
 // SSR-friendly initial load
@@ -88,8 +88,7 @@ const tabs = computed(() => [
 // Translate a config key like "site.title" to a friendly label via i18n.
 function configLabel(cfg: ConfigItem): string {
   const i18nKey = `settings.config.${cfg.key}`
-  const translated = t(i18nKey)
-  if (translated && translated !== i18nKey) return translated
+  if (te(i18nKey)) return t(i18nKey)
   return cfg.description || cfg.key
 }
 

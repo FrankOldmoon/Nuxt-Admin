@@ -2,7 +2,7 @@
 /**
  * Blog module — public post detail page at `/blog/[url]`.
  * Renders every displayable field: cover, title, category, author, timestamps,
- * tags, excerpt, and the markdown body (via host `BaseMarkdownViewer`).
+ * tags, excerpt, and the Tiptap JSON body (via host `BaseUeditorRender`).
  * Shows a sticky right-hand TOC (h1-h3) once the content is present.
  * For roles with `posts:update` / `posts:delete`, bottom-right action buttons
  * reuse the host dashboard post form for editing and soft-delete.
@@ -16,7 +16,7 @@ const { can } = usePermission()
 
 const url = computed(() => String(route.params.url ?? ''))
 const { data: post, pending, error, refresh } = useBlogPost(() => url.value)
-const readingTime = computed(() => blogReadingTime(post.value?.contentMarkdown))
+const readingTime = computed(() => blogReadingTime(post.value?.content))
 
 useSeoMeta(() => ({
   title: () => post.value?.title ?? t('blog.title'),
@@ -34,7 +34,7 @@ const canDelete = computed(() => can('posts', 'delete'))
 
 // #2 mobile TOC drawer
 const tocOpen = ref(false)
-const hasToc = computed(() => !!post.value?.contentMarkdown)
+const hasToc = computed(() => !!post.value?.content)
 const drawerTocRef = ref<InstanceType<typeof BlogPostToc> | null>(null)
 
 // When the drawer opens, re-scan the article headings so the TOC populates.
@@ -141,9 +141,9 @@ async function softDelete() {
           {{ post.excerpt }}
         </p>
 
-        <BaseMarkdownViewer
-          v-if="post.contentMarkdown"
-          :source="post.contentMarkdown"
+        <BaseUeditorRender
+          v-if="post.content"
+          :json="post.content"
           class="text-base leading-relaxed"
         />
         <p v-else class="text-muted">{{ t('blog.empty') }}</p>

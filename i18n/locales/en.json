@@ -104,7 +104,62 @@
     "all": "All",
     "value": "Value",
     "fullscreen": "Fullscreen",
-    "exitFullscreen": "Exit fullscreen"
+    "exitFullscreen": "Exit fullscreen",
+    "upload": "Upload",
+    "uploadFailed": "Upload failed"
+  },
+  "richEditor": {
+    "title": "Rich Text Editor",
+    "placeholder": "Enter text content...",
+    "openEditor": "Open rich text editor",
+    "switchToText": "Switch to text input",
+    "preview": "Live preview"
+  },
+  "html": {
+    "height": "Height",
+    "heightPlaceholder": "Auto-fit content (leave blank)"
+  },
+  "ueditor": {
+    "insert": "Insert",
+    "markdown": {
+      "title": "Enter Markdown Content",
+      "placeholder": "Type Markdown text here...",
+      "insert": "Insert"
+    },
+    "html": {
+      "title": "Manage HTML Content",
+      "insert": "Insert"
+    },
+    "json": {
+      "title": "Manage JSON Content",
+      "insert": "Insert"
+    },
+    "insertHtml": "HTML",
+    "insertPdf": "PDF",
+    "insertTabs": "Tabs",
+    "insertVfiles": "Virtual Files",
+    "tabs": "Tabs",
+    "tabsLabel": "Tab Name",
+    "tabsAdd": "Add Tab",
+    "pdf": "PDF Document",
+    "pdfFile": "PDF File",
+    "pdfSelectHint": "Please upload or select a PDF file",
+    "pdfPages": "Pages",
+    "pdfPagesHint": "e.g. 1-3, 5, 8-10; leave empty for all",
+    "pdfHeight": "Preview Height",
+    "vfiles": "Virtual Files",
+    "vfilesAddFolder": "Add Folder",
+    "vfilesAddFile": "Add File",
+    "vfilesFolderName": "Folder Name",
+    "vfilesFileName": "File Name",
+    "vfilesSelectHint": "Select a file on the left to view content",
+    "vfilesUnnamed": "(Unnamed)",
+    "pageBreak": "Page Break",
+    "file": {
+      "unknown": "Unknown file",
+      "download": "Download",
+      "unknownSize": "Unknown size"
+    }
   },
   "treeEditor": {
     "addRoot": "Add root",
@@ -667,7 +722,7 @@
         "tags": "Tags",
         "description": "Description",
         "meta": "Meta (JSON)",
-        "markdown": "Notes (Markdown)",
+        "content": "Content",
         "releasedAt": "Released At",
         "launchDate": "Launch Date",
         "openingTime": "Opening Time",

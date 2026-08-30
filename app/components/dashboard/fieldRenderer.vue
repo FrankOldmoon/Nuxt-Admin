@@ -195,12 +195,11 @@ function removeFile(index: number) {
           :rows="5"
           class="w-full"
         />
-        <!-- markdown: Cherry Markdown editor with toolbar + image upload -->
-        <BaseMarkdownEditor
-          v-else-if="field.type === 'markdown'"
+        <!-- richEditor: Tiptap JSON rich text editor (BaseRichEditor) -->
+        <BaseRichEditor
+          v-else-if="field.type === 'richEditor'"
           v-model="inputValue"
           :placeholder="field.placeholder ?? t('dashboard.crud.inputPlaceholder', { label: field.label })"
-          height="360px"
         />
         <!-- number -->
         <UInput

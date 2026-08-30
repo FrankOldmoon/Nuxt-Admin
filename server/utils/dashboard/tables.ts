@@ -370,9 +370,9 @@ const templatesFields: FieldMeta[] = [
     helpText: 'Free-form JSON, e.g. {"color":"black","weight":"1.2kg"}'
   },
   {
-    key: 'markdown', label: 'Notes (Markdown)', type: 'textarea', nullable: false,
+    key: 'content', label: 'Content', type: 'richEditor', nullable: true,
     showInForm: true, showInTable: false, showInDetail: true, editable: true,
-    helpText: 'Long-form notes stored as Markdown; rendered with a slot when customised.'
+    helpText: 'Rich text body stored as Tiptap JSON.'
   },
   {
     key: 'releasedAt', label: 'Released At', type: 'datetime', nullable: true,

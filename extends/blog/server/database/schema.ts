@@ -39,7 +39,8 @@ export const posts = pgTable('posts',
     title: varchar('title', { length: 255 }).notNull(),
     url: varchar('url', { length: 255 }).notNull().unique(),
     excerpt: text('excerpt'),
-    contentMarkdown: text('content_markdown'),
+    // Post body — stored as Tiptap JSON document (jsonb).
+    content: jsonb('content').$type<Record<string, unknown> | null>(),
     coverUrl: text('cover_url'),
     // Free-form tags, stored as a JSON array of strings (matches the host's
     // `tags` convention so the generic dashboard renders the `tags` field).

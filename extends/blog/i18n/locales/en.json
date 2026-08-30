@@ -10,7 +10,7 @@
         "title": "Title",
         "url": "Url",
         "excerpt": "Excerpt",
-        "contentMarkdown": "Content (Markdown)",
+        "content": "Content",
         "coverUrl": "Cover image URL",
         "tags": "Tags",
         "status": "Status",

@@ -7,6 +7,51 @@ import {
   templates as templatesTable
 } from './schema'
 
+/**
+ * Build a Tiptap JSON doc from simple markdown-ish lines, for the rich text
+ * `content` column (seeded showcase data). Supports headings, bullet/ordered
+ * lists and blockquotes; anything else becomes a paragraph.
+ */
+function richDoc(text: string): Record<string, unknown> {
+  const lines = text.split('\n')
+  const blocks: Record<string, unknown>[] = []
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i].trim()
+    if (!line) { i++; continue }
+    if (/^#{1,6}\s+/.test(line)) {
+      const level = line.match(/^#+/)![0].length
+      blocks.push({ type: 'heading', attrs: { level }, content: [{ type: 'text', text: line.replace(/^#+\s*/, '') }] })
+      i++
+    } else if (/^[-*+]\s+/.test(line)) {
+      const items: Record<string, unknown>[] = []
+      while (i < lines.length && /^[-*+]\s+/.test(lines[i].trim())) {
+        items.push({ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: lines[i].trim().replace(/^[-*+]\s+/, '') }] }] })
+        i++
+      }
+      blocks.push({ type: 'bulletList', content: items })
+    } else if (/^\d+\.\s+/.test(line)) {
+      const items: Record<string, unknown>[] = []
+      while (i < lines.length && /^\d+\.\s+/.test(lines[i].trim())) {
+        items.push({ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: lines[i].trim().replace(/^\d+\.\s+/, '') }] }] })
+        i++
+      }
+      blocks.push({ type: 'orderedList', content: items })
+    } else if (/^>\s?/.test(line)) {
+      const quote: Record<string, unknown>[] = []
+      while (i < lines.length && /^>\s?/.test(lines[i].trim())) {
+        quote.push({ type: 'paragraph', content: [{ type: 'text', text: lines[i].trim().replace(/^>\s?/, '') }] })
+        i++
+      }
+      blocks.push({ type: 'blockquote', content: quote })
+    } else {
+      blocks.push({ type: 'paragraph', content: [{ type: 'text', text: line }] })
+      i++
+    }
+  }
+  return { type: 'doc', content: blocks }
+}
+
 const DEFAULT_CONFIGS = [
   { key: 'site.title', value: 'Nuxt Admin', type: 'string', description: 'Site title' },
   { key: 'site.description', value: 'A production-grade, metadata-driven admin framework built with Nuxt 4.', type: 'string', description: 'Site description' },
@@ -90,7 +135,7 @@ export async function seed(db: Database): Promise<void> {
         status: 'active', coverImage: '', docFile: [], tags: ['new', 'hot'],
         description: 'Clean invoice layout for B2B billing.',
         meta: { color: 'blue', layout: 'A4', weight: '0.2MB' },
-        markdown: '# Invoice Layout\n\n- **Pages:** 1\n- **Format:** PDF + DOCX\n\n> Customize the header, footer and tax block.',
+        content: richDoc('# Invoice Layout\n\n- **Pages:** 1\n- **Format:** PDF + DOCX\n\n> Customize the header, footer and tax block.'),
         releasedAt: new Date('2026-06-01T00:00:00.000Z')
       },
       {
@@ -98,7 +143,7 @@ export async function seed(db: Database): Promise<void> {
         status: 'active', coverImage: '', docFile: [], tags: ['featured'],
         description: 'One-page modern resume template.',
         meta: { color: 'white', pages: '1' },
-        markdown: '## Resume Template\n\nATS-friendly sections with a clean timeline.\n\n| Spec | Value |\n|------|-------|\n| Pages | 1 |\n| ATS | Yes |',
+        content: richDoc('## Resume Template\n\nATS-friendly sections with a clean timeline.\n\n| Spec | Value |\n|------|-------|\n| Pages | 1 |\n| ATS | Yes |'),
         releasedAt: new Date('2026-07-15T00:00:00.000Z')
       },
       {
@@ -106,7 +151,7 @@ export async function seed(db: Database): Promise<void> {
         status: 'draft', coverImage: '', docFile: [], tags: ['sale'],
         description: 'Responsive email newsletter template.',
         meta: { client: 'MJML', width: '600px' },
-        markdown: '## Email Newsletter\n\n- 600px responsive\n- MJML source\n\n### Coming soon\n\nInclude drag-and-drop blocks.',
+        content: richDoc('## Email Newsletter\n\n- 600px responsive\n- MJML source\n\n### Coming soon\n\nInclude drag-and-drop blocks.'),
         releasedAt: new Date('2026-09-01T00:00:00.000Z')
       },
       {
@@ -114,7 +159,7 @@ export async function seed(db: Database): Promise<void> {
         status: 'active', coverImage: '', docFile: [], tags: ['new', 'sale', 'featured'],
         description: 'E-commerce product card template.',
         meta: { format: 'PNG', ratio: '1:1' },
-        markdown: '## Product Card\n\nEverything you need for e-commerce:\n\n1. Price & discount badge\n2. Star rating\n3. Add-to-cart',
+        content: richDoc('## Product Card\n\nEverything you need for e-commerce:\n\n1. Price & discount badge\n2. Star rating\n3. Add-to-cart'),
         releasedAt: new Date('2026-08-10T00:00:00.000Z')
       },
       {
@@ -122,7 +167,7 @@ export async function seed(db: Database): Promise<void> {
         status: 'archived', coverImage: '', docFile: [], tags: ['refurbished'],
         description: 'Landing page hero section template.',
         meta: { format: 'Figma' },
-        markdown: '> Discontinued — limited refurbished stock only.',
+        content: richDoc('> Discontinued — limited refurbished stock only.'),
         releasedAt: new Date('2025-11-20T00:00:00.000Z')
       }
     ])

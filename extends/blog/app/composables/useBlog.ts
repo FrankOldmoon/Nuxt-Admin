@@ -75,7 +75,7 @@ export interface BlogPostNavClient {
 }
 
 export interface BlogPostDetailClient extends BlogListItemClient {
-  contentMarkdown: string | null
+  content: Record<string, unknown> | null
   status: 'draft' | 'published' | 'archived'
   publishedAt: string | null
   updatedAt: string | null
@@ -92,9 +92,23 @@ export function useBlogPost(url: () => string) {
   )
 }
 
+/** Extract plain text from a Tiptap JSON document (used for reading-time). */
+export function richTextToPlain(content: Record<string, unknown> | null | undefined): string {
+  if (!content || typeof content !== 'object') return ''
+  const parts: string[] = []
+  const walk = (node: any) => {
+    if (!node) return
+    if (node.type === 'text' && typeof node.text === 'string') parts.push(node.text)
+    const children = node.content
+    if (Array.isArray(children)) children.forEach(walk)
+  }
+  walk(content)
+  return parts.join(' ')
+}
+
 /** Rough reading-time estimate: 250 Chinese/words per minute, min 1 min. */
-export function blogReadingTime(content: string | null | undefined): number {
-  const s = content?.trim()
+export function blogReadingTime(content: string | Record<string, unknown> | null | undefined): number {
+  const s = (typeof content === 'string' ? content : richTextToPlain(content)).trim()
   if (!s) return 1
   const words = Math.ceil(s.length / 4) // CJK-heavy: ~4 chars per "word"
   return Math.max(1, Math.ceil(words / 250))

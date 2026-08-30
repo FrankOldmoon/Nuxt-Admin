@@ -628,19 +628,18 @@ export function makeSeedRow(meta: TableMeta, options: Record<string, FieldOption
       case 'textarea':
         payload[f.key] = `${seedText()} ${f.key}-${index}`
         break
-      case 'markdown':
-        payload[f.key] = [
-          `# ${seedText()} ${index}`,
-          '',
-          `## Overview`,
-          `This is seeded content for the **${f.key}** field (row ${index}).`,
-          `- A bullet point`,
-          `- Another bullet point`,
-          '',
-          '```ts',
-          'const demo = true',
-          '```'
-        ].join('\n')
+      case 'richEditor':
+        payload[f.key] = {
+          type: 'doc',
+          content: [
+            { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: `${seedText()} ${index}` }] },
+            { type: 'paragraph', content: [{ type: 'text', text: `This is seeded rich text content for the **${f.key}** field (row ${index}).` }] },
+            { type: 'bulletList', content: [
+              { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'A bullet point' }] }] },
+              { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Another bullet point' }] }] }
+            ] }
+          ]
+        }
         break
       case 'hyperlink':
         payload[f.key] = seedUrl()
@@ -771,7 +770,7 @@ export async function updateRow(meta: TableMeta, id: number | string, payload: R
  *
  *  2. **Passthrough mode** — triggered when mode 1 produces an empty object
  *     yet the caller still supplied a non-empty payload.  This indicates
- *     the table uses a fully custom form (`#form-content` slot +
+ *     the table uses a fully custom form (`#form-override` slot +
  *     `transformPayload` hook on `DashboardCrudPage`) — the payload is
  *     already validated & shaped client-side.  We still apply a safety
  *     whitelist: only keys that exist in the table's column set are kept
@@ -827,7 +826,9 @@ export function castForDbInsert(meta: TableMeta, payload: Record<string, unknown
         )
         break
       }
-      case 'json': {
+      case 'json':
+      case 'richEditor': {
+        // richEditor fields store a Tiptap JSON document (object).
         if (typeof raw === 'string') {
           try { out[f.key] = JSON.parse(raw) } catch { out[f.key] = raw }
         } else {

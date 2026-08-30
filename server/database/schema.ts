@@ -266,7 +266,8 @@ export const templates = pgTable(
     tags: jsonb('tags').$type<string[]>().default([]).notNull(),
     description: text('description'),
     meta: jsonb('meta').$type<Record<string, unknown>>(),
-    markdown: text('markdown'),
+    // Rich text body — stored as a Tiptap JSON document (jsonb).
+    content: jsonb('content').$type<Record<string, unknown> | null>(),
     releasedAt: timestamp('released_at', { withTimezone: true }),
     launchDate: date('launch_date'),
     openingTime: time('opening_time'),
