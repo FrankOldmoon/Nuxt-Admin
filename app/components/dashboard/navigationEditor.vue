@@ -8,6 +8,7 @@
 interface NavItem {
   label: string
   url: string
+  icon?: string
   order?: number
   hidden?: boolean
   parentId?: string | null
@@ -17,6 +18,7 @@ interface FlatNode {
   _key: string
   label: string
   url: string
+  icon: string
   hidden: boolean
   depth: number
   parentId: string | null
@@ -57,19 +59,20 @@ interface Flat extends FlatNode {}
 
 function flatFromNav(items: NavItem[]): Flat[] {
   const result: Flat[] = []
-  const parentStack: string[] = []
+  const depthMap = new Map<string, number>() // label -> depth
   for (const item of items) {
-    const depth = item.parentId == null ? 0 : (parentStack.indexOf(item.parentId) + 1)
-    while (parentStack.length > depth) parentStack.pop()
+    const parentId = item.parentId ?? null
+    const depth = parentId ? (depthMap.get(parentId) ?? 0) + 1 : 0
     const node: Flat = {
       _key: genKey(),
       label: item.label ?? '',
       url: item.url ?? '',
+      icon: item.icon ?? '',
       hidden: !!item.hidden,
       depth,
-      parentId: item.parentId ?? null,
+      parentId,
     }
-    parentStack[depth] = node._key
+    depthMap.set(node.label, depth)
     result.push(node)
   }
   return result
@@ -77,17 +80,15 @@ function flatFromNav(items: NavItem[]): Flat[] {
 
 function navFromFlat(nodes: Flat[]): NavItem[] {
   const result: NavItem[] = []
-  const idMap = new Map<string, string>()
   let idx = 0
   for (const node of nodes) {
-    const id = 'id-' + idx++
-    idMap.set(node._key, id)
     result.push({
       label: node.label,
       url: node.url,
+      icon: node.icon || undefined,
       hidden: node.hidden,
-      order: idx * 10,
-      parentId: node.parentId ? idMap.get(node.parentId) ?? null : null,
+      order: (++idx) * 10,
+      parentId: node.parentId ?? null, // parent is stored as the parent item's label
     })
   }
   return result
@@ -211,6 +212,7 @@ function createNode(depth: number, parentKey: string | null): Flat {
     _key: genKey(),
     label: '',
     url: '',
+    icon: '',
     hidden: false,
     depth,
     parentId: parentKey,
@@ -231,7 +233,7 @@ function addChild(index: number) {
   const node = newItems[index]
   if (node.depth >= 2) return
   const blockEnd = getBlockEnd(newItems, index)
-  newItems.splice(blockEnd + 1, 0, createNode(node.depth + 1, node._key))
+  newItems.splice(blockEnd + 1, 0, createNode(node.depth + 1, node.label))
   flatItems.value = newItems
   if (collapsedKeys.value.has(node._key)) {
     const next = new Set(collapsedKeys.value)
@@ -248,7 +250,7 @@ function deleteItem(index: number) {
 
 // Modal editing
 const editModalOpen = ref(false)
-const editForm = ref<Flat>({ _key: '', label: '', url: '', hidden: false, depth: 0, parentId: null })
+const editForm = ref<Flat>({ _key: '', label: '', url: '', icon: '', hidden: false, depth: 0, parentId: null })
 
 function openEdit(index: number) {
   const item = flatItems.value[index]
@@ -318,6 +320,7 @@ function getDepth(item: Flat) { return item.depth }
           class="flex-1 min-w-0 text-left text-sm truncate px-2 py-1 rounded hover:bg-muted transition-colors"
           @click="openEdit(index)"
         >
+          <UIcon v-if="item.icon" :name="item.icon" class="size-3.5 mr-1.5 shrink-0 align-middle" />
           {{ item.label || '(untitled)' }}
           <span class="text-xs text-muted ml-1">{{ item.url }}</span>
           <span v-if="item.hidden" class="text-xs text-muted ml-1">({{ t('dashboard.menu.hidden') }})</span>
@@ -346,6 +349,13 @@ function getDepth(item: Flat) { return item.depth }
             <label class="col-span-3 text-right text-xs text-muted pr-2">{{ t('dashboard.menu.url') }}</label>
             <div class="col-span-9">
               <UInput v-model="editForm.url" placeholder="/blog" size="sm" class="w-full" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-12 items-center gap-2">
+            <label class="col-span-3 text-right text-xs text-muted pr-2">{{ t('dashboard.menu.icon') }}</label>
+            <div class="col-span-9">
+              <BaseIconPicker v-model="editForm.icon" />
             </div>
           </div>
 

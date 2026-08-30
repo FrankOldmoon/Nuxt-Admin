@@ -1,12 +1,14 @@
 <script setup lang="ts">
 /**
- * Dashboard sidebar — renders the menu returned by /api/dashboard/meta.
+ * Dashboard sidebar — renders the menu returned by /api/dashboard/meta
+ * using a vertical UNavigationMenu (supports nested children via parentId).
  * - Desktop (md+): full-width aside, always visible.
  * - Mobile (<md): hidden, replaced by a hamburger button that opens a Popover
  *   containing the same menu items.
- * Emits `navigate(table)` so the parent can push `?table=...` to the URL.
+ * Emits `navigate(url)` so the parent can push the URL.
  */
 import type { DashboardMenuItem } from '~/types/dashboard'
+import type { NavigationMenuItem } from '@nuxt/ui'
 
 const props = defineProps<{
   items: DashboardMenuItem[]
@@ -14,7 +16,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  navigate: [table: string]
+  navigate: [path: string]
 }>()
 
 const { t } = useI18n()
@@ -22,10 +24,60 @@ const { menuLabel } = useDashboardLabels()
 
 const mobileOpen = ref(false)
 
-function go(item: DashboardMenuItem) {
-  emit('navigate', item.url || item.table)
-  mobileOpen.value = false
-}
+// Convert flat menu items into nested structure for UNavigationMenu.
+// parentId stores the parent item's url; build children lists accordingly.
+const menuItems = computed<NavigationMenuItem[]>(() => {
+  const visible = props.items.filter(i => !i.hidden)
+  const urlOf = (item: DashboardMenuItem) => item.url || `/dashboard/${item.table}`
+
+  const childrenOf = new Map<string, NavigationMenuItem[]>()
+  const roots: NavigationMenuItem[] = []
+  const nodeOf = (item: DashboardMenuItem): NavigationMenuItem => ({
+    label: menuLabel(item),
+    icon: item.icon,
+    to: urlOf(item),
+    active: props.activeTable === item.table,
+  })
+
+  for (const item of visible) {
+    const node = nodeOf(item)
+    const parentUrl = item.parentId
+    if (parentUrl && visible.some(v => urlOf(v) === parentUrl)) {
+      const arr = childrenOf.get(parentUrl) ?? []
+      arr.push(node)
+      childrenOf.set(parentUrl, arr)
+    } else {
+      roots.push(node)
+    }
+  }
+
+  // Attach children to parents by their url
+  const attachByUrl = new Map<string, NavigationMenuItem>()
+  const collect = () => {
+    attachByUrl.clear()
+    const walk = (nodes: NavigationMenuItem[]) => {
+      for (const n of nodes) {
+        attachByUrl.set(n.to as string, n)
+        if (n.children) walk(n.children)
+      }
+    }
+    walk(roots)
+  }
+  collect()
+  const attach = (node: NavigationMenuItem, depth: number) => {
+    if (depth > 10) return
+    const children = childrenOf.get(node.to as string)
+    if (children?.length) node.children = children
+  }
+  const walk = (nodes: NavigationMenuItem[], depth: number) => {
+    for (const n of nodes) {
+      attach(n, depth)
+      if (n.children) walk(n.children, depth + 1)
+    }
+  }
+  walk(roots, 0)
+  return roots
+})
 </script>
 
 <template>
@@ -44,19 +96,12 @@ function go(item: DashboardMenuItem) {
       <span class="font-medium">{{ t('dashboard.menu.overview') }}</span>
     </router-link>
     <USeparator class="my-2" />
-    <nav class="flex flex-col gap-1">
-      <button
-        v-for="item in props.items"
-        :key="item.table"
-        type="button"
-        @click="go(item)"
-        class="flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors"
-        :class="props.activeTable === item.table ? 'bg-primary/15 text-primary font-medium' : 'hover:bg-muted text-current'"
-      >
-        <UIcon :name="item.icon" class="h-5 w-5 shrink-0" />
-        <span class="truncate">{{ menuLabel(item) }}</span>
-      </button>
-    </nav>
+    <UNavigationMenu
+      v-if="menuItems.length"
+      :items="menuItems"
+      orientation="vertical"
+      class="w-full"
+    />
     <div class="mt-auto pt-4">
       <div class="text-xs text-muted px-3">
         <span>v0.1 · Dashboard</span>
@@ -94,17 +139,12 @@ function go(item: DashboardMenuItem) {
           <span class="font-medium">{{ t('dashboard.menu.overview') }}</span>
         </router-link>
         <USeparator class="my-1" />
-        <button
-          v-for="item in props.items"
-          :key="item.table"
-          type="button"
-          @click="go(item)"
-          class="flex items-center gap-3 px-3 py-2 rounded-md text-left transition-colors"
-          :class="props.activeTable === item.table ? 'bg-primary/15 text-primary font-medium' : 'hover:bg-muted text-current'"
-        >
-          <UIcon :name="item.icon" class="h-5 w-5 shrink-0" />
-          <span class="truncate">{{ menuLabel(item) }}</span>
-        </button>
+        <UNavigationMenu
+          v-if="menuItems.length"
+          :items="menuItems"
+          orientation="vertical"
+          class="w-full"
+        />
       </nav>
     </template>
   </UPopover>

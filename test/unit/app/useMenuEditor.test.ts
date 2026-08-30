@@ -25,14 +25,15 @@ describe('flatFromMenu', () => {
     expect(nodes[0].url).toBe('/custom/users')
   })
 
-  it('handles parentId for hierarchical menu', () => {
+  it('handles parentId for hierarchical menu (keyed by parent url)', () => {
     const menu: DashboardMenuItem[] = [
       { table: 'settings', label: 'Settings', icon: 'i-lucide-settings', order: 10 },
-      { table: 'site', label: 'Site', icon: 'i-lucide-globe', order: 20, parentId: 'id-0' }
+      { table: 'site', label: 'Site', icon: 'i-lucide-globe', order: 20, parentId: '/dashboard/settings' }
     ]
     const nodes = flatFromMenu(menu)
     expect(nodes[0].depth).toBe(0)
-    expect(nodes[1].depth).toBe(0) // parentId is string-based, not yet mapped to internal keys
+    expect(nodes[1].depth).toBe(1) // child of /dashboard/settings
+    expect(nodes[1].parentId).toBe('/dashboard/settings')
   })
 
   it('handles empty menu', () => {

@@ -19,12 +19,12 @@ function genKey(): string {
 
 export function flatFromMenu(items: DashboardMenuItem[]): MenuFlatNode[] {
   const result: MenuFlatNode[] = []
-  const parentStack: string[] = []
-
+  const depthMap = new Map<string, number>() // url -> depth
   for (const item of items) {
-    const depth = item.parentId == null ? 0 : (parentStack.indexOf(item.parentId) + 1)
-    while (parentStack.length > depth) parentStack.pop()
     const url = item.url || (item.table ? `/dashboard/${item.table}` : '')
+    const idKey = url || item.label || item.table
+    const parentId = item.parentId ?? null
+    const depth = parentId ? (depthMap.get(parentId) ?? 0) + 1 : 0
     const node: MenuFlatNode = {
       _key: genKey(),
       url,
@@ -32,9 +32,9 @@ export function flatFromMenu(items: DashboardMenuItem[]): MenuFlatNode[] {
       icon: item.icon || 'i-lucide-circle-dashed',
       hidden: !!item.hidden,
       depth,
-      parentId: item.parentId ?? null,
+      parentId,
     }
-    parentStack[depth] = node._key
+    depthMap.set(idKey, depth)
     result.push(node)
   }
 
@@ -43,12 +43,9 @@ export function flatFromMenu(items: DashboardMenuItem[]): MenuFlatNode[] {
 
 export function menuFromFlat(nodes: MenuFlatNode[]): DashboardMenuItem[] {
   const result: DashboardMenuItem[] = []
-  const idMap = new Map<string, string>()
   let idx = 0
 
   for (const node of nodes) {
-    const id = 'id-' + idx++
-    idMap.set(node._key, id)
     // If URL starts with /dashboard/, extract the table name; otherwise use URL as-is
     const match = node.url.match(/^\/dashboard\/(.+)/)
     const table = match ? match[1] : node.url
@@ -58,9 +55,10 @@ export function menuFromFlat(nodes: MenuFlatNode[]): DashboardMenuItem[] {
       label: node.label,
       icon: node.icon,
       hidden: node.hidden,
-      order: (idx) * 10,
-      parentId: node.parentId ? idMap.get(node.parentId) ?? null : null,
+      order: (idx + 1) * 10,
+      parentId: node.parentId ?? null, // parent is stored as the parent item's url
     })
+    idx++
   }
 
   return result
@@ -218,7 +216,7 @@ export function useMenuEditor(
     const node = newItems[index]
     if (node.depth >= 2) return
     const blockEnd = getBlockEnd(newItems, index)
-    newItems.splice(blockEnd + 1, 0, createNode(node.depth + 1, node._key))
+    newItems.splice(blockEnd + 1, 0, createNode(node.depth + 1, node.url))
     flatItems.value = newItems
     if (collapsedKeys.value.has(node._key)) {
       const next = new Set(collapsedKeys.value)
