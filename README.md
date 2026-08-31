@@ -118,9 +118,8 @@
 │   └── plugins/  database.ts
 │
 ├── extends/<your-layer>/      # （可选）业务模块，以 Nuxt layer 形式经 registerDashboardTable / registerDrizzleSchema 接入
-├── modules/<name>/            # （可选）独立托管的解耦模块，克隆到此处并经 extends.local.txt 挂载
+├── modules/<name>/            # （可选）独立托管的解耦模块，克隆到此处，用 .env 的 <NAME>_ENABLED=true 挂载
 │                               #   nav（导航站）/ doc（多文档站）为其内置示例
-├── extends.local.txt          # （gitignore）每行一个本地 layer 路径，被 readLocalExtends() 读取
 ├── i18n/locales/           # en.json / zh.json
 ├── test/                   # e2e（API）、unit（app/server）、nuxt（组件/composable/页面）、helpers
 ├── drizzle.config.ts  nuxt.config.ts  vitest.config.ts  ecosystem.config.cjs  .env.example
@@ -199,7 +198,7 @@ pnpm preview
 
 ## 内置扩展模块（`modules/`）
 
-除硬编码的 `extends/blog` 示例外，本仓库通过 **`.env` 开关**按需挂载**独立托管**的解耦模块。每个模块是各自的独立 Git 仓库，克隆到 `modules/<name>/` 后，只要在 `.env` 里打开对应开关即可一行接入（`nuxt.config.ts` 会自动扫描 `modules/` 并挂载设置了 `<NAME>_ENABLED=true` 的目录），无需改主项目源码、也无需 `extends.local.txt`。当前内置两个：
+除硬编码的 `extends/blog` 示例外，本仓库通过 **`.env` 开关**按需挂载**独立托管**的解耦模块。每个模块是各自的独立 Git 仓库，克隆到 `modules/<name>/` 后，只要在 `.env` 里打开对应开关即可一行接入（`nuxt.config.ts` 会自动扫描 `modules/` 并挂载设置了 `<NAME>_ENABLED=true` 的目录），无需改主项目源码。当前内置两个：
 
 | 模块 | 说明 | 首页路由 | 启用开关（host `.env`） |
 | --- | --- | --- | --- |
@@ -219,7 +218,7 @@ echo "<NAME>_ENABLED=true" >> .env
 pnpm dev
 ```
 
-> 兼容旧的 `extends.local.txt` 方式（每行一个 layer 路径），也支持用 `EXTENDS_MODULES` 环境变量传入一个空格/逗号分隔的 layer 路径列表。三者的结果会去重合并。
+> 也支持用 `EXTENDS_MODULES` 环境变量传入一个空格/逗号分隔的 layer 路径列表，与 `modules/` 自动发现的结果会去重合并。
 
 模块启动流程：`registerDrizzleSchema` 使表可发现 → 幂等迁移建表 → `registerDashboardTable` 注册进通用 CRUD 与侧边菜单 → 空表自动灌种子数据 → 合并 `dashboard.menu` 白名单（doc 还会重建全局头部导航）。详见各模块自带 README（中英双语）。
 

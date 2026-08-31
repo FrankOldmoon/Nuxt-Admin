@@ -142,12 +142,8 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 
-# Local-only Nuxt layers (one layer path per line, # comments allowed).
-# Downstream users add their own layers here to avoid merge conflicts with
-# upstream changes to nuxt.config.ts — it is read via readLocalExtends().
-extends.local.txt
-
 # Independent Nuxt modules (e.g. cloned navigation site). Each folder
-# is its own repo; referenced from nuxt.config.ts, never committed here.
+# is its own repo; enabled from nuxt.config.ts via `<NAME>_ENABLED=true` env
+# switches, never committed here.
 modules/
 .workbuddy

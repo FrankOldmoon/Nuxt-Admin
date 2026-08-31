@@ -1,31 +1,19 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
 /**
- * Local-only Nuxt layers (gitignored). Supported sources, in order:
+ * Optional Nuxt layers are enabled via the environment. Supported sources:
  *
- *  1. `extends.local.txt` — one layer path per line; blank lines and `#`
- *     comments are ignored. Kept for backward compatibility.
+ *  1. Auto-discovery of `modules/` — every sub-folder is mounted as a layer
+ *     when its matching `<NAME>_ENABLED=true` switch is set (e.g.
+ *     `DOC_ENABLED=true` enables `./modules/doc`). This is the primary way to
+ *     toggle extension modules without editing this file.
  *  2. `EXTENDS_MODULES` env var — a space / comma / newline separated list of
  *     layer paths (e.g. `EXTENDS_MODULES="./modules/nav ./modules/doc"`).
- *  3. Auto-discovery of `modules/` — every sub-folder is mounted as a layer
- *     when its matching `<NAME>_ENABLED=true` switch is set in the environment
- *     (e.g. `DOC_ENABLED=true` enables `./modules/doc`). This is the primary
- *     way to toggle extension modules without editing this file.
  *
  * Upstream defaults (`./extends/blog`) stay hardcoded below.
  */
-const LOCAL_EXTENDS_FILE = join(process.cwd(), 'extends.local.txt')
-
-function readLocalExtends(): string[] {
-  if (!existsSync(LOCAL_EXTENDS_FILE)) return []
-  return readFileSync(LOCAL_EXTENDS_FILE, 'utf-8')
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(line => line && !line.startsWith('#'))
-}
-
 const ENV_EXTENDS = (process.env.EXTENDS_MODULES || '')
   .split(/[\s,]+/)
   .map(line => line.trim())
@@ -44,10 +32,10 @@ const ENABLED_MODULES = (() => {
 
 export default defineNuxtConfig({
   // Mount the demo blog layer as an independent Nuxt layer. Each extension
-  // layer is added the same way: a `./modules/<name>` line in extends.local.txt
-  // (or EXTENDS_MODULES, or a `<NAME>_ENABLED=true` env switch) and nothing
-  // else in the host codebase.
-  extends: [...new Set(['./extends/blog', ...readLocalExtends(), ...ENV_EXTENDS, ...ENABLED_MODULES])],
+  // layer is added the same way: an `./modules/<name>` folder with a matching
+  // `<NAME>_ENABLED=true` env switch (or a path in EXTENDS_MODULES) and
+  // nothing else in the host codebase.
+  extends: [...new Set(['./extends/blog', ...ENV_EXTENDS, ...ENABLED_MODULES])],
 
   modules: ['@nuxt/eslint', '@nuxt/ui', '@nuxtjs/i18n'],
 
