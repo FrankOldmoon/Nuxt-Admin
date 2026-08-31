@@ -118,6 +118,9 @@
 │   └── plugins/  database.ts
 │
 ├── extends/<your-layer>/      # （可选）业务模块，以 Nuxt layer 形式经 registerDashboardTable / registerDrizzleSchema 接入
+├── modules/<name>/            # （可选）独立托管的解耦模块，克隆到此处并经 extends.local.txt 挂载
+│                               #   nav（导航站）/ doc（多文档站）为其内置示例
+├── extends.local.txt          # （gitignore）每行一个本地 layer 路径，被 readLocalExtends() 读取
 ├── i18n/locales/           # en.json / zh.json
 ├── test/                   # e2e（API）、unit（app/server）、nuxt（组件/composable/页面）、helpers
 ├── drizzle.config.ts  nuxt.config.ts  vitest.config.ts  ecosystem.config.cjs  .env.example
@@ -191,6 +194,34 @@ pnpm preview
 - 复用通用页面（`custom: false`）时，可用 `#toolbar` / `#form-override` / `#detail-override` 插槽与 `transformPayload` 钩子做轻定制，或用 `apiBase` 指向模块自己的通用 CRUD 命名空间。字段级展示/存储转换同样可用：在 `FieldMeta` 上声明 `getter` / `setter` key，并在模块前端注册对应转换函数。
 
 模块 API 仅需 `requireUser` / `requireAdmin`，即可复用主项目的 session 会话、RBAC、公告/私信/WebSocket 等基础设施。
+
+---
+
+## 内置扩展模块（`modules/`）
+
+除硬编码的 `extends/blog` 示例外，本仓库通过 **`.env` 开关**按需挂载**独立托管**的解耦模块。每个模块是各自的独立 Git 仓库，克隆到 `modules/<name>/` 后，只要在 `.env` 里打开对应开关即可一行接入（`nuxt.config.ts` 会自动扫描 `modules/` 并挂载设置了 `<NAME>_ENABLED=true` 的目录），无需改主项目源码、也无需 `extends.local.txt`。当前内置两个：
+
+| 模块 | 说明 | 首页路由 | 启用开关（host `.env`） |
+| --- | --- | --- | --- |
+| `modules/nav` | 导航站（图片化链接 + 库位管理，`layout:false` 全屏落地页） | `/`（替换原首页） | `NAV_ENABLED=true` |
+| `modules/doc` | 多文档站（分类 → 文档 → 三级章节，拖拽编辑 + 全局头部导航同步） | `/doc` | `DOC_ENABLED=true` |
+
+**它们不是独立应用，没有各自的 `package.json`，只能依赖主项目运行。** 接入步骤全在主项目内完成：
+
+```bash
+# 1.（一次性）把模块仓库克隆到主项目
+git clone <your-module-repo> modules/<name>
+
+# 2. 在主项目 .env 中启用（模块会在 nitro 启动时自动挂载）
+echo "<NAME>_ENABLED=true" >> .env
+
+# 3. 用主项目启动（模块自动迁移建表、注册 CRUD、并入菜单）
+pnpm dev
+```
+
+> 兼容旧的 `extends.local.txt` 方式（每行一个 layer 路径），也支持用 `EXTENDS_MODULES` 环境变量传入一个空格/逗号分隔的 layer 路径列表。三者的结果会去重合并。
+
+模块启动流程：`registerDrizzleSchema` 使表可发现 → 幂等迁移建表 → `registerDashboardTable` 注册进通用 CRUD 与侧边菜单 → 空表自动灌种子数据 → 合并 `dashboard.menu` 白名单（doc 还会重建全局头部导航）。详见各模块自带 README（中英双语）。
 
 ---
 

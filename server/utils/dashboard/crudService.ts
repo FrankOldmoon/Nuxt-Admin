@@ -809,14 +809,18 @@ async function addVersionSnapshot(
  *     (anything extra from the client is silently dropped).  JSON values
  *     are kept as-is because the client hook already sent JS objects.
  */
-export function castForDbInsert(meta: TableMeta, payload: Record<string, unknown>, now: Date): Record<string, unknown> {
+export function castForDbInsert(meta: TableMeta, payload: Record<string, unknown>, now: Date, nullMissing = true): Record<string, unknown> {
   const out: Record<string, unknown> = {}
   for (const f of meta.fields) {
     if (!f.showInForm || !f.editable) continue
     if (f.type === 'many-to-many') continue
     const raw = payload[f.key]
     if (raw === undefined || raw === null || raw === '') {
-      if (f.nullable) out[f.key] = null
+      // Only null a nullable column when the caller explicitly cleared it, or
+      // on insert (where missing nullable fields default to null). On a partial
+      // UPDATE (nullMissing=false) an absent column must stay untouched, not be
+      // wiped to null.
+      if (f.nullable && (nullMissing || f.key in payload)) out[f.key] = null
       continue
     }
     switch (f.type) {
@@ -983,7 +987,7 @@ export function castForDbUpdate(meta: TableMeta, payload: Record<string, unknown
       filtered[k] = v
     }
   }
-  const updated = castForDbInsert(meta, Object.keys(filtered).length ? filtered : payload, now)
+  const updated = castForDbInsert(meta, Object.keys(filtered).length ? filtered : payload, now, false)
   try {
     if (meta.fields.some(f => f.key === 'updatedAt')) updated.updatedAt = now
   } catch { /* ignore */ }
