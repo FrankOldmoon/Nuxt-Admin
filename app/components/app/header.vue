@@ -168,18 +168,7 @@ function openAuth(mode: AuthMode = 'login') {
     </template>
 
     <!-- Center area: navigation menu from site.navigation config -->
-    <UNavigationMenu
-      v-if="menuItems.length"
-      :items="menuItems"
-      :ui="{
-        content: 'w-auto min-w-72 !w-auto',
-        childLink: 'whitespace-nowrap items-start',
-        childLinkWrapper: 'overflow-visible',
-        childLinkLabel: 'whitespace-nowrap overflow-visible',
-        childLinkDescription: 'overflow-visible whitespace-normal',
-      }"
-      class="hidden lg:flex"
-    />
+    <UNavigationMenu v-if="menuItems.length" :items="menuItems" class="hidden lg:flex" />
 
     <!-- Mobile menu body: re-exposes the nav links hidden on small screens -->
     <template #body>
