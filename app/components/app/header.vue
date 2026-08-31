@@ -62,7 +62,11 @@ const menuItems = computed<NavigationMenuItem[]>(() => {
   const attach = (node: NavigationMenuItem, depth: number) => {
     if (depth > 10) return
     const children = childrenOf.get(node.label)
-    if (children?.length) node.children = children
+    if (children?.length) {
+      node.children = children
+      // A parent (category) only expands its dropdown — it is not a link.
+      if (node.children?.length) delete node.to
+    }
   }
   const walk = (nodes: NavigationMenuItem[], depth: number) => {
     for (const n of nodes) {
@@ -163,7 +167,16 @@ function openAuth(mode: AuthMode = 'login') {
     </template>
 
     <!-- Center area: navigation menu from site.navigation config -->
-    <UNavigationMenu v-if="menuItems.length" :items="menuItems" class="hidden lg:flex" />
+    <UNavigationMenu
+      v-if="menuItems.length"
+      :items="menuItems"
+      :ui="{
+        content: 'w-auto min-w-56 max-w-xs !w-auto',
+        childLink: 'whitespace-nowrap',
+        childLinkLabel: '!truncate-none',
+      }"
+      class="hidden lg:flex"
+    />
 
     <!-- Mobile menu body: re-exposes the nav links hidden on small screens -->
     <template #body>
