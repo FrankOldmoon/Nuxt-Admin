@@ -150,3 +150,4 @@ extends.local.txt
 # Independent Nuxt modules (e.g. cloned navigation site). Each folder
 # is its own repo; referenced from nuxt.config.ts, never committed here.
 modules/
+.workbuddy

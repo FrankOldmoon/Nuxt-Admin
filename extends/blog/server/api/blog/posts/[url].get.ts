@@ -8,7 +8,7 @@
  * Also returns `prev` / `next` for n.-1/n.+1 navigation (#9).
  */
 import { and, asc, desc, eq, gt, isNull, lt, sql } from 'drizzle-orm'
-import { db } from '../../../../../../server/database'
+import { db } from '~~/server/database'
 import { users as usersTable } from '../../../../../../server/database/schema'
 import { posts, categories } from '../../../database/schema'
 import { getSessionUser, roleCanTableAction } from '../../../../../../server/utils/auth'
