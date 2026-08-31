@@ -1,4 +1,5 @@
 import type { H3Event } from 'h3'
+import { getRequestProtocol } from 'h3'
 
 const COOKIE_NAME = 'session'
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 7 // 7 days
@@ -7,7 +8,11 @@ export function setSessionCookie(event: H3Event, token: string): void {
   setCookie(event, COOKIE_NAME, token, {
     httpOnly: true,
     sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
+    // Only flag the cookie Secure when this request actually ran over HTTPS
+    // (TLS socket or x-forwarded-proto: https). Hardcoding to NODE_ENV==='production'
+    // breaks plain-HTTP deployments (e.g. an intranet box) — browsers drop a
+    // Secure cookie over http, so the session is lost on the next refresh.
+    secure: getRequestProtocol(event) === 'https',
     path: '/',
     maxAge: COOKIE_MAX_AGE
   })
