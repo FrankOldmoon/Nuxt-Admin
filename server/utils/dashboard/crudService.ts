@@ -749,7 +749,11 @@ export async function updateRow(meta: TableMeta, id: number | string, payload: R
   const tbl = resolveTable(meta)
   const idCol = col(tbl, 'id')
   throwOnInvalid(meta, payload, 'update')
-  const set = castForDbUpdate(meta, payload, new Date())
+  const now = new Date()
+  const set = castForDbUpdate(meta, payload, now)
+  // Snapshot the previous content into the row's `versions` history (if the
+  // table opted in via `features.versions`) before applying the update.
+  await addVersionSnapshot(meta, tbl, idCol, id, set, now)
   if (Object.keys(set).length > 0) {
     const where = await applyDataScope(meta, tbl, actor, eq(idCol, id as any))
     await db.update(tbl).set(set).where(where).returning()
@@ -758,6 +762,34 @@ export async function updateRow(meta: TableMeta, id: number | string, payload: R
     await syncManyToManyPivots(meta, id, payload, 'update')
   }
   return getById(meta, id, actor)
+}
+
+/**
+ * Version history snapshot. When a table opts in via `meta.features.versions`,
+ * capture the previous value of each tracked field before an update touches any
+ * of them. Snapshots are stored newest-first in the row's `versions` jsonb
+ * column and capped at `max` (default 50), so an old item is never dropped from
+ * history unless more than 50 versions accumulate.
+ */
+async function addVersionSnapshot(
+  meta: TableMeta,
+  tbl: PgTableWithColumns<any>,
+  idCol: PgColumn,
+  id: number | string,
+  set: Record<string, unknown>,
+  now: Date,
+): Promise<void> {
+  const cfg = meta.features?.versions
+  if (!cfg || !cfg.fields?.length) return
+  const changed = cfg.fields.filter(f => f in set)
+  if (changed.length === 0) return
+  const rows = await db.select().from(tbl).where(eq(idCol, id as any)).limit(1)
+  const cur = rows[0] as Record<string, unknown> | undefined
+  if (!cur) return
+  const snapshot: Record<string, unknown> = { savedAt: now.toISOString() }
+  for (const f of cfg.fields) snapshot[f] = cur[f] ?? null
+  const existing = Array.isArray(cur.versions) ? (cur.versions as Record<string, unknown>[]) : []
+  set.versions = [snapshot, ...existing].slice(0, cfg.max ?? 50)
 }
 
 /** Convert a string-keyed form payload into the types Drizzle expects.

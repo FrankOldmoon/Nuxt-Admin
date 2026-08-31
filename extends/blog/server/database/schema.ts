@@ -61,7 +61,10 @@ export const posts = pgTable('posts',
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
     // Soft delete — the host generic CRUD detects the `deletedAt` column and
     // automatically enables soft-delete for this table.
-    deletedAt: timestamp('deleted_at', { withTimezone: true })
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    // Version history — array of snapshots (newest first) captured on each
+    // update that touches title/content. See `features.versions` in fields.ts.
+    versions: jsonb('versions').$type<PostVersion[]>().default([]).notNull()
   },
   (t) => [
     index('posts_url_idx').on(t.url),
@@ -75,3 +78,11 @@ export type Category = typeof categories.$inferSelect
 export type NewCategory = typeof categories.$inferInsert
 export type Post = typeof posts.$inferSelect
 export type NewPost = typeof posts.$inferInsert
+
+/** A single historical snapshot stored in `posts.versions` (jsonb). */
+export interface PostVersion extends Record<PropertyKey, unknown> {
+  /** ISO timestamp of when the snapshot was taken. */
+  savedAt: string
+  title?: string | null
+  content?: Record<string, unknown> | null
+}

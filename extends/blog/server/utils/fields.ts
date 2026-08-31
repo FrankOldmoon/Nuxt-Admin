@@ -49,7 +49,8 @@ export const postMeta: TableMeta = {
     softDelete: true,
     search: ['title', 'url', 'excerpt'],
     defaultSort: { field: 'publishedAt', order: 'desc' },
-    dataScope: { ownerColumn: 'authorId' }
+    dataScope: { ownerColumn: 'authorId' },
+    versions: { fields: ['title', 'content'], max: 50 }
   }
 }
 

@@ -172,6 +172,17 @@
     "range": "{from}-{to}",
     "page": "page"
   },
+  "versions": {
+    "title": "Version history",
+    "button": "Version history",
+    "empty": "No historical versions",
+    "savedAt": "Saved at",
+    "restore": "Restore this version",
+    "restored": "Version restored",
+    "previewTitle": "Version preview",
+    "loadFailed": "Failed to load versions",
+    "restoreFailed": "Restore failed"
+  },
   "auth": {
     "login": {
       "title": "Sign in",

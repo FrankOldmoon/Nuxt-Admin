@@ -58,6 +58,9 @@ ALTER TABLE posts ADD COLUMN IF NOT EXISTS tags jsonb NOT NULL DEFAULT '[]';
 -- Upgrade path: view_count column (for views-based sorting).
 ALTER TABLE posts ADD COLUMN IF NOT EXISTS view_count integer NOT NULL DEFAULT 0;
 
+-- Upgrade path: version history snapshot column (jsonb array, newest first).
+ALTER TABLE posts ADD COLUMN IF NOT EXISTS versions jsonb NOT NULL DEFAULT '[]';
+
 -- Upgrade path: the post body column was renamed from content_markdown (text)
 -- to content (jsonb) to store Tiptap JSON documents. On a database that
 -- predates the rename, add content, migrate any existing markdown text into

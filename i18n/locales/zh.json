@@ -172,6 +172,17 @@
     "range": "{from}-{to}",
     "page": "页"
   },
+  "versions": {
+    "title": "历史版本",
+    "button": "恢复历史版本",
+    "empty": "暂无历史版本",
+    "savedAt": "保存时间",
+    "restore": "恢复该版本",
+    "restored": "已恢复历史版本",
+    "previewTitle": "版本预览",
+    "loadFailed": "加载历史版本失败",
+    "restoreFailed": "恢复失败"
+  },
   "auth": {
     "login": {
       "title": "登录",

@@ -119,6 +119,13 @@ export interface TableFeatures {
    * - `userTable`: applies to the user table itself (self → only me).
    */
   dataScope?: { ownerColumn?: string; userTable?: boolean }
+  /**
+   * Version history — when set, the generic `update` endpoint automatically
+   * snapshots the previous value of the listed fields (into the row's `versions`
+   * jsonb column) before each update that touches them. Newest first, capped at
+   * `max` (default 50). E.g. `{ fields: ['title','content'], max: 50 }`.
+   */
+  versions?: { fields: string[]; max?: number }
 }
 
 export interface TableMeta {
