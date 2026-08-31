@@ -1,0 +1,128 @@
+// 非 scoped，用 cb- 前缀避免与 editor/render 样式冲突
+
+.cb-wrapper {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+
+  &.cb-theme-dark {
+    background: #1e293b;
+    .cb-header { background: #0f172a; border-bottom-color: #334155; }
+    .cb-lang { color: #94a3b8; }
+    .cb-copy { color: #94a3b8; border-color: #334155; &:hover { color: #e2e8f0; background: rgba(255, 255, 255, 0.1); } }
+    .cb-lines { color: #475569; border-right-color: #334155; }
+    .cb-code { color: #e2e8f0; }
+    .cb-code .hljs-keyword { color: #ff7b72; }
+    .cb-code .hljs-built_in { color: #ffa657; }
+    .cb-code .hljs-type { color: #ff7b72; }
+    .cb-code .hljs-literal { color: #79c0ff; }
+    .cb-code .hljs-number { color: #79c0ff; }
+    .cb-code .hljs-operator { color: #79c0ff; }
+    .cb-code .hljs-variable { color: #79c0ff; }
+    .cb-code .hljs-attr { color: #79c0ff; }
+    .cb-code .hljs-attribute { color: #79c0ff; }
+    .cb-code .hljs-meta { color: #79c0ff; }
+    .cb-code .hljs-string { color: #a5d6ff; }
+    .cb-code .hljs-regexp { color: #a5d6ff; }
+    .cb-code .hljs-title { color: #d2a8ff; }
+    .cb-code .hljs-title.function_ { color: #d2a8ff; }
+    .cb-code .hljs-title.class_ { color: #d2a8ff; }
+    .cb-code .hljs-comment { color: #8b949e; font-style: italic; }
+    .cb-code .hljs-doctag { color: #ff7b72; }
+    .cb-code .hljs-name { color: #7ee787; }
+    .cb-code .hljs-tag { color: #7ee787; }
+    .cb-code .hljs-symbol { color: #ffa657; }
+    .cb-code .hljs-bullet { color: #f2cc60; }
+    .cb-code .hljs-code { color: #8b949e; }
+    .cb-code .hljs-formula { color: #8b949e; }
+    .cb-code .hljs-quote { color: #7ee787; }
+    .cb-code .hljs-section { color: #1f6feb; }
+    .cb-code .hljs-subst { color: #c9d1d9; }
+    .cb-code .hljs-addition { color: #aff5b4; background: #033a16; }
+    .cb-code .hljs-deletion { color: #ffdcd7; background: #67060c; }
+    .cb-code .hljs-template-tag { color: #ff7b72; }
+    .cb-code .hljs-template-variable { color: #ff7b72; }
+    .cb-code .hljs-variable.language_ { color: #ff7b72; }
+  }
+
+  &.cb-theme-light {
+    background: #f8fafc;
+    .cb-header { background: #f1f5f9; border-bottom-color: #e2e8f0; }
+    .cb-lang { color: #64748b; }
+    .cb-copy { color: #64748b; border-color: #e2e8f0; &:hover { color: #1e293b; background: rgba(0, 0, 0, 0.05); } }
+    .cb-lines { color: #cbd5e1; border-right-color: #e2e8f0; }
+    .cb-code { color: #1e293b; }
+    .cb-code .hljs-keyword { color: #d73a49; }
+    .cb-code .hljs-built_in { color: #e36209; }
+    .cb-code .hljs-type { color: #d73a49; }
+    .cb-code .hljs-literal { color: #005cc5; }
+    .cb-code .hljs-number { color: #005cc5; }
+    .cb-code .hljs-operator { color: #005cc5; }
+    .cb-code .hljs-variable { color: #005cc5; }
+    .cb-code .hljs-attr { color: #005cc5; }
+    .cb-code .hljs-attribute { color: #005cc5; }
+    .cb-code .hljs-meta { color: #005cc5; }
+    .cb-code .hljs-string { color: #032f62; }
+    .cb-code .hljs-regexp { color: #032f62; }
+    .cb-code .hljs-title { color: #6f42c1; }
+    .cb-code .hljs-title.function_ { color: #6f42c1; }
+    .cb-code .hljs-title.class_ { color: #6f42c1; }
+    .cb-code .hljs-comment { color: #6a737d; font-style: italic; }
+    .cb-code .hljs-doctag { color: #d73a49; }
+    .cb-code .hljs-name { color: #22863a; }
+    .cb-code .hljs-tag { color: #22863a; }
+    .cb-code .hljs-symbol { color: #e36209; }
+    .cb-code .hljs-bullet { color: #735c0f; }
+    .cb-code .hljs-code { color: #6a737d; }
+    .cb-code .hljs-formula { color: #6a737d; }
+    .cb-code .hljs-quote { color: #22863a; }
+    .cb-code .hljs-section { color: #005cc5; font-weight: bold; }
+    .cb-code .hljs-subst { color: #24292e; }
+    .cb-code .hljs-addition { color: #22863a; background: #f0fff4; }
+    .cb-code .hljs-deletion { color: #b31d28; background: #ffeef0; }
+    .cb-code .hljs-template-tag { color: #d73a49; }
+    .cb-code .hljs-template-variable { color: #d73a49; }
+    .cb-code .hljs-variable.language_ { color: #d73a49; }
+  }
+}
+
+.cb-wrapper {
+  .cb-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 16px; border-bottom: 1px solid;
+  }
+
+  .cb-lang { font-size: 12px; font-weight: 500; }
+
+  .cb-copy {
+    display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; padding: 0;
+    border: 1px solid; border-radius: 4px;
+    background: transparent; cursor: pointer;
+    transition: all 0.2s; line-height: 0;
+    &.copied { color: #22c55e !important; border-color: #22c55e !important; }
+  }
+
+  .cb-main { display: flex; overflow: hidden; max-height: 500px; }
+
+  .cb-lines {
+    margin: 0; padding: 12px 10px; text-align: right; user-select: none;
+    font-size: 13px; line-height: 1.6; border-right: 1px solid;
+    flex-shrink: 0; font-family: inherit;
+    span { display: block; }
+  }
+
+  .cb-code {
+    flex: 1; margin: 0; padding: 12px 16px; overflow: auto;
+    font-size: 13px; line-height: 1.6; white-space: pre;
+    tab-size: 2; font-family: inherit;
+    code {
+      display: block; font-family: inherit !important;
+      background: none !important; padding: 0 !important;
+      margin: 0 !important; border-radius: 0 !important;
+      color: inherit !important; font-size: inherit !important;
+      white-space: inherit !important;
+    }
+  }
+}
