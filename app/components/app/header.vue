@@ -45,6 +45,7 @@ const menuItems = computed<NavigationMenuItem[]>(() => {
     label: item.label,
     icon: item.icon,
     to: item.url,
+    description: (item as any).description,
   })
 
   for (const item of visible) {
@@ -171,9 +172,11 @@ function openAuth(mode: AuthMode = 'login') {
       v-if="menuItems.length"
       :items="menuItems"
       :ui="{
-        content: 'w-auto min-w-56 max-w-xs !w-auto',
-        childLink: 'whitespace-nowrap',
-        childLinkLabel: '!truncate-none',
+        content: 'w-auto min-w-72 !w-auto',
+        childLink: 'whitespace-nowrap items-start',
+        childLinkWrapper: 'overflow-visible',
+        childLinkLabel: 'whitespace-nowrap overflow-visible',
+        childLinkDescription: 'overflow-visible whitespace-normal',
       }"
       class="hidden lg:flex"
     />
