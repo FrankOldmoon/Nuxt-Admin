@@ -13,7 +13,7 @@
                 </div>
             </template>
         </UModal>
-        <!-- 字符串模式：3行文本域 + 实时渲染预览 + 右上角半透明书本按钮 -->
+        <!-- 字符串模式：markdown 文本域 + 右上角富文本弹窗按钮 + 右下角预览开关（默认隐藏 preview） -->
         <div v-if="!isJson" class="relative space-y-2">
             <div class="relative">
                 <UTextarea v-model="model" :rows="3" class="w-full" :placeholder="t('richEditor.placeholder')" />
@@ -22,24 +22,33 @@
                     class="absolute top-0 right-0 opacity-50 hover:opacity-100 transition-opacity z-10"
                     :aria-label="t('richEditor.openEditor')" @click="openEditor" />
             </div>
-            <!-- 文本模式的实时预览：BaseUeditorRender 内部通过 markdownToTiptap 把字符串转 Tiptap JSON 渲染 -->
-            <div v-if="model" class="relative border rounded-md p-3">
-                <p class="mb-1 text-xs text-muted">{{ t('richEditor.preview') }}</p>
+            <!-- 右下角预览开关：点击才弹出下方 live preview，再点隐藏 -->
+            <div class="flex justify-end">
+                <UButton
+                    v-if="model"
+                    :icon="showPreview ? 'i-heroicons-eye-slash' : 'i-heroicons-eye'"
+                    variant="ghost"
+                    size="xs"
+                    class="text-muted"
+                    :aria-label="t('richEditor.preview')"
+                    :title="t('richEditor.preview')"
+                    @click="showPreview = !showPreview"
+                />
+            </div>
+            <!-- 文本模式的 live preview（需点击右下角眼睛按钮才显示） -->
+            <div v-if="showPreview && model" class="relative border rounded-md p-3">
                 <BaseUeditorRender :json="model" />
             </div>
         </div>
 
-        <!-- JSON 模式：渲染富文本（可交互） + 右上角编辑按钮（弹 modal 编辑） -->
-        <div v-if="isJson" class="relative border rounded-md p-3 min-h-[72px]">
+        <!-- JSON 模式：点击整个预览框即可打开 ueditor 富文本编辑界面（无右上角按钮） -->
+        <div
+            v-if="isJson"
+            class="relative border rounded-md p-3 min-h-[72px] cursor-pointer"
+            :title="t('richEditor.openEditor')"
+            @click="openEditor"
+        >
             <BaseUeditorRender :json="model" />
-            <div class="absolute top-0 right-0 flex items-center gap-1 z-10">
-                <UButton icon="i-heroicons-pencil-square" variant="ghost" size="sm"
-                    class="opacity-50 hover:opacity-100 transition-opacity" :aria-label="t('richEditor.openEditor')"
-                    @click="openEditor" />
-                <UButton v-if="allowTextMode" icon="i-heroicons-book-open" variant="ghost" size="sm"
-                    class="opacity-50 hover:opacity-100 transition-opacity" :aria-label="t('richEditor.switchToText')"
-                    @click="switchToTextMode" />
-            </div>
         </div>
     </div>
 </template>
@@ -56,11 +65,15 @@ const props = defineProps({
         type: Boolean,
         default: true,
     },
+    // 兼容旧调用方（如 test.vue）；JSON 模式现已改为点击整块预览框进入编辑，不再使用右上角切换按钮
     allowTextMode: {
         type: Boolean,
         default: true,
     },
 })
 
-const { isJson, isModalOpen, editJson, openEditor, saveJson, switchToTextMode } = useRichEditor(props, model)
+// 文本模式的 live preview 开关（默认隐藏，点击右下角眼睛按钮再显示）
+const showPreview = ref(false)
+
+const { isJson, isModalOpen, editJson, openEditor, saveJson } = useRichEditor(props, model)
 </script>
