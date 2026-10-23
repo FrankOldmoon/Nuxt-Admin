@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { eq, lt } from 'drizzle-orm'
 import { createError, getHeader, type H3Event } from 'h3'
+import { ofetch } from 'ofetch'
 import { db } from './db'
 import { wxUsers, wxSessions, type WxUser } from '../database/schema'
 import { getConfigValue } from './configs'
@@ -92,9 +93,12 @@ export async function wxCode2Session(code: string): Promise<WxCode2SessionResult
 export async function wxApiPost<T = Record<string, unknown>>(path: string, body?: unknown): Promise<T> {
   const token = await getWxAccessToken()
   const sep = path.includes('?') ? '&' : '?'
-  const res = await $fetch<T>(`${WX_API_BASE}${path}${sep}access_token=${token}`, {
+  // ofetch (not the route-typed $fetch): this hits an external URL, and the
+  // growing internal route union makes TypeScript's overload resolution blow
+  // up with "excessive stack depth".
+  const res = await ofetch<T>(`${WX_API_BASE}${path}${sep}access_token=${token}`, {
     method: 'POST',
-    body
+    body: body as Record<string, unknown> | undefined
   })
   return res
 }

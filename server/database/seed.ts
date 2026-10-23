@@ -104,6 +104,14 @@ const DEFAULT_CONFIGS = [
   { key: 'stripe.currency', value: 'usd', type: 'string', description: 'Default charge currency (ISO code, e.g. usd)' },
   { key: 'stripe.successUrl', value: '/', type: 'string', description: 'Redirect path after successful payment (absolute URL or path, default "/")' },
   { key: 'stripe.cancelUrl', value: '/', type: 'string', description: 'Redirect path after cancelled payment (absolute URL or path, default "/")' },
+  // ---- Alipay (page pay, RSA2) ----
+  { key: 'alipay.enabled', value: 'false', type: 'boolean', description: 'Enable Alipay page pay (web cashier redirect)' },
+  { key: 'alipay.appId', value: '', type: 'string', description: 'Alipay application AppID (支付宝开放平台应用 APPID)' },
+  { key: 'alipay.privateKey', value: '', type: 'string', description: 'Alipay app private key (PEM or bare base64, used to sign requests)' },
+  { key: 'alipay.publicKey', value: '', type: 'string', description: 'Alipay public key (PEM or bare base64, used to verify notify signatures)' },
+  { key: 'alipay.gateway', value: 'https://openapi.alipay.com/gateway.do', type: 'string', description: 'Alipay gateway URL (use sandbox gateway for testing)' },
+  { key: 'alipay.notifyUrl', value: '', type: 'string', description: 'Async notify URL (defaults to <site>/api/alipay/pay/notify when empty)' },
+  { key: 'alipay.returnUrl', value: '', type: 'string', description: 'Browser return URL after payment (optional)' },
   // ---- Analytics / tracking configs (public: IDs end up in the client HTML anyway) ----
   { key: 'analytics.googleAnalyticsId', value: '', type: 'string', description: 'Google Analytics 4 Measurement ID (e.g. G-XXXXXXXXXX, empty = disabled)' },
   { key: 'analytics.googleAdsId', value: '', type: 'string', description: 'Google Ads Conversion ID (e.g. AW-XXXXXXXXX, empty = disabled)' },

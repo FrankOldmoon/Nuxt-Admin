@@ -523,6 +523,7 @@ const membershipSubscriptionsFields: FieldMeta[] = [
     options: [
       { label: 'Stripe', value: 'stripe' },
       { label: 'WeChat', value: 'wechat' },
+      { label: 'Alipay', value: 'alipay' },
       { label: 'Manual', value: 'manual' }
     ]
   },

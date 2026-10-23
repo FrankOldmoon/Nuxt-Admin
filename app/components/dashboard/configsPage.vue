@@ -86,6 +86,9 @@ const oauthConfigs = computed(() =>
 const stripeConfigs = computed(() =>
   configs.value.filter(c => c.key.startsWith('stripe.'))
 )
+const alipayConfigs = computed(() =>
+  configs.value.filter(c => c.key.startsWith('alipay.'))
+)
 
 // Enabled switches first within the OAuth / payment tabs
 function enabledFirst(items: ConfigItem[]): ConfigItem[] {
@@ -93,11 +96,13 @@ function enabledFirst(items: ConfigItem[]): ConfigItem[] {
 }
 const oauthSorted = computed(() => enabledFirst(oauthConfigs.value))
 const stripeSorted = computed(() => enabledFirst(stripeConfigs.value))
+const alipaySorted = computed(() => enabledFirst(alipayConfigs.value))
 
 const tabs = computed(() => [
   { label: t('settings.tabGeneral'), icon: 'i-lucide-settings', slot: 'general' },
   { label: t('settings.tabOauth'), icon: 'i-lucide-key-round', slot: 'oauth' },
   { label: t('settings.tabStripe'), icon: 'i-lucide-credit-card', slot: 'stripe' },
+  { label: t('settings.tabAlipay'), icon: 'i-lucide-wallet', slot: 'alipay' },
   { label: t('settings.tabMail'), icon: 'i-lucide-mail', slot: 'mail' },
   { label: t('settings.tabLlm'), icon: 'i-lucide-bot', slot: 'llm' },
   { label: t('settings.tabMenu'), icon: 'i-lucide-menu', slot: 'menu' },
@@ -121,6 +126,7 @@ function isSensitiveKey(key: string): boolean {
   return key.endsWith('.pass') || key.endsWith('.password')
     || key.endsWith('.clientSecret') || key.endsWith('.secretKey')
     || key.endsWith('.webhookSecret') || key.endsWith('.secret')
+    || key.endsWith('.privateKey') || key.endsWith('.publicKey')
 }
 
 function inputType(cfg: ConfigItem): string {
@@ -318,6 +324,53 @@ void refresh
                   v-if="cfg.type === 'boolean'"
                   :model-value="boolValue(editable[cfg.key])"
                   @update:model-value="editable[cfg.key] = String($event)"
+                />
+                <UInput
+                  v-else
+                  v-model="editable[cfg.key]"
+                  class="w-full"
+                  :type="inputType(cfg)"
+                />
+              </div>
+            </div>
+          </div>
+        </UCard>
+      </template>
+
+      <template #alipay>
+        <UCard>
+          <div class="space-y-4">
+            <div
+              v-for="cfg in alipaySorted"
+              :key="cfg.id"
+              class="grid grid-cols-1 gap-2 border-b border-default pb-4 last:border-0 md:grid-cols-[1fr_2fr]"
+            >
+              <div>
+                <div class="text-sm font-medium text-highlighted">
+                  {{ configLabel(cfg) }}
+                </div>
+                <div class="mt-1">
+                  <UBadge
+                    :label="cfg.type"
+                    color="neutral"
+                    variant="subtle"
+                    size="sm"
+                  />
+                </div>
+              </div>
+              <div>
+                <USwitch
+                  v-if="cfg.type === 'boolean'"
+                  :model-value="boolValue(editable[cfg.key])"
+                  @update:model-value="editable[cfg.key] = String($event)"
+                />
+                <!-- PEM keys are multi-line: keep them in a textarea -->
+                <UTextarea
+                  v-else-if="cfg.key.endsWith('.privateKey') || cfg.key.endsWith('.publicKey')"
+                  v-model="editable[cfg.key]"
+                  class="w-full"
+                  :rows="5"
+                  autoresize
                 />
                 <UInput
                   v-else

@@ -481,6 +481,44 @@ export type NewWxSession = typeof wxSessions.$inferInsert
 export type WxPayOrder = typeof wxPayOrders.$inferSelect
 export type NewWxPayOrder = typeof wxPayOrders.$inferInsert
 
+// Alipay orders (web page pay / QR). amount is in cents (fen), like WeChat Pay.
+export const alipayOrders = pgTable(
+  'alipay_orders',
+  {
+    id: serial('id').primaryKey(),
+    // Merchant order number (out_trade_no), generated server-side
+    outTradeNo: varchar('out_trade_no', { length: 64 }).notNull(),
+    // Dashboard user payer (Alipay is only offered on the website for now)
+    userId: integer('user_id'),
+    // Alipay trade number (trade_no), filled in by the notify callback
+    tradeNo: varchar('trade_no', { length: 64 }),
+    amount: integer('amount').notNull(),
+    description: varchar('description', { length: 255 }).notNull(),
+    // pending | success | closed
+    status: varchar('status', { length: 20 }).default('pending').notNull(),
+    // Business type of the purchase: generic | membership
+    bizType: varchar('biz_type', { length: 20 }).default('generic').notNull(),
+    // Business reference id (e.g. membership plan id), interpreted per bizType
+    bizRefId: integer('biz_ref_id'),
+    paidAt: timestamp('paid_at', { withTimezone: true }),
+    // Raw notify payload kept for audit
+    callbackPayload: jsonb('callback_payload').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    outTradeNoIdx: uniqueIndex('alipay_orders_out_trade_no_idx').on(table.outTradeNo),
+    tradeNoIdx: index('alipay_orders_trade_no_idx').on(table.tradeNo),
+    userIdx: index('alipay_orders_user_idx').on(table.userId),
+    userFk: foreignKey({ columns: [table.userId], foreignColumns: [users.id] })
+      .onDelete('set null')
+      .onUpdate('cascade')
+  })
+)
+
+export type AlipayOrder = typeof alipayOrders.$inferSelect
+export type NewAlipayOrder = typeof alipayOrders.$inferInsert
+
 // Stripe Checkout orders. amount is in the smallest currency unit (cents).
 export const stripeOrders = pgTable(
   'stripe_orders',

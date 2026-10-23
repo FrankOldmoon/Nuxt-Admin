@@ -43,6 +43,13 @@
       "when": 1792734283215,
       "tag": "0005_right_meteorite",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792734881071,
+      "tag": "0006_magical_marvex",
+      "breakpoints": true
     }
   ]
 }

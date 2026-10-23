@@ -45,7 +45,7 @@ interface MembershipInfo {
 
 const { data: planData } = await useFetch<{
   enabled: boolean
-  payments: { stripe: boolean, wechat: boolean }
+  payments: { stripe: boolean, wechat: boolean, alipay: boolean }
   plans: Plan[]
 }>('/api/membership/plans')
 const { data: myMembership, refresh: refreshMembership } = await useAsyncData<MembershipInfo | null>(
@@ -54,15 +54,20 @@ const { data: myMembership, refresh: refreshMembership } = await useAsyncData<Me
   { watch: [isLoggedIn] }
 )
 
-// Returning from Stripe: sync the order status (webhook fallback) and refresh
+// Returning from a payment provider: sync the order status (callback fallback) and refresh.
+// Stripe sends only `outTradeNo`; Alipay appends `channel=alipay` to the return URL.
 const route = useRoute()
 const pendingOutTradeNo = computed(() => (route.query.outTradeNo as string | undefined) ?? '')
+const returnChannel = computed(() => (route.query.channel as string | undefined) ?? '')
 const syncing = ref(false)
 onMounted(async () => {
   if (!pendingOutTradeNo.value) return
   syncing.value = true
   try {
-    await $fetch('/api/stripe/pay/order', { query: { outTradeNo: pendingOutTradeNo.value } })
+    const endpoint = returnChannel.value === 'alipay'
+      ? '/api/membership/alipay/order'
+      : '/api/stripe/pay/order'
+    await $fetch(endpoint, { query: { outTradeNo: pendingOutTradeNo.value } })
     await refreshMembership()
   } catch (e) {
     console.warn('[membership] order sync failed:', e)
@@ -96,8 +101,17 @@ function canPayWithWechat(plan: Plan): boolean {
   return !!planData.value?.payments.wechat && plan.currency.toLowerCase() === 'cny'
 }
 
+/** Alipay also settles in CNY only. */
+function canPayWithAlipay(plan: Plan): boolean {
+  return !!planData.value?.payments.alipay && plan.currency.toLowerCase() === 'cny'
+}
+
 function canPayWithStripe(): boolean {
   return !!planData.value?.payments.stripe
+}
+
+function hasAnyChannel(plan: Plan): boolean {
+  return canPayWithStripe() || canPayWithWechat(plan) || canPayWithAlipay(plan)
 }
 
 async function requireLogin(): Promise<boolean> {
@@ -122,6 +136,28 @@ async function subscribe(plan: Plan) {
     errorMessage.value = err?.data?.message ?? err?.message ?? t('membership.subscribeFailed')
   } finally {
     subscribing.value = null
+  }
+}
+
+// --- Alipay (page pay redirect) ---
+const alipaying = ref<number | null>(null)
+
+async function payWithAlipay(plan: Plan) {
+  if (!(await requireLogin())) return
+  alipaying.value = plan.id
+  errorMessage.value = ''
+  try {
+    const res = await $fetch<{ payUrl: string }>('/api/membership/alipay/order', {
+      method: 'POST',
+      body: { planId: plan.id }
+    })
+    // Full-page redirect to the Alipay cashier (external URL)
+    window.location.href = res.payUrl
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }, message?: string }
+    errorMessage.value = err?.data?.message ?? err?.message ?? t('membership.subscribeFailed')
+  } finally {
+    alipaying.value = null
   }
 }
 
@@ -318,13 +354,25 @@ onBeforeUnmount(stopWxPolling)
               :variant="plan.isFeatured && !canPayWithStripe() ? 'solid' : 'outline'"
               icon="i-lucide-qr-code"
               :loading="wxStarting"
-              :disabled="subscribing !== null || wxStarting"
+              :disabled="subscribing !== null || wxStarting || alipaying !== null"
               @click="payWithWechat(plan)"
             >
               {{ t('membership.payWithWechat') }}
             </UButton>
+            <UButton
+              v-if="canPayWithAlipay(plan)"
+              class="w-full justify-center"
+              color="info"
+              :variant="plan.isFeatured && !canPayWithStripe() && !canPayWithWechat(plan) ? 'solid' : 'outline'"
+              icon="i-lucide-wallet"
+              :loading="alipaying === plan.id"
+              :disabled="subscribing !== null || wxStarting || alipaying !== null"
+              @click="payWithAlipay(plan)"
+            >
+              {{ t('membership.payWithAlipay') }}
+            </UButton>
             <p
-              v-if="!canPayWithStripe() && !canPayWithWechat(plan)"
+              v-if="!hasAnyChannel(plan)"
               class="text-center text-xs text-muted"
             >
               {{ t('membership.noPaymentMethod') }}

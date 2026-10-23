@@ -83,7 +83,7 @@ export async function getActiveMembership(identity: MemberIdentity): Promise<Act
  */
 export async function activateMembership(input: MemberIdentity & {
   planId?: number | null
-  source?: 'stripe' | 'wechat' | 'manual'
+  source?: 'stripe' | 'wechat' | 'alipay' | 'manual'
   outTradeNo?: string | null
   amountCents?: number | null
   grantedBy?: number | null
@@ -190,7 +190,7 @@ export async function fulfilMembershipOrder(order: {
   wxUserId?: number | null
   outTradeNo?: string | null
   amount?: number | null
-  source: 'stripe' | 'wechat'
+  source: 'stripe' | 'wechat' | 'alipay'
 }): Promise<MembershipSubscription | null> {
   if (order.bizType !== 'membership' || !order.bizRefId) return null
   const identity: MemberIdentity | null = order.userId

@@ -258,6 +258,7 @@
     "tabGeneral": "常规",
     "tabOauth": "第三方登录",
     "tabStripe": "支付",
+    "tabAlipay": "支付宝",
     "tabMail": "SMTP",
     "tabLlm": "大模型",
     "tabMenu": "菜单",
@@ -316,6 +317,15 @@
         "apiv3Key": "微信支付 APIv3 密钥（32 位）",
         "notifyUrl": "支付结果回调地址",
         "nativeAppId": "网页扫码支付使用的公众号 AppID（留空则用小程序 AppID）"
+      },
+      "alipay": {
+        "enabled": "启用支付宝网页支付",
+        "appId": "支付宝应用 APPID",
+        "privateKey": "支付宝应用私钥（PEM 或裸 base64）",
+        "publicKey": "支付宝公钥（用于验签回调）",
+        "gateway": "支付宝网关地址（测试可用沙箱网关）",
+        "notifyUrl": "异步通知地址（留空则用 <站点>/api/alipay/pay/notify）",
+        "returnUrl": "支付完成后浏览器跳回地址（可选）"
       },
       "membership": {
         "enabled": "启用付费会员订阅",
@@ -381,8 +391,9 @@
     "subscribe": "立即开通",
     "renew": "续费",
     "subscribeFailed": "发起支付失败，请稍后重试。",
-    "paymentNote": "支付由 Stripe 或微信支付安全处理，支付成功后会员立即生效。",
+    "paymentNote": "支付由 Stripe、微信支付或支付宝安全处理，支付成功后会员立即生效。",
     "payWithWechat": "微信支付",
+    "payWithAlipay": "支付宝支付",
     "noPaymentMethod": "该套餐暂未开启可用的支付方式。",
     "wechatTitle": "微信扫码支付",
     "wechatHint": "打开手机微信扫一扫，扫描二维码并完成支付。",

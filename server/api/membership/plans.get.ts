@@ -4,22 +4,24 @@ import { membershipPlans } from '~~/server/database/schema'
 import { isMembershipEnabled } from '~~/server/utils/membership'
 import { isStripeEnabled } from '~~/server/utils/stripe'
 import { isWxPayEnabled } from '~~/server/utils/wxPay'
+import { isAlipayEnabled } from '~~/server/utils/alipay'
 
 // GET /api/membership/plans — public pricing list (active, non-deleted plans).
 // Also reports which payment channels are available so the page can render only
 // the buttons it can actually fulfil.
 export default defineEventHandler(async () => {
-  const [enabled, stripe, wechat] = await Promise.all([
+  const [enabled, stripe, wechat, alipay] = await Promise.all([
     isMembershipEnabled(),
     isStripeEnabled(),
-    isWxPayEnabled()
+    isWxPayEnabled(),
+    isAlipayEnabled()
   ])
   const rows = await db.select().from(membershipPlans)
     .where(and(eq(membershipPlans.isActive, true), isNull(membershipPlans.deletedAt)))
     .orderBy(asc(membershipPlans.sortOrder), asc(membershipPlans.id))
   return {
     enabled,
-    payments: { stripe, wechat },
+    payments: { stripe, wechat, alipay },
     plans: rows
   }
 })

@@ -258,6 +258,7 @@
     "tabGeneral": "General",
     "tabOauth": "OAuth / SSO",
     "tabStripe": "Payments",
+    "tabAlipay": "Alipay",
     "tabMail": "SMTP",
     "tabLlm": "LLM",
     "tabMenu": "Menu",
@@ -316,6 +317,15 @@
         "apiv3Key": "WeChat Pay APIv3 key (32 chars)",
         "notifyUrl": "Payment notify callback URL",
         "nativeAppId": "Official-account AppID for web QR payments (blank = wx.appid)"
+      },
+      "alipay": {
+        "enabled": "Enable Alipay page pay (web)",
+        "appId": "Alipay application AppID",
+        "privateKey": "Alipay app private key (PEM or bare base64)",
+        "publicKey": "Alipay public key (for notify signature verification)",
+        "gateway": "Alipay gateway URL (use the sandbox gateway for testing)",
+        "notifyUrl": "Async notify URL (blank = <site>/api/alipay/pay/notify)",
+        "returnUrl": "Browser return URL after payment (optional)"
       },
       "membership": {
         "enabled": "Enable paid membership subscriptions",
@@ -381,8 +391,9 @@
     "subscribe": "Subscribe",
     "renew": "Renew",
     "subscribeFailed": "Failed to start checkout, please try again later.",
-    "paymentNote": "Payments are processed securely by Stripe or WeChat Pay. Membership activates immediately after the payment succeeds.",
+    "paymentNote": "Payments are processed securely by Stripe, WeChat Pay or Alipay. Membership activates immediately after the payment succeeds.",
     "payWithWechat": "Pay with WeChat",
+    "payWithAlipay": "Pay with Alipay",
     "noPaymentMethod": "No payment method is enabled for this plan.",
     "wechatTitle": "Scan to pay with WeChat",
     "wechatHint": "Open WeChat on your phone, scan the QR code and confirm the payment.",
