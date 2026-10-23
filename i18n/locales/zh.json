@@ -308,6 +308,20 @@
         "appid": "微信小程序 AppID",
         "secret": "微信小程序 AppSecret"
       },
+      "wx.pay": {
+        "enabled": "启用微信支付（小程序 JSAPI + 网页扫码）",
+        "mchid": "微信支付商户号 mchid",
+        "serialNo": "商户 API 证书序列号",
+        "privateKey": "商户 API 私钥（完整 PEM，含 BEGIN/END 行）",
+        "apiv3Key": "微信支付 APIv3 密钥（32 位）",
+        "notifyUrl": "支付结果回调地址",
+        "nativeAppId": "网页扫码支付使用的公众号 AppID（留空则用小程序 AppID）"
+      },
+      "membership": {
+        "enabled": "启用付费会员订阅",
+        "successUrl": "会员支付成功后的跳转地址",
+        "cancelUrl": "会员支付取消后的跳转地址"
+      },
       "analytics": {
         "googleAnalyticsId": "Google Analytics 4 衡量 ID（G-XXXXXXXXXX，留空关闭）",
         "googleAdsId": "Google Ads 转化 ID（AW-XXXXXXXXX，留空关闭）",
@@ -367,7 +381,15 @@
     "subscribe": "立即开通",
     "renew": "续费",
     "subscribeFailed": "发起支付失败，请稍后重试。",
-    "paymentNote": "支付由 Stripe 安全处理，支付成功后会员立即生效。",
+    "paymentNote": "支付由 Stripe 或微信支付安全处理，支付成功后会员立即生效。",
+    "payWithWechat": "微信支付",
+    "noPaymentMethod": "该套餐暂未开启可用的支付方式。",
+    "wechatTitle": "微信扫码支付",
+    "wechatHint": "打开手机微信扫一扫，扫描二维码并完成支付。",
+    "wechatScanning": "正在等待支付结果…",
+    "wechatPaid": "支付成功，会员已开通。",
+    "wechatClosed": "订单已关闭或已过期，请重新发起支付。",
+    "close": "关闭",
     "disabled": "会员订阅功能当前已关闭。"
   },
   "profile": {

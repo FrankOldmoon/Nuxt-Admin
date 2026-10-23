@@ -82,10 +82,15 @@ Upload (configurable size / MIME whitelist), local storage, download/serve, per-
 - API: `POST /api/wx/pay/order` + `POST /api/wx/pay/notify`; `POST /api/stripe/pay/order` + `GET /api/stripe/pay/order` + `POST /api/stripe/pay/notify`.
 
 ### Membership / Subscription
-- **Time-based paid membership**: admin-defined plans (`membership_plans`: name, duration in days, price in the smallest currency unit, featured flag), purchased through Stripe Checkout (`/api/membership/subscribe`).
-- The membership period is activated by the payment webhook (`checkout.session.completed`) or by order-query reconciliation if the webhook is lost, then stored in `membership_subscriptions` (start / expiry / source / order no. / amount).
+- **Time-based paid membership**: admin-defined plans (`membership_plans`: name, duration in days, price in the smallest currency unit, featured flag), purchasable from the public `/membership` pricing page.
+- **Two payment channels**, each rendered only when enabled in System Config:
+  - **Stripe Checkout** (web, any currency) — `POST /api/membership/subscribe` returns the hosted-page URL.
+  - **WeChat Pay Native** (web, CNY plans only) — `POST /api/membership/wechat/order` returns a `code_url` rendered as a QR code; the page polls `GET /api/membership/wechat/order` until it settles.
+  - **WeChat Pay JSAPI** (mini-program) — `POST /api/wx/membership/order` returns `wx.requestPayment` params; poll `GET /api/wx/membership/order` for the result.
+- Membership periods are stored in `membership_subscriptions` (start / expiry / source / order no. / amount) and activated **server-side only** on payment success — by the WeChat/Stripe callback or by order-query reconciliation when the callback is lost; the browser never grants membership.
+- Subscribers can be website accounts (`user_id`) or mini-program users (`wx_user_id`); both share the same fulfilment logic.
 - **Renewals stack**: a new purchase starts where the current period ends instead of overwriting it, so paying twice simply extends the expiry date.
-- Public pricing page at `/membership` shows the current status (days left) and plan cards; admin CRUD for plans and subscriptions is registered in the sidebar, plus manual **grant / revoke** API (`/api/membership/admin/grant|revoke`) for offline payments.
+- Admin CRUD for plans and subscriptions is registered in the sidebar, plus manual **grant / revoke** API (`/api/membership/admin/grant|revoke`) for offline payments.
 - Gated by `membership.enabled` (System Config → General); redirect paths are configurable (`membership.successUrl` / `membership.cancelUrl`).
 
 ### Analytics / Tracking

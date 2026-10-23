@@ -17,6 +17,6 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Not Found', message: 'User not found' })
   }
 
-  const cancelled = await revokeMembership(userId, auth.user.id, body?.note?.trim()?.slice(0, 255) || null)
+  const cancelled = await revokeMembership({ userId }, auth.user.id, body?.note?.trim()?.slice(0, 255) || null)
   return { ok: true, cancelled }
 })

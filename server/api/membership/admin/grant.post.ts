@@ -31,6 +31,6 @@ export default defineEventHandler(async (event) => {
     grantedBy: auth.user.id,
     note: body?.note?.trim()?.slice(0, 255) || null
   })
-  const active = await getActiveMembership(userId)
+  const active = await getActiveMembership({ userId })
   return { ok: true, subscription, membership: active }
 })

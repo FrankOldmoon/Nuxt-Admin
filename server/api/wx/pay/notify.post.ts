@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '~~/server/database'
 import { wxPayOrders } from '~~/server/database/schema'
 import { verifyWxPayNotifySignature, decryptWxPayResource } from '~~/server/utils/wxPay'
+import { fulfilMembershipOrder } from '~~/server/utils/membership'
 
 // POST /api/wx/pay/notify — WeChat Pay v3 async notification (called by WeChat servers, no local auth)
 // Flow: verify signature (platform cert) → decrypt resource → validate amount → update order → return {"code":"SUCCESS"}
@@ -69,6 +70,16 @@ export default defineEventHandler(async (event) => {
         updatedAt: new Date()
       }).where(eq(wxPayOrders.id, order.id))
       console.log('[wxpay] order paid:', outTradeNo, '| transaction:', data.transaction_id)
+      // Post-payment fulfilment (membership orders opened by the web or the mini-program)
+      await fulfilMembershipOrder({
+        bizType: order.bizType,
+        bizRefId: order.bizRefId,
+        userId: order.userId,
+        wxUserId: order.wxUserId,
+        outTradeNo: order.outTradeNo,
+        amount: order.amount,
+        source: 'wechat'
+      })
     } else {
       console.log('[wxpay] duplicate notify ignored for:', outTradeNo)
     }

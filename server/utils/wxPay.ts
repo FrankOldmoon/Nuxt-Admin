@@ -211,6 +211,64 @@ export async function createJsapiOrder(params: {
   return { prepayId: res.prepay_id, payment: { timeStamp, nonceStr, package: pkg, signType: 'RSA', paySign } }
 }
 
+/** Non-throwing check: is WeChat Pay switched on and fully configured? */
+export async function isWxPayEnabled(): Promise<boolean> {
+  if (!(await getConfigValue<boolean>('wx.pay.enabled', false))) return false
+  const values = await Promise.all([
+    getConfigValue<string>('wx.appid', ''),
+    getConfigValue<string>('wx.pay.mchid', ''),
+    getConfigValue<string>('wx.pay.serialNo', ''),
+    getConfigValue<string>('wx.pay.privateKey', ''),
+    getConfigValue<string>('wx.pay.apiv3Key', ''),
+    getConfigValue<string>('wx.pay.notifyUrl', '')
+  ])
+  return values.every(v => !!v?.trim())
+}
+
+// --- Native order (web: scan a QR code with WeChat) ---
+
+export interface NativeOrderResult {
+  codeUrl: string
+}
+
+/**
+ * Create a Native order and return its `code_url`. The web client renders that
+ * URL as a QR code; the payer scans it in WeChat and the payment result arrives
+ * through the same `/api/wx/pay/notify` callback as JSAPI orders.
+ */
+export async function createNativeOrder(params: {
+  outTradeNo: string
+  description: string
+  amountFen: number
+}): Promise<NativeOrderResult> {
+  const cfg = await getWxPayConfig()
+  // Native (QR) payments must be placed with the AppID bound to the merchant:
+  // an official-account AppID for websites, which may differ from the
+  // mini-program AppID used by JSAPI.
+  const appid = (await getConfigValue<string>('wx.pay.nativeAppId', '')).trim() || cfg.appid
+  const res = await wxPayRequest<{ code_url?: string, code?: string, message?: string }>(
+    'POST',
+    '/v3/pay/transactions/native',
+    {
+      appid,
+      mchid: cfg.mchid,
+      description: params.description,
+      out_trade_no: params.outTradeNo,
+      notify_url: cfg.notifyUrl,
+      amount: { total: params.amountFen, currency: 'CNY' }
+    }
+  )
+  if (!res.code_url) {
+    console.error('[wxpay] native order failed:', res)
+    throw createError({
+      statusCode: 502,
+      statusMessage: 'Bad Gateway',
+      message: `WeChat Pay native order error: ${res.message ?? 'unknown'}`
+    })
+  }
+  return { codeUrl: res.code_url }
+}
+
 // --- query order (reconciliation / fallback for lost callbacks) ---
 
 export async function queryWxPayOrderByOutTradeNo(outTradeNo: string): Promise<{

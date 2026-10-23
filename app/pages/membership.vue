@@ -2,11 +2,17 @@
 /**
  * Public membership / subscription page (`/membership`).
  *
- * Shows the current membership status and the purchasable plans. Clicking a
- * plan creates a Stripe Checkout session via `/api/membership/subscribe` and
- * redirects to the hosted payment page; the membership period is activated by
- * the payment webhook once the charge succeeds.
+ * Shows the current membership status and the purchasable plans. Two payment
+ * channels are supported and rendered only when enabled in System Config:
+ * - Stripe Checkout: creates a session via `/api/membership/subscribe` and
+ *   redirects to the hosted payment page.
+ * - WeChat Pay Native: creates a Native order and shows its `code_url` as a QR
+ *   code; the page polls the order until the payment is confirmed.
+ * In both cases the membership period is activated server-side on payment
+ * success, never from the browser.
  */
+import QRCode from 'qrcode'
+
 const { t, locale } = useI18n()
 const { isLoggedIn } = useAuth()
 
@@ -37,7 +43,11 @@ interface MembershipInfo {
   }
 }
 
-const { data: planData } = await useFetch<{ enabled: boolean, plans: Plan[] }>('/api/membership/plans')
+const { data: planData } = await useFetch<{
+  enabled: boolean
+  payments: { stripe: boolean, wechat: boolean }
+  plans: Plan[]
+}>('/api/membership/plans')
 const { data: myMembership, refresh: refreshMembership } = await useAsyncData<MembershipInfo | null>(
   'membership:me',
   () => isLoggedIn.value ? $fetch<MembershipInfo>('/api/membership/me') : Promise.resolve(null),
@@ -81,11 +91,23 @@ function formatDate(value: string): string {
   return new Date(value).toLocaleDateString(locale.value)
 }
 
+/** WeChat Pay settles in CNY, so only CNY-priced plans can be paid that way. */
+function canPayWithWechat(plan: Plan): boolean {
+  return !!planData.value?.payments.wechat && plan.currency.toLowerCase() === 'cny'
+}
+
+function canPayWithStripe(): boolean {
+  return !!planData.value?.payments.stripe
+}
+
+async function requireLogin(): Promise<boolean> {
+  if (isLoggedIn.value) return true
+  await navigateTo({ path: '/login', query: { redirect: '/membership' } })
+  return false
+}
+
 async function subscribe(plan: Plan) {
-  if (!isLoggedIn.value) {
-    await navigateTo({ path: '/login', query: { redirect: '/membership' } })
-    return
-  }
+  if (!(await requireLogin())) return
   subscribing.value = plan.id
   errorMessage.value = ''
   try {
@@ -102,6 +124,73 @@ async function subscribe(plan: Plan) {
     subscribing.value = null
   }
 }
+
+// --- WeChat Pay (Native QR code) ---
+const wxDialogOpen = ref(false)
+const wxQrDataUrl = ref('')
+const wxOutTradeNo = ref('')
+const wxStatus = ref<'pending' | 'success' | 'closed' | 'error'>('pending')
+const wxStarting = ref(false)
+let wxPollTimer: ReturnType<typeof setInterval> | null = null
+
+function stopWxPolling() {
+  if (wxPollTimer) {
+    clearInterval(wxPollTimer)
+    wxPollTimer = null
+  }
+}
+
+async function payWithWechat(plan: Plan) {
+  if (!(await requireLogin())) return
+  wxStarting.value = true
+  errorMessage.value = ''
+  wxStatus.value = 'pending'
+  wxQrDataUrl.value = ''
+  try {
+    const res = await $fetch<{ outTradeNo: string, codeUrl: string }>('/api/membership/wechat/order', {
+      method: 'POST',
+      body: { planId: plan.id }
+    })
+    wxOutTradeNo.value = res.outTradeNo
+    wxQrDataUrl.value = await QRCode.toDataURL(res.codeUrl, { width: 240, margin: 1 })
+    wxDialogOpen.value = true
+    startWxPolling()
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string }, message?: string }
+    errorMessage.value = err?.data?.message ?? err?.message ?? t('membership.subscribeFailed')
+  } finally {
+    wxStarting.value = false
+  }
+}
+
+function startWxPolling() {
+  stopWxPolling()
+  // The payer scans the code on their phone; poll until the order settles
+  wxPollTimer = setInterval(async () => {
+    try {
+      const res = await $fetch<{ status: string }>('/api/membership/wechat/order', {
+        query: { outTradeNo: wxOutTradeNo.value }
+      })
+      if (res.status === 'success') {
+        wxStatus.value = 'success'
+        stopWxPolling()
+        await refreshMembership()
+      } else if (res.status === 'closed') {
+        wxStatus.value = 'closed'
+        stopWxPolling()
+      }
+    } catch (e) {
+      console.warn('[membership] wechat order poll failed:', e)
+    }
+  }, 2000)
+}
+
+function closeWxDialog() {
+  wxDialogOpen.value = false
+  stopWxPolling()
+}
+
+onBeforeUnmount(stopWxPolling)
 </script>
 
 <template>
@@ -210,16 +299,37 @@ async function subscribe(plan: Plan) {
           >
             {{ plan.description }}
           </p>
-          <UButton
-            class="mt-6 w-full justify-center"
-            color="primary"
-            :variant="plan.isFeatured ? 'solid' : 'outline'"
-            :loading="subscribing === plan.id"
-            :disabled="subscribing !== null || syncing"
-            @click="subscribe(plan)"
-          >
-            {{ myMembership?.isMember ? t('membership.renew') : t('membership.subscribe') }}
-          </UButton>
+          <div class="mt-6 flex flex-col gap-2">
+            <UButton
+              v-if="canPayWithStripe()"
+              class="w-full justify-center"
+              color="primary"
+              :variant="plan.isFeatured ? 'solid' : 'outline'"
+              :loading="subscribing === plan.id"
+              :disabled="subscribing !== null || wxStarting || syncing"
+              @click="subscribe(plan)"
+            >
+              {{ myMembership?.isMember ? t('membership.renew') : t('membership.subscribe') }}
+            </UButton>
+            <UButton
+              v-if="canPayWithWechat(plan)"
+              class="w-full justify-center"
+              color="success"
+              :variant="plan.isFeatured && !canPayWithStripe() ? 'solid' : 'outline'"
+              icon="i-lucide-qr-code"
+              :loading="wxStarting"
+              :disabled="subscribing !== null || wxStarting"
+              @click="payWithWechat(plan)"
+            >
+              {{ t('membership.payWithWechat') }}
+            </UButton>
+            <p
+              v-if="!canPayWithStripe() && !canPayWithWechat(plan)"
+              class="text-center text-xs text-muted"
+            >
+              {{ t('membership.noPaymentMethod') }}
+            </p>
+          </div>
         </div>
       </UCard>
     </div>
@@ -227,5 +337,62 @@ async function subscribe(plan: Plan) {
     <p class="mt-8 text-center text-xs text-muted">
       {{ t('membership.paymentNote') }}
     </p>
+
+    <!-- WeChat Pay QR code dialog -->
+    <UModal
+      v-model:open="wxDialogOpen"
+      :title="t('membership.wechatTitle')"
+      :description="t('membership.wechatHint')"
+      :dismissible="wxStatus !== 'success'"
+    >
+      <template #body>
+        <div class="flex flex-col items-center gap-4 py-2">
+          <template v-if="wxStatus === 'success'">
+            <UIcon
+              name="i-lucide-check-circle-2"
+              class="size-16 text-success"
+            />
+            <p class="text-lg font-semibold text-highlighted">
+              {{ t('membership.wechatPaid') }}
+            </p>
+          </template>
+          <template v-else-if="wxStatus === 'closed'">
+            <UIcon
+              name="i-lucide-x-circle"
+              class="size-16 text-error"
+            />
+            <p class="text-lg font-semibold text-highlighted">
+              {{ t('membership.wechatClosed') }}
+            </p>
+          </template>
+          <template v-else>
+            <img
+              v-if="wxQrDataUrl"
+              :src="wxQrDataUrl"
+              :alt="t('membership.wechatTitle')"
+              class="size-60 rounded-lg bg-white p-3"
+            >
+            <div class="flex items-center gap-2 text-sm text-muted">
+              <UIcon
+                name="i-lucide-loader-circle"
+                class="size-4 animate-spin"
+              />
+              {{ t('membership.wechatScanning') }}
+            </div>
+          </template>
+        </div>
+      </template>
+      <template #footer>
+        <div class="flex w-full justify-end">
+          <UButton
+            color="neutral"
+            variant="outline"
+            @click="closeWxDialog"
+          >
+            {{ t('membership.close') }}
+          </UButton>
+        </div>
+      </template>
+    </UModal>
   </UContainer>
 </template>

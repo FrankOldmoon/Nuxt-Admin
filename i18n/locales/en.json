@@ -308,6 +308,20 @@
         "appid": "WeChat Mini Program AppID",
         "secret": "WeChat Mini Program AppSecret"
       },
+      "wx.pay": {
+        "enabled": "Enable WeChat Pay (mini-program JSAPI + web QR)",
+        "mchid": "WeChat Pay merchant ID (mchid)",
+        "serialNo": "Merchant API certificate serial number",
+        "privateKey": "Merchant API private key (full PEM, with BEGIN/END lines)",
+        "apiv3Key": "WeChat Pay APIv3 key (32 chars)",
+        "notifyUrl": "Payment notify callback URL",
+        "nativeAppId": "Official-account AppID for web QR payments (blank = wx.appid)"
+      },
+      "membership": {
+        "enabled": "Enable paid membership subscriptions",
+        "successUrl": "Redirect after successful membership payment",
+        "cancelUrl": "Redirect after cancelled membership payment"
+      },
       "analytics": {
         "googleAnalyticsId": "Google Analytics 4 Measurement ID (G-XXXXXXXXXX, empty = off)",
         "googleAdsId": "Google Ads Conversion ID (AW-XXXXXXXXX, empty = off)",
@@ -367,7 +381,15 @@
     "subscribe": "Subscribe",
     "renew": "Renew",
     "subscribeFailed": "Failed to start checkout, please try again later.",
-    "paymentNote": "Payments are processed securely by Stripe. Membership activates immediately after the payment succeeds.",
+    "paymentNote": "Payments are processed securely by Stripe or WeChat Pay. Membership activates immediately after the payment succeeds.",
+    "payWithWechat": "Pay with WeChat",
+    "noPaymentMethod": "No payment method is enabled for this plan.",
+    "wechatTitle": "Scan to pay with WeChat",
+    "wechatHint": "Open WeChat on your phone, scan the QR code and confirm the payment.",
+    "wechatScanning": "Waiting for payment confirmation…",
+    "wechatPaid": "Payment succeeded — your membership is active.",
+    "wechatClosed": "This order was closed or expired. Please start a new payment.",
+    "close": "Close",
     "disabled": "Membership subscriptions are currently disabled."
   },
   "profile": {

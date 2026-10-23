@@ -4,7 +4,7 @@ import { isMembershipEnabled, getActiveMembership } from '~~/server/utils/member
 export default defineEventHandler(async (event) => {
   const auth = await requireUser(event)
   const enabled = await isMembershipEnabled()
-  const active = await getActiveMembership(auth.user.id)
+  const active = await getActiveMembership({ userId: auth.user.id })
   return {
     enabled,
     isMember: active !== null,

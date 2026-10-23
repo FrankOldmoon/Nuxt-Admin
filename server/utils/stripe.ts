@@ -20,6 +20,13 @@ export interface StripeConfig {
   cancelUrl: string
 }
 
+/** Non-throwing check: is Stripe switched on and is the secret key present? */
+export async function isStripeEnabled(): Promise<boolean> {
+  const enabled = await getConfigValue<boolean>('stripe.enabled', false)
+  if (!enabled) return false
+  return !!(await getConfigValue<string>('stripe.secretKey', ''))?.trim()
+}
+
 /** Load Stripe config; throws 409 when the payment switch is off. */
 export async function getStripeConfig(): Promise<StripeConfig> {
   const enabled = await getConfigValue<boolean>('stripe.enabled', false)

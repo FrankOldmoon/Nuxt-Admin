@@ -132,7 +132,9 @@ export const membershipSubscriptions = pgTable(
   'membership_subscriptions',
   {
     id: serial('id').primaryKey(),
-    userId: integer('user_id').notNull(),
+    // Payer identity: exactly one of userId (website account) / wxUserId (mini-program)
+    userId: integer('user_id'),
+    wxUserId: integer('wx_user_id'),
     planId: integer('plan_id'),
     // active | expired | cancelled
     status: varchar('status', { length: 20 }).default('active').notNull(),
@@ -150,6 +152,7 @@ export const membershipSubscriptions = pgTable(
   },
   table => ({
     userIdx: index('membership_subscriptions_user_idx').on(table.userId),
+    wxUserIdx: index('membership_subscriptions_wx_user_idx').on(table.wxUserId),
     statusIdx: index('membership_subscriptions_status_idx').on(table.status),
     userFk: foreignKey({ columns: [table.userId], foreignColumns: [users.id] })
       .onDelete('cascade')
@@ -438,12 +441,19 @@ export const wxPayOrders = pgTable(
     id: serial('id').primaryKey(),
     // Merchant order number (out_trade_no), generated server-side
     outTradeNo: varchar('out_trade_no', { length: 32 }).notNull(),
-    wxUserId: integer('wx_user_id').notNull(),
-    openid: varchar('openid', { length: 64 }).notNull(),
+    // Mini-program payer (null for web/Native orders paid by a dashboard user)
+    wxUserId: integer('wx_user_id'),
+    // Dashboard user payer (null for mini-program orders)
+    userId: integer('user_id'),
+    openid: varchar('openid', { length: 64 }),
     amount: integer('amount').notNull(),
     description: varchar('description', { length: 127 }).notNull(),
     // pending | success | closed
     status: varchar('status', { length: 20 }).default('pending').notNull(),
+    // Business type of the purchase: generic | membership
+    bizType: varchar('biz_type', { length: 20 }).default('generic').notNull(),
+    // Business reference id (e.g. membership plan id), interpreted per bizType
+    bizRefId: integer('biz_ref_id'),
     transactionId: varchar('transaction_id', { length: 64 }),
     paidAt: timestamp('paid_at', { withTimezone: true }),
     // Raw notify payload kept for audit
@@ -454,8 +464,12 @@ export const wxPayOrders = pgTable(
   table => ({
     outTradeNoIdx: uniqueIndex('wx_pay_orders_out_trade_no_idx').on(table.outTradeNo),
     wxUserIdx: index('wx_pay_orders_wx_user_idx').on(table.wxUserId),
+    userIdx: index('wx_pay_orders_user_idx').on(table.userId),
     wxUserFk: foreignKey({ columns: [table.wxUserId], foreignColumns: [wxUsers.id] })
-      .onDelete('cascade')
+      .onDelete('set null')
+      .onUpdate('cascade'),
+    userFk: foreignKey({ columns: [table.userId], foreignColumns: [users.id] })
+      .onDelete('set null')
       .onUpdate('cascade')
   })
 )
