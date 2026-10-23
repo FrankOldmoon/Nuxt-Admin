@@ -62,6 +62,8 @@ export async function createCheckoutSession(params: {
   successUrl: string
   cancelUrl: string
   secretKey: string
+  /** Extra metadata propagated back in the webhook (e.g. bizType / planId / userId) */
+  metadata?: Record<string, string | number | null | undefined>
 }): Promise<StripeCheckoutResult> {
   const form = new URLSearchParams({
     'mode': 'payment',
@@ -74,6 +76,11 @@ export async function createCheckoutSession(params: {
     'line_items[0][price_data][unit_amount]': String(params.amountCents),
     'line_items[0][price_data][product_data][name]': params.description.slice(0, 250)
   })
+  // Stripe metadata values are strings capped at 500 chars
+  for (const [key, value] of Object.entries(params.metadata ?? {})) {
+    if (value === null || value === undefined || value === '') continue
+    form.set(`metadata[${key}]`, String(value).slice(0, 500))
+  }
   if (params.customerEmail) form.set('customer_email', params.customerEmail)
 
   type StripeRequestError = { data?: { error?: { message?: string } }, message?: string }

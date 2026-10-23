@@ -96,6 +96,73 @@ export const oauthAccounts = pgTable(
 export type OAuthAccount = typeof oauthAccounts.$inferSelect
 export type NewOAuthAccount = typeof oauthAccounts.$inferInsert
 
+// Membership (subscription) plans. A plan is a purchasable option granting
+// `durationDays` of membership. Prices are stored in the smallest currency unit.
+export const membershipPlans = pgTable(
+  'membership_plans',
+  {
+    id: serial('id').primaryKey(),
+    slug: varchar('slug', { length: 50 }).notNull(),
+    nameEn: varchar('name_en', { length: 100 }).notNull(),
+    nameZh: varchar('name_zh', { length: 100 }).notNull(),
+    description: varchar('description', { length: 255 }),
+    durationDays: integer('duration_days').notNull(),
+    priceCents: integer('price_cents').notNull(),
+    currency: varchar('currency', { length: 10 }).default('usd').notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    sortOrder: integer('sort_order').default(0).notNull(),
+    // Optional "recommended" badge flag rendered on the pricing page
+    isFeatured: boolean('is_featured').default(false).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true })
+  },
+  table => ({
+    slugIdx: uniqueIndex('membership_plans_slug_idx').on(table.slug)
+  })
+)
+
+export type MembershipPlan = typeof membershipPlans.$inferSelect
+export type NewMembershipPlan = typeof membershipPlans.$inferInsert
+
+// Membership subscriptions. The active membership is the subscription with
+// status='active' and the furthest expiresAt in the future, so renewals can
+// simply stack / extend the existing period.
+export const membershipSubscriptions = pgTable(
+  'membership_subscriptions',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id').notNull(),
+    planId: integer('plan_id'),
+    // active | expired | cancelled
+    status: varchar('status', { length: 20 }).default('active').notNull(),
+    startsAt: timestamp('starts_at', { withTimezone: true }).defaultNow().notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    // Payment source: stripe | wechat | manual
+    source: varchar('source', { length: 20 }).default('stripe').notNull(),
+    outTradeNo: varchar('out_trade_no', { length: 64 }),
+    amountCents: integer('amount_cents'),
+    // Admin who granted/cancelled the subscription (manual operations)
+    grantedBy: integer('granted_by'),
+    note: varchar('note', { length: 255 }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    userIdx: index('membership_subscriptions_user_idx').on(table.userId),
+    statusIdx: index('membership_subscriptions_status_idx').on(table.status),
+    userFk: foreignKey({ columns: [table.userId], foreignColumns: [users.id] })
+      .onDelete('cascade')
+      .onUpdate('cascade'),
+    planFk: foreignKey({ columns: [table.planId], foreignColumns: [membershipPlans.id] })
+      .onDelete('set null')
+      .onUpdate('cascade')
+  })
+)
+
+export type MembershipSubscription = typeof membershipSubscriptions.$inferSelect
+export type NewMembershipSubscription = typeof membershipSubscriptions.$inferInsert
+
 export const configs = pgTable(
   'configs',
   {
@@ -275,7 +342,7 @@ export const templates = pgTable(
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
     deletedAt: timestamp('deleted_at', { withTimezone: true })
   },
-  (table) => ({
+  table => ({
     statusIdx: index('templates_status_idx').on(table.status),
     userIdx: index('templates_user_idx').on(table.userId),
     userFk: foreignKey({ columns: [table.userId], foreignColumns: [users.id] })
@@ -296,17 +363,17 @@ export const templateUsers = pgTable(
     id: serial('id').primaryKey(),
     templateId: integer('template_id').notNull(),
     userId: integer('user_id').notNull(),
-    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
   },
-  (table) => ({
+  table => ({
     pairIdx: uniqueIndex('template_users_pair_idx').on(table.templateId, table.userId),
     templateFk: foreignKey({ columns: [table.templateId], foreignColumns: [templates.id] })
       .onDelete('cascade')
       .onUpdate('cascade'),
     userFk: foreignKey({ columns: [table.userId], foreignColumns: [users.id] })
       .onDelete('cascade')
-      .onUpdate('cascade'),
-  }),
+      .onUpdate('cascade')
+  })
 )
 
 export type TemplateUser = typeof templateUsers.$inferSelect
@@ -417,6 +484,10 @@ export const stripeOrders = pgTable(
     sessionId: varchar('session_id', { length: 255 }),
     // pending | paid | closed
     status: varchar('status', { length: 20 }).default('pending').notNull(),
+    // Business type of the purchase: generic | membership
+    bizType: varchar('biz_type', { length: 20 }).default('generic').notNull(),
+    // Business reference id (e.g. membership plan id), interpreted per bizType
+    bizRefId: integer('biz_ref_id'),
     transactionId: varchar('transaction_id', { length: 255 }),
     paidAt: timestamp('paid_at', { withTimezone: true }),
     // Raw webhook payload kept for audit

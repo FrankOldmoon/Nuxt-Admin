@@ -240,7 +240,7 @@ const notificationFields: FieldMeta[] = [
   {
     key: 'createdBy', label: 'Created By ID', type: 'number', nullable: false,
     showInForm: false, showInTable: true, showInDetail: true, editable: false,
-    widthClass: 'w-24',
+    widthClass: 'w-24'
     // If you want to render this as a user dropdown, uncomment the relation below
     // relation: { table: 'users', labelKey: 'username', valueKey: 'id' }
   },
@@ -412,6 +412,148 @@ const templatesFields: FieldMeta[] = [
   }
 ]
 
+const membershipPlansFields: FieldMeta[] = [
+  {
+    key: 'id', label: 'ID', type: 'number', nullable: false,
+    showInForm: false, showInTable: true, showInDetail: true, editable: false,
+    widthClass: 'w-16'
+  },
+  {
+    key: 'slug', label: 'Slug', type: 'text', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true,
+    validation: { required: true, maxLength: 50 },
+    placeholder: 'e.g. monthly'
+  },
+  {
+    key: 'nameEn', label: 'Name (English)', type: 'text', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true,
+    validation: { required: true, maxLength: 100 }
+  },
+  {
+    key: 'nameZh', label: 'Name (Chinese)', type: 'text', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true,
+    validation: { required: true, maxLength: 100 }
+  },
+  {
+    key: 'description', label: 'Description', type: 'text', nullable: true,
+    showInForm: true, showInTable: false, showInDetail: true, editable: true,
+    validation: { maxLength: 255 }
+  },
+  {
+    key: 'durationDays', label: 'Duration (days)', type: 'number', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true,
+    validation: { required: true, min: 1 },
+    helpText: 'Membership period granted per purchase (e.g. 30 / 90 / 365)'
+  },
+  {
+    key: 'priceCents', label: 'Price (cents)', type: 'number', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true,
+    validation: { required: true, min: 1 },
+    helpText: 'Smallest currency unit: 990 = $9.90'
+  },
+  {
+    key: 'currency', label: 'Currency', type: 'text', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true,
+    validation: { required: true, maxLength: 10 },
+    placeholder: 'usd'
+  },
+  {
+    key: 'isActive', label: 'Active', type: 'boolean', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true
+  },
+  {
+    key: 'isFeatured', label: 'Featured', type: 'boolean', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true,
+    helpText: 'Highlighted as the recommended plan on the pricing page'
+  },
+  {
+    key: 'sortOrder', label: 'Sort Order', type: 'number', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true
+  },
+  {
+    key: 'createdAt', label: 'Created At', type: 'datetime', nullable: false,
+    showInForm: false, showInTable: false, showInDetail: true, editable: false
+  },
+  {
+    key: 'updatedAt', label: 'Updated At', type: 'datetime', nullable: false,
+    showInForm: false, showInTable: false, showInDetail: true, editable: false
+  },
+  {
+    key: 'deletedAt', label: 'Deleted At', type: 'datetime', nullable: true,
+    showInForm: false, showInTable: false, showInDetail: true, editable: false
+  }
+]
+
+const membershipSubscriptionsFields: FieldMeta[] = [
+  {
+    key: 'id', label: 'ID', type: 'number', nullable: false,
+    showInForm: false, showInTable: true, showInDetail: true, editable: false,
+    widthClass: 'w-16'
+  },
+  {
+    key: 'userId', label: 'User', type: 'relation', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true,
+    relation: { table: 'users', labelKey: 'username', valueKey: 'id' }
+  },
+  {
+    key: 'planId', label: 'Plan', type: 'relation', nullable: true,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true,
+    relation: { table: 'membershipPlans', labelKey: 'nameEn', valueKey: 'id' }
+  },
+  {
+    key: 'status', label: 'Status', type: 'select', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true,
+    options: [
+      { label: 'Active', value: 'active' },
+      { label: 'Expired', value: 'expired' },
+      { label: 'Cancelled', value: 'cancelled' }
+    ]
+  },
+  {
+    key: 'startsAt', label: 'Starts At', type: 'datetime', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true
+  },
+  {
+    key: 'expiresAt', label: 'Expires At', type: 'datetime', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true
+  },
+  {
+    key: 'source', label: 'Source', type: 'select', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true,
+    options: [
+      { label: 'Stripe', value: 'stripe' },
+      { label: 'WeChat', value: 'wechat' },
+      { label: 'Manual', value: 'manual' }
+    ]
+  },
+  {
+    key: 'outTradeNo', label: 'Order No.', type: 'text', nullable: true,
+    showInForm: true, showInTable: true, showInDetail: true, editable: false,
+    validation: { maxLength: 64 }
+  },
+  {
+    key: 'amountCents', label: 'Amount (cents)', type: 'number', nullable: true,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true
+  },
+  {
+    key: 'grantedBy', label: 'Granted By (admin id)', type: 'number', nullable: true,
+    showInForm: false, showInTable: false, showInDetail: true, editable: false
+  },
+  {
+    key: 'note', label: 'Note', type: 'text', nullable: true,
+    showInForm: true, showInTable: false, showInDetail: true, editable: true,
+    validation: { maxLength: 255 }
+  },
+  {
+    key: 'createdAt', label: 'Created At', type: 'datetime', nullable: false,
+    showInForm: false, showInTable: true, showInDetail: true, editable: false
+  },
+  {
+    key: 'updatedAt', label: 'Updated At', type: 'datetime', nullable: false,
+    showInForm: false, showInTable: false, showInDetail: true, editable: false
+  }
+]
+
 export interface RegisteredTable {
   meta: TableMeta
   /** Drizzle schema table handle — resolved from `schema[table]` at runtime */
@@ -432,7 +574,7 @@ const TABLES: RegisteredTable[] = [
       },
       custom: false
     },
-    getTable: (s) => s.roles
+    getTable: s => s.roles
   },
   {
     meta: {
@@ -449,7 +591,7 @@ const TABLES: RegisteredTable[] = [
       },
       custom: false
     },
-    getTable: (s) => s.users
+    getTable: s => s.users
   },
   {
     meta: {
@@ -465,7 +607,7 @@ const TABLES: RegisteredTable[] = [
       custom: true,
       customApi: '/api/config'
     },
-    getTable: (s) => s.configs
+    getTable: s => s.configs
   },
   {
     meta: {
@@ -481,7 +623,7 @@ const TABLES: RegisteredTable[] = [
       },
       custom: false
     },
-    getTable: (s) => s.files
+    getTable: s => s.files
   },
   {
     meta: {
@@ -497,7 +639,37 @@ const TABLES: RegisteredTable[] = [
       },
       custom: false
     },
-    getTable: (s) => s.notifications
+    getTable: s => s.notifications
+  },
+  {
+    meta: {
+      table: 'membershipPlans',
+      label: 'Membership Plans',
+      icon: 'i-lucide-badge-check',
+      fields: membershipPlansFields,
+      features: {
+        softDelete: true,
+        search: ['slug', 'nameEn', 'nameZh', 'description'],
+        defaultSort: { field: 'sortOrder', order: 'asc' }
+      },
+      custom: false
+    },
+    getTable: s => s.membershipPlans
+  },
+  {
+    meta: {
+      table: 'membershipSubscriptions',
+      label: 'Membership Subscriptions',
+      icon: 'i-lucide-calendar-check',
+      fields: membershipSubscriptionsFields,
+      features: {
+        softDelete: false,
+        search: ['outTradeNo', 'note'],
+        defaultSort: { field: 'id', order: 'desc' }
+      },
+      custom: false
+    },
+    getTable: s => s.membershipSubscriptions
   },
   {
     meta: {
@@ -512,7 +684,7 @@ const TABLES: RegisteredTable[] = [
       },
       custom: false
     },
-    getTable: (s) => s.templates
+    getTable: s => s.templates
   }
 ]
 
@@ -583,6 +755,8 @@ export const DEFAULT_MENU: Array<{
   { table: 'users', label: 'Users', icon: 'i-lucide-users', order: 20 },
   { table: 'files', label: 'Files', icon: 'i-lucide-folder-open', order: 30 },
   { table: 'notifications', label: 'Notifications', icon: 'i-lucide-bell-ring', order: 40 },
+  { table: 'membershipPlans', label: 'Membership Plans', icon: 'i-lucide-badge-check', order: 45 },
+  { table: 'membershipSubscriptions', label: 'Membership Subscriptions', icon: 'i-lucide-calendar-check', order: 46 },
   { table: 'templates', label: 'Templates', icon: 'i-lucide-file-text', order: 50 },
   { table: 'configs', label: 'System Config', icon: 'i-lucide-settings-2', order: 60 }
 ]
@@ -667,7 +841,7 @@ function inferFieldType(col: PgColumn): FieldType {
   // --- Date / datetime ---
   // Drizzle ships with multiple date variants depending on the driver:
   // PgDate, PgDateString, PgDateUtc, PgTimestamp, PgTimestamptz, PgTimestampUtc …
-  if (/^PgDate(?!T)/.test(ct)) return 'date'    // "not T" → exclude PgDateTime*
+  if (/^PgDate(?!T)/.test(ct)) return 'date' // "not T" → exclude PgDateTime*
   if (/^PgTimestamp/.test(ct)) return 'datetime'
   if (dt === 'date') return 'date'
 
@@ -708,7 +882,7 @@ function keyToLabel(key: string): string {
  *
  * Returns a RegisteredTable object on success, null on failure.
  */
-function findTableByName(name: string): { schema: Record<string, unknown>; exportKey: string; table: AnyPgTable } | null {
+function findTableByName(name: string): { schema: Record<string, unknown>, exportKey: string, table: AnyPgTable } | null {
   for (const schema of SCHEMA_REGISTRY) {
     for (const [exportKey, value] of Object.entries(schema)) {
       if (!isPgTable(value)) continue
@@ -764,7 +938,7 @@ export function singularize(word: string): string {
 
 /** Given a key ending with `_id` (or `Id`), return the related-table lookup
  *  name.  E.g. `user_id` / `userId` → "users"; `template_id` → "templates". */
-export function relationTargetFromForeignKey(fkKey: string): { table: string; labelKey: string; valueKey: string } {
+export function relationTargetFromForeignKey(fkKey: string): { table: string, labelKey: string, valueKey: string } {
   let base = fkKey
   if (base.endsWith('_id')) base = base.slice(0, -3)
   else if (base.endsWith('Id') && base.length > 2) base = base.slice(0, -2)
@@ -776,11 +950,11 @@ export function relationTargetFromForeignKey(fkKey: string): { table: string; la
 
 /** Describe a pivot table linking two registered tables. */
 export interface PivotRelation {
-  pivotTable: string                // registered / auto-discovered pivot name
-  leftTable: string                 // e.g. "templates"
-  leftFkKey: string                 // e.g. "templateId"
-  rightTable: string                // e.g. "users"
-  rightFkKey: string                // e.g. "userId"
+  pivotTable: string // registered / auto-discovered pivot name
+  leftTable: string // e.g. "templates"
+  leftFkKey: string // e.g. "templateId"
+  rightTable: string // e.g. "users"
+  rightFkKey: string // e.g. "userId"
 }
 
 /** Walk every drizzle table in the schema registry and identify pivot tables:
@@ -795,7 +969,7 @@ export function discoverAllPivotRelations(): PivotRelation[] {
       const cols = getTableColumns(value as unknown as AnyPgTable) as Record<string, PgColumn>
       const colKeys = Object.keys(cols)
       // Find candidate *_id / *Id columns that aren't the PK id column.
-      const fkCols = colKeys.filter(k => {
+      const fkCols = colKeys.filter((k) => {
         if (k === 'id') return false
         return k.endsWith('_id') || (/Id$/.test(k) && k.length > 2)
       })
@@ -803,7 +977,7 @@ export function discoverAllPivotRelations(): PivotRelation[] {
       // The rest of columns must be only id + well-known audit timestamps;
       // otherwise it's a business table not a pure pivot.
       const noise = colKeys.filter(k =>
-        k !== 'id' && !fkCols.includes(k) && !AUDIT_TIMESTAMP_KEY_RE.test(k),
+        k !== 'id' && !fkCols.includes(k) && !AUDIT_TIMESTAMP_KEY_RE.test(k)
       )
       if (noise.length > 0) continue
       // Both fks must map to a target table that exists as a registered/
@@ -819,7 +993,7 @@ export function discoverAllPivotRelations(): PivotRelation[] {
         leftTable: t0.table,
         leftFkKey,
         rightTable: t1.table,
-        rightFkKey,
+        rightFkKey
       })
     }
   }
@@ -830,7 +1004,7 @@ export function discoverAllPivotRelations(): PivotRelation[] {
  *  `many-to-many` FieldMeta entries + PivotRelation info so crudService /
  *  meta API can populate the form as multi-select and sync the pivot on
  *  save. */
-export function discoverManyToManyForTable(tableName: string): Array<{ field: FieldMeta; pivot: PivotRelation; otherSide: string }> {
+export function discoverManyToManyForTable(tableName: string): Array<{ field: FieldMeta, pivot: PivotRelation, otherSide: string }> {
   const pivots = discoverAllPivotRelations()
   const out: ReturnType<typeof discoverManyToManyForTable> = []
   for (const p of pivots) {
@@ -855,8 +1029,8 @@ export function discoverManyToManyForTable(tableName: string): Array<{ field: Fi
       relation: {
         table: target.table,
         labelKey: target.labelKey || 'name',
-        valueKey: target.valueKey || 'id',
-      },
+        valueKey: target.valueKey || 'id'
+      }
       // Optional: mark as UI-only virtual column. crudService reads this
       // to skip it for insert/update (and handle it via pivot instead).
     }
@@ -880,7 +1054,7 @@ export function attachManyToManyVirtualFields(meta: TableMeta): TableMeta {
   if (!newOnes.length) return meta
   return {
     ...meta,
-    fields: [...meta.fields, ...newOnes.map(e => e.field)],
+    fields: [...meta.fields, ...newOnes.map(e => e.field)]
   }
 }
 
@@ -917,7 +1091,6 @@ function applyFieldNamingHints(fm: FieldMeta) {
   }
 }
 
-
 /**
  * Build a full FieldMeta array for a PgTable based purely on its column
  * metadata.  Uses the column DECLARATION ORDER in the schema (that's what
@@ -935,8 +1108,8 @@ function inferFieldsFromTable(tbl: AnyPgTable): FieldMeta[] {
     // Drizzle exposes primary-flag both as `primary` and `isPrimary` across
     // versions — check both defensively.
     const isPrimary = Boolean(
-      (col as unknown as { primary?: boolean }).primary ||
-      (col as unknown as { isPrimary?: boolean }).isPrimary
+      (col as unknown as { primary?: boolean }).primary
+      || (col as unknown as { isPrimary?: boolean }).isPrimary
     )
 
     const type = inferFieldType(col)
@@ -955,13 +1128,13 @@ function inferFieldsFromTable(tbl: AnyPgTable): FieldMeta[] {
       nullable: !notNull,
       editable: !autoGenerated,
       showInForm: !autoGenerated,
-      showInTable: !isPrimary,      // primary key columns are usually noise in list view
-      showInDetail: true            // everything is interesting in the detail modal
+      showInTable: !isPrimary, // primary key columns are usually noise in list view
+      showInDetail: true // everything is interesting in the detail modal
     }
 
     // Some additional sensible defaults
     if (isPrimary) {
-      fm.showInTable = true        // always show id column so users can reference rows
+      fm.showInTable = true // always show id column so users can reference rows
       fm.widthClass = 'w-16'
     }
     if (AUDIT_TIMESTAMP_KEY_RE.test(key)) {
@@ -969,7 +1142,7 @@ function inferFieldsFromTable(tbl: AnyPgTable): FieldMeta[] {
       fm.widthClass = 'w-40'
     }
     if (type === 'textarea') {
-      fm.showInTable = false       // long-form text clobbers table columns
+      fm.showInTable = false // long-form text clobbers table columns
     }
     // REQUIRED validation — non-nullable + not-auto-generated means the
     // user MUST provide a value in the form.
@@ -1026,12 +1199,12 @@ export function autoDiscoverTable(name: string): RegisteredTable | null {
   const fields = inferFieldsFromTable(found.table)
   const sqlName = getTableNameSymbol(found.table) ?? found.exportKey
   let meta: TableMeta = {
-    table: name,                 // preserve the caller's lookup name (URL)
-    label: keyToLabel(sqlName),  // i18n frontend will override with t('dashboard.tables.X')
+    table: name, // preserve the caller's lookup name (URL)
+    label: keyToLabel(sqlName), // i18n frontend will override with t('dashboard.tables.X')
     icon: 'i-lucide-layout-grid',
     fields,
     features: inferTableFeatures(fields),
-    custom: false,
+    custom: false
   }
   meta = attachManyToManyVirtualFields(meta)
   const captured = found.table
@@ -1113,9 +1286,10 @@ export function listAllAutoDiscoverableTables(): RegisteredTable[] {
       // Prefer the lookup name that a human would type into the URL:
       //   1. TS exportKey (camelCase, e.g. `notificationReads`) – most common
       //   2. SQL table name if the export key has no manual registration
-      const lookupName =
-        alreadyManual.has(exportKey) ? exportKey :
-        (alreadyManual.has(sqlName) ? sqlName : exportKey)
+      const lookupName
+        = alreadyManual.has(exportKey)
+          ? exportKey
+          : (alreadyManual.has(sqlName) ? sqlName : exportKey)
 
       // Use the canonical lookup path — this populates the TABLES[] cache
       // for future getRegisteredTable() calls too, so everybody sees the
@@ -1138,7 +1312,7 @@ export function listAllAutoDiscoverableTables(): RegisteredTable[] {
         // we can tell that by checking TABLES.findIndex position vs
         // ORIGINAL_TABLES_LEN.
         const idx = TABLES.findIndex(t => t.meta.table === lookupName)
-        if (idx < ORIGINAL_TABLES_LENGTH) continue   // truly manual → skip
+        if (idx < ORIGINAL_TABLES_LENGTH) continue // truly manual → skip
       }
       // Otherwise (not originally manual) include it in the auto list,
       // dedup by (exportKey, sqlName) via seen sets above.

@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '~~/server/database'
 import { stripeOrders } from '~~/server/database/schema'
 import { getStripeConfig, verifyStripeWebhookSignature } from '~~/server/utils/stripe'
+import { activateMembership } from '~~/server/utils/membership'
 
 // POST /api/stripe/pay/notify — Stripe webhook (called by Stripe servers, no local auth)
 // Flow: verify Stripe-Signature → handle checkout.session.completed → validate amount
@@ -74,6 +75,21 @@ export default defineEventHandler(async (event) => {
         }).where(eq(stripeOrders.id, order.id)).returning()
         console.log('[stripe] order paid:', outTradeNo, '| payment_intent:', paymentIntentId)
         void updated
+
+        // Post-payment fulfilment: activate the membership period for membership orders
+        if (order.bizType === 'membership' && order.userId && order.bizRefId) {
+          try {
+            await activateMembership({
+              userId: order.userId,
+              planId: order.bizRefId,
+              source: 'stripe',
+              outTradeNo: order.outTradeNo,
+              amountCents: order.amount
+            })
+          } catch (e) {
+            console.error('[stripe] notify: membership activation failed | order:', outTradeNo, e)
+          }
+        }
       }
     }
   } else {

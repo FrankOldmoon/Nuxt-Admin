@@ -4,6 +4,7 @@ import {
   users as usersTable,
   roles as rolesTable,
   configs as configsTable,
+  membershipPlans as membershipPlansTable,
   templates as templatesTable
 } from './schema'
 
@@ -106,6 +107,10 @@ const DEFAULT_CONFIGS = [
   { key: 'analytics.googleAnalyticsId', value: '', type: 'string', description: 'Google Analytics 4 Measurement ID (e.g. G-XXXXXXXXXX, empty = disabled)' },
   { key: 'analytics.googleAdsId', value: '', type: 'string', description: 'Google Ads Conversion ID (e.g. AW-XXXXXXXXX, empty = disabled)' },
   { key: 'analytics.baiduTongjiId', value: '', type: 'string', description: 'Baidu Analytics (百度统计) site ID — the hm.js?xxxxxx token, empty = disabled' },
+  // ---- Membership / subscription configs ----
+  { key: 'membership.enabled', value: 'true', type: 'boolean', description: 'Enable paid membership subscriptions (plans + checkout)' },
+  { key: 'membership.successUrl', value: '/membership', type: 'string', description: 'Redirect path after a successful membership payment (default "/membership")' },
+  { key: 'membership.cancelUrl', value: '/membership', type: 'string', description: 'Redirect path after a cancelled membership payment (default "/membership")' },
   {
     key: 'dashboard.menu',
     value: JSON.stringify([
@@ -123,6 +128,7 @@ const DEFAULT_CONFIGS = [
     key: 'site.navigation',
     value: JSON.stringify([
       { label: 'Blog', url: '/blog', order: 10 },
+      { label: 'Membership', url: '/membership', order: 15 },
       { label: 'Dashboard', url: '/dashboard', order: 20 }
     ]),
     type: 'json',
@@ -201,6 +207,45 @@ export async function seed(db: Database): Promise<void> {
     console.log('[database] Seeded templates showcase data (5 rows)')
   }
 
+  // 0d. Membership plans (idempotent: only seeds when the table is empty).
+  const [planCount] = await db.select({ value: count() }).from(membershipPlansTable)
+  if (Number(planCount?.value ?? 0) === 0) {
+    await db.insert(membershipPlansTable).values([
+      {
+        slug: 'monthly',
+        nameEn: 'Monthly',
+        nameZh: '月度会员',
+        description: '30 days of full membership access.',
+        durationDays: 30,
+        priceCents: 990,
+        currency: 'usd',
+        sortOrder: 10
+      },
+      {
+        slug: 'quarterly',
+        nameEn: 'Quarterly',
+        nameZh: '季度会员',
+        description: '90 days of full membership access, 10% off monthly.',
+        durationDays: 90,
+        priceCents: 2673,
+        currency: 'usd',
+        sortOrder: 20,
+        isFeatured: true
+      },
+      {
+        slug: 'yearly',
+        nameEn: 'Yearly',
+        nameZh: '年度会员',
+        description: '365 days of full membership access, 20% off monthly.',
+        durationDays: 365,
+        priceCents: 9504,
+        currency: 'usd',
+        sortOrder: 30
+      }
+    ])
+    console.log('[database] Seeded membership plans (3 rows)')
+  }
+
   // Idempotency: if roles exist, skip roles/users seeding
   const [roleRow] = await db.select({ value: count() }).from(rolesTable)
   if (Number(roleRow?.value ?? 0) > 0) {
@@ -251,7 +296,7 @@ export async function seed(db: Database): Promise<void> {
 }
 
 /** Default menu items from newer versions (merged into any existing dashboard.menu config). */
-const NEW_DEFAULT_MENU_ENTRIES: Array<{ table: string; label: string; icon: string; order: number }> = [
+const NEW_DEFAULT_MENU_ENTRIES: Array<{ table: string, label: string, icon: string, order: number }> = [
   { table: 'templates', label: 'Templates', icon: 'i-lucide-file-text', order: 25 }
 ]
 

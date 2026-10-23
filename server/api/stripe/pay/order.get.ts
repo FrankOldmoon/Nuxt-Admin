@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '~~/server/database'
 import { stripeOrders } from '~~/server/database/schema'
 import { getStripeConfig, retrieveStripeSession } from '~~/server/utils/stripe'
+import { activateMembership } from '~~/server/utils/membership'
 
 // GET /api/stripe/pay/order?outTradeNo=xxx — query a Stripe order (own orders only)
 // For locally pending orders, actively retrieve the session to sync the status
@@ -39,6 +40,20 @@ export default defineEventHandler(async (event) => {
           updatedAt: new Date()
         }).where(eq(stripeOrders.id, order.id)).returning()
         console.log('[stripe] order synced to paid via session retrieve:', outTradeNo)
+        // Post-payment fulfilment: activate the membership period for membership orders
+        if (order.bizType === 'membership' && order.userId && order.bizRefId) {
+          try {
+            await activateMembership({
+              userId: order.userId,
+              planId: order.bizRefId,
+              source: 'stripe',
+              outTradeNo: order.outTradeNo,
+              amountCents: order.amount
+            })
+          } catch (e) {
+            console.error('[stripe] membership activation failed (reconciliation) | order:', outTradeNo, e)
+          }
+        }
         return { order: updated ?? order, paymentStatus: remote.paymentStatus }
       }
       return { order, paymentStatus: remote.paymentStatus }

@@ -355,6 +355,21 @@
       }
     }
   },
+  "membership": {
+    "badge": "会员",
+    "title": "开通会员",
+    "subtitle": "选择合适的套餐，即可在有效期内享受全部会员权益。续费会在当前到期日基础上延长。",
+    "activeTitle": "您已是会员",
+    "expiresOn": "有效期至 {date}",
+    "daysLeft": "剩余 {days} 天",
+    "durationDays": "有效期 {days} 天",
+    "recommended": "推荐",
+    "subscribe": "立即开通",
+    "renew": "续费",
+    "subscribeFailed": "发起支付失败，请稍后重试。",
+    "paymentNote": "支付由 Stripe 安全处理，支付成功后会员立即生效。",
+    "disabled": "会员订阅功能当前已关闭。"
+  },
   "profile": {
     "title": "个人资料",
     "subtitle": "管理账户信息和密码。",
@@ -698,6 +713,8 @@
       "configs": "系统配置",
       "notifications": "通知管理",
       "notification": "通知管理",
+      "membershipPlans": "会员套餐",
+      "membershipSubscriptions": "会员订阅",
       "templates": "模板管理"
     },
     "fields": {

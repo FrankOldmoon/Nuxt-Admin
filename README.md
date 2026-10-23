@@ -81,6 +81,13 @@ Upload (configurable size / MIME whitelist), local storage, download/serve, per-
 - Both are gated by dashboard switches (`wx.pay.enabled` / `stripe.enabled`) with credentials in System Config → Payments.
 - API: `POST /api/wx/pay/order` + `POST /api/wx/pay/notify`; `POST /api/stripe/pay/order` + `GET /api/stripe/pay/order` + `POST /api/stripe/pay/notify`.
 
+### Membership / Subscription
+- **Time-based paid membership**: admin-defined plans (`membership_plans`: name, duration in days, price in the smallest currency unit, featured flag), purchased through Stripe Checkout (`/api/membership/subscribe`).
+- The membership period is activated by the payment webhook (`checkout.session.completed`) or by order-query reconciliation if the webhook is lost, then stored in `membership_subscriptions` (start / expiry / source / order no. / amount).
+- **Renewals stack**: a new purchase starts where the current period ends instead of overwriting it, so paying twice simply extends the expiry date.
+- Public pricing page at `/membership` shows the current status (days left) and plan cards; admin CRUD for plans and subscriptions is registered in the sidebar, plus manual **grant / revoke** API (`/api/membership/admin/grant|revoke`) for offline payments.
+- Gated by `membership.enabled` (System Config → General); redirect paths are configurable (`membership.successUrl` / `membership.cancelUrl`).
+
 ### Analytics / Tracking
 - Config-driven integrations for **Google Analytics 4**, **Google Ads** and **Baidu Tongji (百度统计)** — set the IDs in System Config → General (`analytics.*`), empty = off.
 - Scripts are injected automatically from the public config; IDs are sanitized so the inline snippet stays injection-safe.
@@ -265,4 +272,4 @@ Test coverage: server (auth, session, tokens, users, files, notifications, messa
 
 ## Project Status & Suggested Extensions
 
-The current base is feature-complete and well tested. Already built in: OAuth2 third-party login (GitHub / Google / Microsoft), WeChat Pay & Stripe payments, analytics integrations (GA4 / Google Ads / Baidu Tongji), LLM connectivity testing, dynamic overview stats, pg_trgm full-text indexes, last-login info display. Future directions: field/role-level permissions, dashboard stat charts, dark mode, data backup & restore, and more.
+The current base is feature-complete and well tested. Already built in: OAuth2 third-party login (GitHub / Google / Microsoft), WeChat Pay & Stripe payments, time-based membership subscriptions, analytics integrations (GA4 / Google Ads / Baidu Tongji), LLM connectivity testing, dynamic overview stats, pg_trgm full-text indexes, last-login info display. Future directions: field/role-level permissions, dashboard stat charts, dark mode, data backup & restore, and more.

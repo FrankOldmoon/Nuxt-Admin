@@ -63,6 +63,7 @@ const generalConfigs = computed(() => {
     || c.key.startsWith('blog.')
     || c.key.startsWith('wx.')
     || c.key.startsWith('analytics.')
+    || c.key.startsWith('membership.')
   )
   return [...items].sort((a, b) => {
     const ai = priority.indexOf(a.key)

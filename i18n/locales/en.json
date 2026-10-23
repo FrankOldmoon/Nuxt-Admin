@@ -355,6 +355,21 @@
       }
     }
   },
+  "membership": {
+    "badge": "Membership",
+    "title": "Become a member",
+    "subtitle": "Pick a plan and unlock member benefits for the whole period. Renewing extends your current expiry date.",
+    "activeTitle": "You are a member",
+    "expiresOn": "Valid until {date}",
+    "daysLeft": "{days} days left",
+    "durationDays": "{days} days of access",
+    "recommended": "Recommended",
+    "subscribe": "Subscribe",
+    "renew": "Renew",
+    "subscribeFailed": "Failed to start checkout, please try again later.",
+    "paymentNote": "Payments are processed securely by Stripe. Membership activates immediately after the payment succeeds.",
+    "disabled": "Membership subscriptions are currently disabled."
+  },
   "profile": {
     "title": "Profile",
     "subtitle": "Manage your account information and password.",
@@ -698,6 +713,8 @@
       "configs": "System Config",
       "notifications": "Notifications",
       "notification": "Notifications",
+      "membershipPlans": "Membership Plans",
+      "membershipSubscriptions": "Membership Subscriptions",
       "templates": "Templates"
     },
     "fields": {
