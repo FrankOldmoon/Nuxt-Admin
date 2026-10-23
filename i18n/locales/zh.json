@@ -357,6 +357,10 @@
         "defaultRoleName": "SSO 自动创建账号所分配的角色",
         "callbackRedirect": "SSO 登录成功后的前端跳转路径"
       },
+      "oauthServer": {
+        "enabled": "启用 OAuth 2.0 / OIDC 身份提供方（允许其他应用用本站账号登录）",
+        "issuer": "Issuer 标识（如 https://accounts.example.com；留空则使用请求域名）"
+      },
       "stripe": {
         "enabled": "启用 Stripe 支付",
         "secretKey": "Stripe API 密钥（sk_test_... / sk_live_...）",
@@ -610,6 +614,42 @@
       "sendFailed": "发送消息失败。"
     }
   },
+  "oauthConsent": {
+    "title": "授权应用",
+    "subtitle": "一个应用请求访问你的账号",
+    "signedInAs": "当前登录账号",
+    "permissions": "该应用将能够：",
+    "approve": "允许",
+    "deny": "拒绝",
+    "errorTitle": "授权请求失败",
+    "errorHint": "请确认该应用的回调地址已在后台登记，然后重试。",
+    "invalidRequest": "授权请求无效。",
+    "requestFailed": "无法完成授权请求。",
+    "footer": "你正在使用 {issuer} 账号登录第三方应用。",
+    "scope": {
+      "openid": "验证你的身份",
+      "profile": "读取你的基础资料（昵称、用户名、头像）",
+      "email": "读取你的邮箱地址及验证状态",
+      "roles": "读取分配给你账号的角色"
+    }
+  },
+  "oauthClients": {
+    "title": "OAuth 应用",
+    "active": "启用",
+    "inactive": "禁用",
+    "public": "公开客户端",
+    "confidential": "机密客户端",
+    "rotate": "轮换客户端密钥",
+    "rotated": "已生成新的客户端密钥",
+    "rotateFailed": "轮换客户端密钥失败",
+    "copied": "已复制到剪贴板",
+    "secretTitle": "客户端凭据",
+    "secretOnce": "请立即复制密钥",
+    "secretOnceHint": "服务端仅保存其哈希值，之后无法再次查看。如遗失请轮换。",
+    "clientName": "应用",
+    "clientId": "客户端 ID",
+    "clientSecret": "客户端密钥"
+  },
   "dashboard": {
     "title": "管理台",
     "overview": {
@@ -748,6 +788,7 @@
       "notification": "通知管理",
       "membershipPlans": "会员套餐",
       "membershipSubscriptions": "会员订阅",
+      "oauthClients": "OAuth 应用",
       "templates": "模板管理"
     },
     "fields": {
@@ -798,6 +839,21 @@
         "createdAt": "创建时间",
         "updatedAt": "更新时间",
         "deletedAt": "删除时间"
+      },
+      "oauthClients": {
+        "id": "ID",
+        "clientId": "客户端 ID",
+        "name": "应用名称",
+        "description": "描述",
+        "homepageUrl": "主页地址",
+        "logoUrl": "Logo 地址",
+        "redirectUris": "回调地址",
+        "scopes": "允许的作用域",
+        "isPublic": "公开客户端",
+        "isActive": "启用",
+        "accessTokenTtlMinutes": "访问令牌有效期（分钟）",
+        "refreshTokenTtlDays": "刷新令牌有效期（天）",
+        "createdAt": "创建时间"
       },
       "templates": {
         "id": "ID",

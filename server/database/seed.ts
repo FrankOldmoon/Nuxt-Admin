@@ -84,6 +84,10 @@ const DEFAULT_CONFIGS = [
   { key: 'oauth.provision', value: 'true', type: 'boolean', description: 'Auto-create a local account on first SSO sign-in when no account is linked yet' },
   { key: 'oauth.defaultRoleName', value: 'user', type: 'string', description: 'Role assigned to SSO users created by auto-provisioning' },
   { key: 'oauth.callbackRedirect', value: '/', type: 'string', description: 'Frontend path to redirect to after a successful SSO sign-in (default "/")' },
+  // ---- OAuth 2.0 / OIDC provider (this site as an identity provider) ----
+  { key: 'oauthServer.enabled', value: 'true', type: 'boolean', description: 'Enable the OAuth 2.0 / OpenID Connect provider (let other apps sign in with this site)' },
+  { key: 'oauthServer.issuer', value: '', type: 'string', description: 'Issuer identifier (blank = request origin)' },
+  { key: 'oauthServer.privateKey', value: '', type: 'string', description: 'RS256 signing key (auto-generated on first use, do not share)' },
   { key: 'upload.maxFileSize', value: '10', type: 'number', description: 'Max upload file size (MB)' },
   { key: 'upload.allowedMimeTypes', value: '', type: 'string', description: 'Allowed upload MIME types (comma-separated, empty = all)' },
   // ---- WeChat Mini Program configs ----
@@ -306,7 +310,8 @@ export async function seed(db: Database): Promise<void> {
 
 /** Default menu items from newer versions (merged into any existing dashboard.menu config). */
 const NEW_DEFAULT_MENU_ENTRIES: Array<{ table: string, label: string, icon: string, order: number }> = [
-  { table: 'templates', label: 'Templates', icon: 'i-lucide-file-text', order: 25 }
+  { table: 'templates', label: 'Templates', icon: 'i-lucide-file-text', order: 25 },
+  { table: 'oauthClients', label: 'OAuth Clients', icon: 'i-lucide-key-round', order: 47 }
 ]
 
 /**

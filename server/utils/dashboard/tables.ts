@@ -555,6 +555,87 @@ const membershipSubscriptionsFields: FieldMeta[] = [
   }
 ]
 
+// OAuth clients: applications allowed to use this system as an identity
+// provider.  The secret itself is never stored in plaintext — the custom API
+// (tableOverrides/oauthClients.ts) returns it once on creation/rotation.
+const oauthClientsFields: FieldMeta[] = [
+  {
+    key: 'id', label: 'ID', type: 'number', nullable: false,
+    showInForm: false, showInTable: true, showInDetail: true, editable: false,
+    widthClass: 'w-16'
+  },
+  {
+    key: 'clientId', label: 'Client ID', type: 'text', nullable: false,
+    showInForm: false, showInTable: true, showInDetail: true, editable: false,
+    widthClass: 'w-56',
+    helpText: 'Generated automatically when the application is created'
+  },
+  {
+    key: 'name', label: 'Application Name', type: 'text', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true,
+    validation: { required: true, maxLength: 100 },
+    placeholder: 'e.g. Acme Dashboard'
+  },
+  {
+    key: 'description', label: 'Description', type: 'textarea', nullable: true,
+    showInForm: true, showInTable: false, showInDetail: true, editable: true,
+    validation: { maxLength: 255 }
+  },
+  {
+    key: 'homepageUrl', label: 'Homepage URL', type: 'text', nullable: true,
+    showInForm: true, showInTable: false, showInDetail: true, editable: true,
+    validation: { maxLength: 500 },
+    placeholder: 'https://app.example.com'
+  },
+  {
+    key: 'logoUrl', label: 'Logo URL', type: 'text', nullable: true,
+    showInForm: true, showInTable: false, showInDetail: true, editable: true,
+    validation: { maxLength: 500 },
+    placeholder: 'https://app.example.com/logo.png'
+  },
+  {
+    key: 'redirectUris', label: 'Redirect URIs', type: 'textarea', nullable: false,
+    showInForm: true, showInTable: false, showInDetail: true, editable: true,
+    validation: { required: true },
+    placeholder: 'https://app.example.com/auth/callback',
+    helpText: 'One absolute http(s) URL per line. Matching is exact — no wildcards.'
+  },
+  {
+    key: 'scopes', label: 'Allowed Scopes', type: 'text', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true,
+    validation: { required: true, maxLength: 255 },
+    placeholder: 'openid profile email',
+    helpText: 'Space-separated subset of: openid profile email roles'
+  },
+  {
+    key: 'isPublic', label: 'Public Client', type: 'boolean', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true,
+    // `required: false` makes the generic create form start this checkbox
+    // unchecked (confidential is the common case).
+    validation: { required: false },
+    helpText: 'SPA / mobile clients without a secret. Public clients must use PKCE.'
+  },
+  {
+    key: 'isActive', label: 'Active', type: 'boolean', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true
+  },
+  {
+    key: 'accessTokenTtlMinutes', label: 'Access Token TTL (minutes)', type: 'number', nullable: false,
+    showInForm: true, showInTable: false, showInDetail: true, editable: true,
+    validation: { min: 5, max: 1440 }
+  },
+  {
+    key: 'refreshTokenTtlDays', label: 'Refresh Token TTL (days)', type: 'number', nullable: false,
+    showInForm: true, showInTable: false, showInDetail: true, editable: true,
+    validation: { min: 1, max: 365 }
+  },
+  {
+    key: 'createdAt', label: 'Created At', type: 'datetime', nullable: false,
+    showInForm: false, showInTable: true, showInDetail: true, editable: false,
+    widthClass: 'w-40'
+  }
+]
+
 export interface RegisteredTable {
   meta: TableMeta
   /** Drizzle schema table handle — resolved from `schema[table]` at runtime */
@@ -674,6 +755,21 @@ const TABLES: RegisteredTable[] = [
   },
   {
     meta: {
+      table: 'oauthClients',
+      label: 'OAuth Clients',
+      icon: 'i-lucide-key-round',
+      fields: oauthClientsFields,
+      features: {
+        softDelete: true,
+        search: ['clientId', 'name', 'description'],
+        defaultSort: { field: 'id', order: 'asc' }
+      },
+      custom: false
+    },
+    getTable: s => s.oauthClients
+  },
+  {
+    meta: {
       table: 'templates',
       label: 'Templates',
       icon: 'i-lucide-file-text',
@@ -758,6 +854,7 @@ export const DEFAULT_MENU: Array<{
   { table: 'notifications', label: 'Notifications', icon: 'i-lucide-bell-ring', order: 40 },
   { table: 'membershipPlans', label: 'Membership Plans', icon: 'i-lucide-badge-check', order: 45 },
   { table: 'membershipSubscriptions', label: 'Membership Subscriptions', icon: 'i-lucide-calendar-check', order: 46 },
+  { table: 'oauthClients', label: 'OAuth Clients', icon: 'i-lucide-key-round', order: 47 },
   { table: 'templates', label: 'Templates', icon: 'i-lucide-file-text', order: 50 },
   { table: 'configs', label: 'System Config', icon: 'i-lucide-settings-2', order: 60 }
 ]

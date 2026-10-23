@@ -31,6 +31,19 @@ A general-purpose admin framework built on **Nuxt 4 + Nuxt UI**. The core highli
 - RBAC based on a **shared role table** (`admin` / `user`), with `requireUser` / `requireAdmin` server guards plus `auth` / `admin` frontend route middleware.
 - Profile center: edit profile, avatar upload (compress + crop), change password; the admin side can view each user's **last login time and IP**.
 
+### OAuth 2.0 / OpenID Connect Provider
+This system can also act as the **identity provider** for other applications ("Sign in with <this site>").
+- **Discovery**: `GET /.well-known/openid-configuration`, keys at `GET /.well-known/jwks.json` (RS256, auto-generated and persisted in `configs.oauthServer.privateKey`).
+- **Endpoints**:
+  - `GET /oauth/authorize` — consent page (login required, scopes shown to the user).
+  - `POST /api/oauth/token` — `authorization_code` (with PKCE `S256`/`plain`) and `refresh_token` (rotation on every use).
+  - `GET /api/oauth/userinfo` — Bearer access token → claims for the granted scopes (`openid` `profile` `email` `roles`).
+  - `POST /api/oauth/revoke` (RFC 7009) and `POST /api/oauth/introspect` (RFC 7662).
+- **Client management** in the dashboard (`/dashboard/oauthClients`): name/description/logo, exact-match redirect URIs (one absolute URL per line), allowed scopes, public (PKCE-only) vs confidential clients, token TTLs and an enable switch.
+- **Secrets are never stored in plaintext** — only their SHA-256 hash. The generated `clientId` / `clientSecret` are shown once after creation; a per-row action rotates the secret (`POST /api/oauth/clients/:id/rotate-secret`).
+- Gate the whole provider with `oauthServer.enabled`; set `oauthServer.issuer` when running behind a proxy (otherwise the request origin is used).
+- Access tokens are opaque (stored hashed, revocable); id_tokens are RS256 JWTs consumable by any standard OIDC client library.
+
 ### Metadata-Driven Generic CRUD (core)
 - **Schema auto-discovery**: after registering a Drizzle schema, any table exposed as `pgTable` becomes accessible through the generic API; field types, validation, relations and column widths are inferred automatically from naming conventions and column metadata (`inferFieldType` / `applyFieldNamingHints`).
 - **Generic API**: `/api/dashboard/data/:table/*` (list / detail / create / update / batch / import / export).
@@ -48,7 +61,7 @@ A general-purpose admin framework built on **Nuxt 4 + Nuxt UI**. The core highli
 ### System Config (`/dashboard/configs`, custom page)
 Manages the `configs` table (key-value + type) in tabs:
 - **General**: site title/description, registration switch, security TTL, upload limits, analytics IDs (GA4 / Google Ads / Baidu Tongji).
-- **OAuth / SSO**: per-provider switches + credentials for GitHub, Google and Microsoft.
+- **OAuth / SSO**: per-provider switches + credentials for GitHub, Google and Microsoft, plus the OAuth provider switch / issuer (`oauthServer.*`).
 - **Payments**: WeChat Pay and Stripe switches and credentials.
 - **Email**: SMTP parameters.
 - **LLM**: OpenAI-compatible parameters (`apiKey` / `baseUrl` / `model` / `temperature` / `maxTokens` / `systemPrompt`).

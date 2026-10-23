@@ -50,6 +50,13 @@
       "when": 1792734881071,
       "tag": "0006_magical_marvex",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792761433847,
+      "tag": "0007_jittery_earthquake",
+      "breakpoints": true
     }
   ]
 }

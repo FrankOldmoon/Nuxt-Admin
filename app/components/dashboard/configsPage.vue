@@ -81,7 +81,13 @@ const llmConfigs = computed(() =>
   configs.value.filter(c => c.key.startsWith('llm.'))
 )
 const oauthConfigs = computed(() =>
-  configs.value.filter(c => c.key.startsWith('oauth.'))
+  // oauth.* = sign-in-with-third-party clients.  oauthServer.* exposes only
+  // the provider switch + issuer; the auto-generated RS256 key stays hidden.
+  configs.value.filter(c =>
+    c.key.startsWith('oauth.')
+    || c.key === 'oauthServer.enabled'
+    || c.key === 'oauthServer.issuer'
+  )
 )
 const stripeConfigs = computed(() =>
   configs.value.filter(c => c.key.startsWith('stripe.'))

@@ -324,7 +324,7 @@
         "privateKey": "Alipay app private key (PEM or bare base64)",
         "publicKey": "Alipay public key (for notify signature verification)",
         "gateway": "Alipay gateway URL (use the sandbox gateway for testing)",
-        "notifyUrl": "Async notify URL (blank = <site>/api/alipay/pay/notify)",
+        "notifyUrl": "Async notify URL (blank = https://YOUR-DOMAIN/api/alipay/pay/notify)",
         "returnUrl": "Browser return URL after payment (optional)"
       },
       "membership": {
@@ -356,6 +356,10 @@
         "provision": "Auto-create account on first SSO sign-in",
         "defaultRoleName": "Role assigned to SSO-created users",
         "callbackRedirect": "Frontend redirect path after SSO success"
+      },
+      "oauthServer": {
+        "enabled": "Enable OAuth 2.0 / OIDC provider (let other apps sign in with this site)",
+        "issuer": "Issuer identifier (e.g. https://accounts.example.com; blank = request origin)"
       },
       "stripe": {
         "enabled": "Enable Stripe payments",
@@ -610,6 +614,42 @@
       "sendFailed": "Failed to send message."
     }
   },
+  "oauthConsent": {
+    "title": "Authorize application",
+    "subtitle": "An application wants to access your account",
+    "signedInAs": "Signed in as",
+    "permissions": "This application will be able to:",
+    "approve": "Allow",
+    "deny": "Deny",
+    "errorTitle": "Authorization request failed",
+    "errorHint": "Check that the application's redirect URI is registered in the dashboard and try again.",
+    "invalidRequest": "The authorization request is invalid.",
+    "requestFailed": "Could not complete the authorization request.",
+    "footer": "You are signing in to a third-party application with your {issuer} account.",
+    "scope": {
+      "openid": "Verify your identity",
+      "profile": "Read your basic profile (name, username, avatar)",
+      "email": "Read your email address and verification status",
+      "roles": "Read the roles assigned to your account"
+    }
+  },
+  "oauthClients": {
+    "title": "OAuth Clients",
+    "active": "Active",
+    "inactive": "Disabled",
+    "public": "Public",
+    "confidential": "Confidential",
+    "rotate": "Rotate client secret",
+    "rotated": "New client secret generated",
+    "rotateFailed": "Failed to rotate the client secret",
+    "copied": "Copied to clipboard",
+    "secretTitle": "Client credentials",
+    "secretOnce": "Copy the secret now",
+    "secretOnceHint": "It is stored only as a hash and cannot be shown again. Rotate it if you lose it.",
+    "clientName": "Application",
+    "clientId": "Client ID",
+    "clientSecret": "Client Secret"
+  },
   "dashboard": {
     "title": "Dashboard",
     "overview": {
@@ -748,6 +788,7 @@
       "notification": "Notifications",
       "membershipPlans": "Membership Plans",
       "membershipSubscriptions": "Membership Subscriptions",
+      "oauthClients": "OAuth Clients",
       "templates": "Templates"
     },
     "fields": {
@@ -798,6 +839,21 @@
         "createdAt": "Created At",
         "updatedAt": "Updated At",
         "deletedAt": "Deleted At"
+      },
+      "oauthClients": {
+        "id": "ID",
+        "clientId": "Client ID",
+        "name": "Application Name",
+        "description": "Description",
+        "homepageUrl": "Homepage URL",
+        "logoUrl": "Logo URL",
+        "redirectUris": "Redirect URIs",
+        "scopes": "Allowed Scopes",
+        "isPublic": "Public Client",
+        "isActive": "Active",
+        "accessTokenTtlMinutes": "Access Token TTL (minutes)",
+        "refreshTokenTtlDays": "Refresh Token TTL (days)",
+        "createdAt": "Created At"
       },
       "templates": {
         "id": "ID",

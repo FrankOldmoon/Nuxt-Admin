@@ -36,6 +36,9 @@ const emit = defineEmits<{
   'before-create': [form: FormRef]
   /** Fired right before the edit modal opens; parent can mutate `form.value` for custom form state */
   'before-edit': [item: Record<string, unknown>, form: FormRef]
+  /** Fired after a successful create/update with the raw API response, so a
+   *  page can surface one-time data (e.g. a generated OAuth client secret). */
+  'saved': [payload: { mode: 'create' | 'update', item: Record<string, unknown> | null, response: unknown }]
 }>()
 
 const { t } = useI18n()
@@ -258,11 +261,13 @@ async function save() {
       return
     }
     if (modalMode.value === 'create') {
-      await cPost(`${baseUrl.value}`, payload)
+      const res = await cPost<{ item?: Record<string, unknown> }>(`${baseUrl.value}`, payload)
+      emit('saved', { mode: 'create', item: res?.item ?? null, response: res })
       toast.add({ title: t('dashboard.crud.createSuccess'), color: 'success' })
     } else if (editing.value) {
       const id = editing.value.id as number | string
-      await cPut(`${baseUrl.value}/${id}`, payload)
+      const res = await cPut<{ item?: Record<string, unknown> }>(`${baseUrl.value}/${id}`, payload)
+      emit('saved', { mode: 'update', item: res?.item ?? null, response: res })
       toast.add({ title: t('dashboard.crud.updateSuccess'), color: 'success' })
     }
     modalOpen.value = false

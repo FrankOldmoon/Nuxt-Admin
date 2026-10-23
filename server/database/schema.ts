@@ -558,3 +558,115 @@ export const stripeOrders = pgTable(
 
 export type StripeOrder = typeof stripeOrders.$inferSelect
 export type NewStripeOrder = typeof stripeOrders.$inferInsert
+
+// ------------------------------------------------------------------
+// OAuth2 / OIDC provider — this system acting as an identity provider
+// for other applications ("Sign in with <this site>").
+// ------------------------------------------------------------------
+
+/**
+ * Registered third-party applications.
+ * `redirectUris` is newline-separated (one absolute URI per line) to keep the
+ * dashboard editor simple; the server parses it into an array.
+ */
+export const oauthClients = pgTable(
+  'oauth_clients',
+  {
+    id: serial('id').primaryKey(),
+    clientId: varchar('client_id', { length: 64 }).notNull(),
+    // SHA-256 of the secret: secrets are high-entropy random strings, so a fast
+    // hash is sufficient and allows constant-time comparison.
+    clientSecretHash: varchar('client_secret_hash', { length: 128 }),
+    name: varchar('name', { length: 100 }).notNull(),
+    description: varchar('description', { length: 255 }),
+    homepageUrl: varchar('homepage_url', { length: 500 }),
+    logoUrl: varchar('logo_url', { length: 500 }),
+    /** Newline-separated absolute redirect URIs (exact match required) */
+    redirectUris: text('redirect_uris').notNull(),
+    /** Space-separated scopes this client may request */
+    scopes: varchar('scopes', { length: 255 }).default('openid profile email').notNull(),
+    /** Public clients (SPA / mobile) have no secret and must use PKCE */
+    isPublic: boolean('is_public').default(false).notNull(),
+    isActive: boolean('is_active').default(true).notNull(),
+    accessTokenTtlMinutes: integer('access_token_ttl_minutes').default(60).notNull(),
+    refreshTokenTtlDays: integer('refresh_token_ttl_days').default(30).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true })
+  },
+  table => ({
+    clientIdIdx: uniqueIndex('oauth_clients_client_id_idx').on(table.clientId)
+  })
+)
+
+export type OAuthClient = typeof oauthClients.$inferSelect
+export type NewOAuthClient = typeof oauthClients.$inferInsert
+
+/** Short-lived authorization codes (authorization_code grant). */
+export const oauthAuthorizationCodes = pgTable(
+  'oauth_authorization_codes',
+  {
+    id: serial('id').primaryKey(),
+    codeHash: varchar('code_hash', { length: 128 }).notNull(),
+    clientId: varchar('client_id', { length: 64 }).notNull(),
+    userId: integer('user_id').notNull(),
+    redirectUri: varchar('redirect_uri', { length: 2000 }).notNull(),
+    scope: varchar('scope', { length: 255 }).default('').notNull(),
+    /** PKCE (S256 / plain); required for public clients */
+    codeChallenge: varchar('code_challenge', { length: 128 }),
+    codeChallengeMethod: varchar('code_challenge_method', { length: 10 }),
+    /** OIDC nonce, echoed back inside the id_token */
+    nonce: varchar('nonce', { length: 255 }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    consumedAt: timestamp('consumed_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    codeHashIdx: uniqueIndex('oauth_authorization_codes_code_hash_idx').on(table.codeHash),
+    userIdx: index('oauth_authorization_codes_user_idx').on(table.userId)
+  })
+)
+
+export type OAuthAuthorizationCode = typeof oauthAuthorizationCodes.$inferSelect
+
+/** Bearer access tokens (opaque; only the SHA-256 hash is stored). */
+export const oauthAccessTokens = pgTable(
+  'oauth_access_tokens',
+  {
+    id: serial('id').primaryKey(),
+    tokenHash: varchar('token_hash', { length: 128 }).notNull(),
+    clientId: varchar('client_id', { length: 64 }).notNull(),
+    userId: integer('user_id').notNull(),
+    scope: varchar('scope', { length: 255 }).default('').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    tokenHashIdx: uniqueIndex('oauth_access_tokens_token_hash_idx').on(table.tokenHash),
+    userIdx: index('oauth_access_tokens_user_idx').on(table.userId)
+  })
+)
+
+export type OAuthAccessToken = typeof oauthAccessTokens.$inferSelect
+
+/** Refresh tokens (rotated on every use). */
+export const oauthRefreshTokens = pgTable(
+  'oauth_refresh_tokens',
+  {
+    id: serial('id').primaryKey(),
+    tokenHash: varchar('token_hash', { length: 128 }).notNull(),
+    clientId: varchar('client_id', { length: 64 }).notNull(),
+    userId: integer('user_id').notNull(),
+    scope: varchar('scope', { length: 255 }).default('').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    tokenHashIdx: uniqueIndex('oauth_refresh_tokens_token_hash_idx').on(table.tokenHash),
+    userIdx: index('oauth_refresh_tokens_user_idx').on(table.userId)
+  })
+)
+
+export type OAuthRefreshToken = typeof oauthRefreshTokens.$inferSelect

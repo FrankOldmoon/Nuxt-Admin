@@ -34,6 +34,7 @@ import type { H3Event } from 'h3'
 import templatesOverride from './tableOverrides/templates'
 import usersHandler from './tableOverrides/users'
 import filesHandler from './tableOverrides/files'
+import oauthClientsHandler, { oauthClientsListOverride } from './tableOverrides/oauthClients'
 
 /** List-only enrichment: wraps the generic list result (rows unchanged if no
  *  `list` hook is defined). */
@@ -99,5 +100,7 @@ export function getTableHandler(table: string): TableCrudHandler | undefined {
 
 // ---- Register every table whose custom API lives in ./tableOverrides/ ----
 registerListOverride(templatesOverride.table, templatesOverride)
+registerListOverride(oauthClientsListOverride.table, oauthClientsListOverride)
 registerTableHandler(usersHandler)
 registerTableHandler(filesHandler)
+registerTableHandler(oauthClientsHandler)
