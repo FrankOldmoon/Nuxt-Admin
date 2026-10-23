@@ -15,6 +15,44 @@ const { data: publicConfig } = await usePublicConfig()
 const title = computed(() => publicConfig.value?.configs?.['site.title'] || 'Nuxt Admin')
 const description = computed(() => publicConfig.value?.configs?.['site.description'] || '')
 
+// --- Analytics / tracking (configured in dashboard configs, empty = disabled) ---
+// Google Analytics 4 + Google Ads share the same gtag.js loader; Baidu Tongji (百度统计)
+// gets its own hm.js script. IDs are sanitized so the inline snippet cannot be injected.
+const googleAnalyticsId = computed(() =>
+  (publicConfig.value?.configs?.['analytics.googleAnalyticsId'] || '').trim().replace(/[^A-Za-z0-9_-]/g, '')
+)
+const googleAdsId = computed(() =>
+  (publicConfig.value?.configs?.['analytics.googleAdsId'] || '').trim().replace(/[^A-Za-z0-9_-]/g, '')
+)
+const baiduTongjiId = computed(() =>
+  (publicConfig.value?.configs?.['analytics.baiduTongjiId'] || '').trim().replace(/[^A-Za-z0-9_-]/g, '')
+)
+
+useHead(() => {
+  const googleIds = [googleAnalyticsId.value, googleAdsId.value].filter(Boolean)
+
+  const scripts: Array<Record<string, unknown>> = []
+  if (googleIds.length > 0) {
+    scripts.push({
+      src: `https://www.googletagmanager.com/gtag/js?id=${googleIds[0]}`,
+      async: true
+    })
+    scripts.push({
+      innerHTML:
+        `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments)}`
+        + `gtag('js',new Date());`
+        + googleIds.map(id => `gtag('config','${id}')`).join(';')
+    })
+  }
+  if (baiduTongjiId.value) {
+    scripts.push({
+      src: `https://hm.baidu.com/hm.js?${baiduTongjiId.value}`,
+      async: true
+    })
+  }
+  return { script: scripts }
+})
+
 // Load current user once on app init (SSR + client hydration)
 await useAsyncData('auth:user:init', async () => {
   await fetchUser()

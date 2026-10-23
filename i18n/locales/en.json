@@ -308,6 +308,11 @@
         "appid": "WeChat Mini Program AppID",
         "secret": "WeChat Mini Program AppSecret"
       },
+      "analytics": {
+        "googleAnalyticsId": "Google Analytics 4 Measurement ID (G-XXXXXXXXXX, empty = off)",
+        "googleAdsId": "Google Ads Conversion ID (AW-XXXXXXXXX, empty = off)",
+        "baiduTongjiId": "Baidu Analytics (百度统计) site ID (hm.js token, empty = off)"
+      },
       "oauth": {
         "github": {
           "enabled": "Enable Sign in with GitHub (OAuth2)",

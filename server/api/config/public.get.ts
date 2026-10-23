@@ -8,6 +8,7 @@ export default defineEventHandler(async () => {
     if (
       row.key.startsWith('site.') ||
       row.key.startsWith('upload.') ||
+      row.key.startsWith('analytics.') ||
       row.key === 'security.captchaEnabled'
     ) {
       publicConfigs[row.key] = row.value

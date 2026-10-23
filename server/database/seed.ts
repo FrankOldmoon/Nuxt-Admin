@@ -102,6 +102,10 @@ const DEFAULT_CONFIGS = [
   { key: 'stripe.currency', value: 'usd', type: 'string', description: 'Default charge currency (ISO code, e.g. usd)' },
   { key: 'stripe.successUrl', value: '/', type: 'string', description: 'Redirect path after successful payment (absolute URL or path, default "/")' },
   { key: 'stripe.cancelUrl', value: '/', type: 'string', description: 'Redirect path after cancelled payment (absolute URL or path, default "/")' },
+  // ---- Analytics / tracking configs (public: IDs end up in the client HTML anyway) ----
+  { key: 'analytics.googleAnalyticsId', value: '', type: 'string', description: 'Google Analytics 4 Measurement ID (e.g. G-XXXXXXXXXX, empty = disabled)' },
+  { key: 'analytics.googleAdsId', value: '', type: 'string', description: 'Google Ads Conversion ID (e.g. AW-XXXXXXXXX, empty = disabled)' },
+  { key: 'analytics.baiduTongjiId', value: '', type: 'string', description: 'Baidu Analytics (百度统计) site ID — the hm.js?xxxxxx token, empty = disabled' },
   {
     key: 'dashboard.menu',
     value: JSON.stringify([

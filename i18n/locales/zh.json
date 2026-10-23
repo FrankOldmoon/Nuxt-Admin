@@ -308,6 +308,11 @@
         "appid": "微信小程序 AppID",
         "secret": "微信小程序 AppSecret"
       },
+      "analytics": {
+        "googleAnalyticsId": "Google Analytics 4 衡量 ID（G-XXXXXXXXXX，留空关闭）",
+        "googleAdsId": "Google Ads 转化 ID（AW-XXXXXXXXX，留空关闭）",
+        "baiduTongjiId": "百度统计站点 ID（hm.js? 后的 token，留空关闭）"
+      },
       "oauth": {
         "github": {
           "enabled": "启用 GitHub 登录（OAuth2）",
