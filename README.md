@@ -26,7 +26,7 @@ A general-purpose admin framework built on **Nuxt 4 + Nuxt UI**. The core highli
 
 ### Authentication & User Center
 - Register / login / logout / forgot password / reset password / email verification, with a public-registration switch (`configs`).
-- **OAuth2 third-party login (SSO)**: a built-in GitHub provider with a "bind existing account → email match → auto-provision account (optional)" login policy; callback URL, switches and the auto-provision role are all managed in System Config. Uses HMAC-signed `state` for CSRF protection; each OAuth identity maps one-to-one to a local user and multiple providers can be bound.
+- **OAuth2 third-party login (SSO)**: built-in **GitHub, Google and Microsoft** providers with a "bind existing account → email match → auto-provision account (optional)" login policy; each provider has its own enable switch + clientId/clientSecret in System Config (OAuth / SSO tab). Uses HMAC-signed `state` for CSRF protection; each OAuth identity maps one-to-one to a local user and multiple providers can be bound.
 - **Persistent, revocable session tokens** (`tokens` table) with `httpOnly` cookie sessions.
 - RBAC based on a **shared role table** (`admin` / `user`), with `requireUser` / `requireAdmin` server guards plus `auth` / `admin` frontend route middleware.
 - Profile center: edit profile, avatar upload (compress + crop), change password; the admin side can view each user's **last login time and IP**.
@@ -47,7 +47,9 @@ A general-purpose admin framework built on **Nuxt 4 + Nuxt UI**. The core highli
 
 ### System Config (`/dashboard/configs`, custom page)
 Manages the `configs` table (key-value + type) in tabs:
-- **General**: site title/description, registration switch, security TTL, upload limits.
+- **General**: site title/description, registration switch, security TTL, upload limits, analytics IDs (GA4 / Google Ads / Baidu Tongji).
+- **OAuth / SSO**: per-provider switches + credentials for GitHub, Google and Microsoft.
+- **Payments**: WeChat Pay and Stripe switches and credentials.
 - **Email**: SMTP parameters.
 - **LLM**: OpenAI-compatible parameters (`apiKey` / `baseUrl` / `model` / `temperature` / `maxTokens` / `systemPrompt`).
 - **Menu editing**: card-based editor for the default left sidebar menu — add/remove, reorder, rename labels, pick icons, bind tables, hide.
@@ -72,6 +74,18 @@ A single same-origin connection at `/api/ws` supports: notification push, direct
 
 ### File Management
 Upload (configurable size / MIME whitelist), local storage, download/serve, per-user records, soft delete.
+
+### Payments
+- **WeChat Pay v3 (JSAPI)** for the mini-program side: unified order, signed `wx.requestPayment` params, platform-certificate callback verification + AES-GCM resource decryption, order-query reconciliation (`wx_pay_orders` table).
+- **Stripe Checkout** for the web: hosted checkout session, webhook signature verification (`checkout.session.completed`) with amount validation, session-retrieve reconciliation (`stripe_orders` table).
+- Both are gated by dashboard switches (`wx.pay.enabled` / `stripe.enabled`) with credentials in System Config → Payments.
+- API: `POST /api/wx/pay/order` + `POST /api/wx/pay/notify`; `POST /api/stripe/pay/order` + `GET /api/stripe/pay/order` + `POST /api/stripe/pay/notify`.
+
+### Analytics / Tracking
+- Config-driven integrations for **Google Analytics 4**, **Google Ads** and **Baidu Tongji (百度统计)** — set the IDs in System Config → General (`analytics.*`), empty = off.
+- Scripts are injected automatically from the public config; IDs are sanitized so the inline snippet stays injection-safe.
+- A client plugin syncs SPA route changes to both networks (`page_view` / `_trackPageview`), so single-page navigation is tracked correctly.
+- `useAnalytics()` composable for business events: `trackEvent()`, `trackGoogleAdsConversion('AW-.../label')`, `trackBaiduPageview()`.
 
 ### Internationalization
 `i18n/locales/en.json` and `zh.json`, with **en** as the default language (`no_prefix` + browser language detection + cookie persistence); menu, field and button labels are resolved via `t('dashboard.tables.…')` / `t('dashboard.fields.…')`, and the backend provides fallback labels so new tables/fields need no hardcoded text.
@@ -251,4 +265,4 @@ Test coverage: server (auth, session, tokens, users, files, notifications, messa
 
 ## Project Status & Suggested Extensions
 
-The current base is feature-complete and well tested. Already built in: OAuth2 third-party login, LLM connectivity testing, dynamic overview stats, pg_trgm full-text indexes, last-login info display. Future directions: field/role-level permissions, dashboard stat charts, dark mode, data backup & restore, and more.
+The current base is feature-complete and well tested. Already built in: OAuth2 third-party login (GitHub / Google / Microsoft), WeChat Pay & Stripe payments, analytics integrations (GA4 / Google Ads / Baidu Tongji), LLM connectivity testing, dynamic overview stats, pg_trgm full-text indexes, last-login info display. Future directions: field/role-level permissions, dashboard stat charts, dark mode, data backup & restore, and more.
