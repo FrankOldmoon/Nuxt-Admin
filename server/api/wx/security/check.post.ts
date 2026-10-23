@@ -1,0 +1,66 @@
+import { createError } from 'h3'
+import { wxApiPost } from '~~/server/utils/wx'
+
+// POST /api/wx/security/check — 内容安全审核（msgSecCheck / imgSecCheck）
+// body: { type: 'text'|'image', content?: string, imageBase64?: string }
+// - text:  /wxa/msg_sec_check（openid 可选，userId 链路下自动带上）
+// - image: /wxa/img_sec_check（二进制 body，图片 ≤1M）
+// 双通道鉴权：小程序用户（Bearer wx token）或后台登录用户均可调用。
+// 文档: https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/security/security-check/
+
+interface WxUserLike { openid: string }
+
+async function resolveCaller(event: Parameters<typeof requireWxUser>[0]): Promise<WxUserLike> {
+  try {
+    return await requireWxUser(event)
+  } catch {
+    await requireUser(event)
+    return { openid: '' } // 后台用户调用时无 openid，msg_sec_check 的 openid 为可选参数
+  }
+}
+
+export default defineEventHandler(async (event) => {
+  const caller = await resolveCaller(event)
+
+  const body = await readBody<{ type?: 'text' | 'image', content?: string, imageBase64?: string }>(event)
+  const type = body?.type || 'text'
+
+  if (type === 'text') {
+    const content = body?.content?.trim()
+    if (!content) {
+      throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'content is required for text check' })
+    }
+    const res = await wxApiPost<{ errcode?: number, errmsg?: string, result?: { suggest?: string, label?: number } }>(
+      '/wxa/msg_sec_check',
+      {
+        version: 2,
+        scene: 2, // 2=评论/发帖内容
+        openid: caller.openid || undefined,
+        content
+      }
+    )
+    const suggest = res.result?.suggest ?? (res.errcode === 0 ? 'pass' : 'risky')
+    console.log('[wx] msg_sec_check suggest:', suggest, '| label:', res.result?.label, '| errcode:', res.errcode)
+    return { pass: suggest === 'pass', suggest, label: res.result?.label ?? null, errcode: res.errcode ?? 0, errmsg: res.errmsg ?? 'ok' }
+  }
+
+  // image check
+  const imageBase64 = body?.imageBase64?.trim()
+  if (!imageBase64) {
+    throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'imageBase64 is required for image check' })
+  }
+  const buffer = Buffer.from(imageBase64, 'base64')
+  if (buffer.length === 0 || buffer.length > 1024 * 1024) {
+    throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'image must be 1B ~ 1MB' })
+  }
+  const token = await getWxAccessToken()
+  const res = await $fetch<{ errcode?: number, errmsg?: string }>('https://api.weixin.qq.com/wxa/img_sec_check', {
+    method: 'POST',
+    query: { access_token: token },
+    headers: { 'Content-Type': 'application/octet-stream' },
+    body: buffer
+  })
+  console.log('[wx] img_sec_check errcode:', res.errcode)
+  // errcode 0 = 通过；87014 = 内容违规
+  return { pass: res.errcode === 0, suggest: res.errcode === 0 ? 'pass' : 'risky', errcode: res.errcode ?? 0, errmsg: res.errmsg ?? 'ok' }
+})

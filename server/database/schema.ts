@@ -311,3 +311,91 @@ export const templateUsers = pgTable(
 
 export type TemplateUser = typeof templateUsers.$inferSelect
 export type NewTemplateUser = typeof templateUsers.$inferInsert
+
+// ------------------------------------------------------------------
+// WeChat Mini Program — users / sessions / pay orders.
+// wxUsers: one row per WeChat openid (auto-created on first wx/login).
+// `userId` optionally links to a local admin-system account (方案A: 独立表 + 可选绑定).
+// ------------------------------------------------------------------
+export const wxUsers = pgTable(
+  'wx_users',
+  {
+    id: serial('id').primaryKey(),
+    openid: varchar('openid', { length: 64 }).notNull(),
+    unionid: varchar('unionid', { length: 64 }),
+    // Latest session_key from code2session (kept for future decrypt needs, e.g. phone data)
+    sessionKey: varchar('session_key', { length: 64 }),
+    nickname: varchar('nickname', { length: 100 }),
+    avatarUrl: varchar('avatar_url', { length: 500 }),
+    phoneNumber: varchar('phone_number', { length: 30 }),
+    countryCode: varchar('country_code', { length: 10 }),
+    // Optional link to the local admin user account (binding via phone/profile)
+    userId: integer('user_id'),
+    lastLoginAt: timestamp('last_login_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    openidIdx: uniqueIndex('wx_users_openid_idx').on(table.openid),
+    unionidIdx: index('wx_users_unionid_idx').on(table.unionid),
+    userFk: foreignKey({ columns: [table.userId], foreignColumns: [users.id] })
+      .onDelete('set null')
+      .onUpdate('cascade')
+  })
+)
+
+// Mini-program sessions (Bearer token in the `Authorization` header).
+// Separate from the admin `tokens` table because its userId FK points to users.
+export const wxSessions = pgTable(
+  'wx_sessions',
+  {
+    id: serial('id').primaryKey(),
+    wxUserId: integer('wx_user_id').notNull(),
+    tokenHash: varchar('token_hash', { length: 64 }).notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    tokenHashIdx: uniqueIndex('wx_sessions_token_hash_idx').on(table.tokenHash),
+    wxUserIdx: index('wx_sessions_wx_user_idx').on(table.wxUserId),
+    wxUserFk: foreignKey({ columns: [table.wxUserId], foreignColumns: [wxUsers.id] })
+      .onDelete('cascade')
+      .onUpdate('cascade')
+  })
+)
+
+// WeChat Pay v3 orders (JSAPI). amount is in cents (分).
+export const wxPayOrders = pgTable(
+  'wx_pay_orders',
+  {
+    id: serial('id').primaryKey(),
+    // Merchant order number (out_trade_no), generated server-side
+    outTradeNo: varchar('out_trade_no', { length: 32 }).notNull(),
+    wxUserId: integer('wx_user_id').notNull(),
+    openid: varchar('openid', { length: 64 }).notNull(),
+    amount: integer('amount').notNull(),
+    description: varchar('description', { length: 127 }).notNull(),
+    // pending | success | closed
+    status: varchar('status', { length: 20 }).default('pending').notNull(),
+    transactionId: varchar('transaction_id', { length: 64 }),
+    paidAt: timestamp('paid_at', { withTimezone: true }),
+    // Raw notify payload kept for audit
+    callbackPayload: jsonb('callback_payload').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    outTradeNoIdx: uniqueIndex('wx_pay_orders_out_trade_no_idx').on(table.outTradeNo),
+    wxUserIdx: index('wx_pay_orders_wx_user_idx').on(table.wxUserId),
+    wxUserFk: foreignKey({ columns: [table.wxUserId], foreignColumns: [wxUsers.id] })
+      .onDelete('cascade')
+      .onUpdate('cascade')
+  })
+)
+
+export type WxUser = typeof wxUsers.$inferSelect
+export type NewWxUser = typeof wxUsers.$inferInsert
+export type WxSession = typeof wxSessions.$inferSelect
+export type NewWxSession = typeof wxSessions.$inferInsert
+export type WxPayOrder = typeof wxPayOrders.$inferSelect
+export type NewWxPayOrder = typeof wxPayOrders.$inferInsert

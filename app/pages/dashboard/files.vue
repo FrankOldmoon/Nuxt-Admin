@@ -20,11 +20,6 @@ definePageMeta({ middleware: 'admin', layout: 'dashboard', keepalive: true })
 const { t } = useI18n()
 useSeoMeta({ title: () => `${t('files.title')} · ${t('dashboard.table.seoSuffix')}` })
 
-function navigate(table: string) {
-  if (table === 'files') return
-  navigateTo(`/dashboard/${table}`)
-}
-
 // ---------- Fetch table meta ----------
 const { data: meta } = await useAsyncData(
   'dashboard:meta:files',
@@ -54,7 +49,7 @@ function downloadUrl(path: string): string {
 </script>
 
 <template>
-  <DashboardShell active-table="files" @navigate="navigate">
+  <div>
     <DashboardCrudPage v-if="meta" ref="crudRef" :meta="meta">
       <!-- Toolbar: Upload button (replaces default Create) -->
       <template #toolbar="{ trashed }">
@@ -211,5 +206,5 @@ function downloadUrl(path: string): string {
         />
       </template>
     </UModal>
-  </DashboardShell>
+  </div>
 </template>

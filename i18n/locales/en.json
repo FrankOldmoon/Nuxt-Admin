@@ -302,6 +302,10 @@
         "loginMaxAttempts": "Failed logins before account lock",
         "loginLockMinutes": "Account lock duration (minutes)"
       },
+      "wx": {
+        "appid": "WeChat Mini Program AppID",
+        "secret": "WeChat Mini Program AppSecret"
+      },
       "oauth": {
         "github": {
           "enabled": "Enable Sign in with GitHub (OAuth2)",

@@ -5,7 +5,11 @@
  * - Desktop (md+): full-width aside, always visible.
  * - Mobile (<md): hidden, replaced by a hamburger button that opens a Popover
  *   containing the same menu items.
- * Emits `navigate(url)` so the parent can push the URL.
+ * Navigation is handled by UNavigationMenu's own `to` links.
+ *
+ * Mounted by `DashboardShell` (which itself lives in the dashboard layout),
+ * so this component stays alive across route changes and keeps its scroll
+ * position.
  */
 import type { DashboardMenuItem } from '~/types/dashboard'
 import type { NavigationMenuItem } from '@nuxt/ui'
@@ -13,10 +17,6 @@ import type { NavigationMenuItem } from '@nuxt/ui'
 const props = defineProps<{
   items: DashboardMenuItem[]
   activeTable?: string
-}>()
-
-const emit = defineEmits<{
-  navigate: [path: string]
 }>()
 
 const { t } = useI18n()

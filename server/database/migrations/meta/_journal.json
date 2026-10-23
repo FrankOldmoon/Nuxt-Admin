@@ -15,6 +15,13 @@
       "when": 1788052600000,
       "tag": "0001_lofty_content_column",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790658949219,
+      "tag": "0002_fluffy_sentinels",
+      "breakpoints": true
     }
   ]
 }

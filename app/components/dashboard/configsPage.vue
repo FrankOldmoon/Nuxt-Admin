@@ -56,10 +56,12 @@ async function testLlm() {
 const generalConfigs = computed(() => {
   const priority = ['site.title', 'site.description', 'blog.enabled']
   const items = configs.value.filter(c =>
-    c.key.startsWith('site.')
+    // site.navigation is managed by the dedicated Navigation editor tab, not here
+    (c.key.startsWith('site.') && c.key !== 'site.navigation')
     || c.key.startsWith('security.')
     || c.key.startsWith('upload.')
     || c.key.startsWith('blog.')
+    || c.key.startsWith('wx.')
   )
   return [...items].sort((a, b) => {
     const ai = priority.indexOf(a.key)

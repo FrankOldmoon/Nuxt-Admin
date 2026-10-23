@@ -66,11 +66,6 @@ const SWITCH_DEFS: SwitchDef[] = [
 
 const toast = useToast()
 
-function navigate(table: string) {
-  if (table === 'templates') return
-  navigateTo(`/dashboard/${table}`)
-}
-
 // --- Fetch table meta (relation options etc.) ---
 const { data: meta } = await useAsyncData(
   'templates:meta',
@@ -198,185 +193,183 @@ function refreshL4() {
 </script>
 
 <template>
-  <DashboardShell active-table="templates" @navigate="navigate">
-    <template #default>
-      <!-- ================= L4: fully custom page ================= -->
-      <UContainer v-if="switches.fullCustomPage" class="py-6">
-        <div class="space-y-4">
-          <UAlert
-            icon="i-lucide-construction"
-            color="warning"
-            title="L4 — fully custom page"
-            description="Below is a completely hand-written layout that ignores DashboardCrudPage. It reuses the same /templates list API, so if L1 is also ON the enriched columns appear here too."
-          />
-          <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <UCard>
-              <p class="text-sm text-muted">Total templates</p>
-              <p class="mt-1 text-2xl font-semibold text-highlighted">{{ customStats.total }}</p>
-            </UCard>
-            <UCard>
-              <p class="text-sm text-muted">In stock</p>
-              <p class="mt-1 text-2xl font-semibold text-success">{{ customStats.total - customStats.out - customStats.low }}</p>
-            </UCard>
-            <UCard>
-              <p class="text-sm text-muted">Low stock</p>
-              <p class="mt-1 text-2xl font-semibold text-warning">{{ customStats.low }}</p>
-            </UCard>
-            <UCard>
-              <p class="text-sm text-muted">Average price</p>
-              <p class="mt-1 text-2xl font-semibold text-highlighted">{{ formatPrice(customStats.avg) }}</p>
-            </UCard>
-          </div>
-
+  <div>
+    <!-- ================= L4: fully custom page ================= -->
+    <UContainer v-if="switches.fullCustomPage" class="py-6">
+      <div class="space-y-4">
+        <UAlert
+          icon="i-lucide-construction"
+          color="warning"
+          title="L4 — fully custom page"
+          description="Below is a completely hand-written layout that ignores DashboardCrudPage. It reuses the same /templates list API, so if L1 is also ON the enriched columns appear here too."
+        />
+        <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <UCard>
-            <template #header>
-              <div class="flex items-center justify-between">
-                <span class="font-medium">Custom template list</span>
-                <UButton size="xs" variant="ghost" icon="i-lucide-refresh-cw" label="Refresh" :loading="customPending" @click="refreshL4" />
-              </div>
-            </template>
-            <ul class="divide-y divide-default">
-              <li v-for="p in customItems" :key="String(p.id)" class="flex items-center gap-4 py-2">
-                <span class="w-10 shrink-0 text-sm text-muted">#{{ p.id }}</span>
-                <div class="min-w-0 flex-1">
-                  <p class="truncate font-medium text-highlighted">{{ p.name }}</p>
-                  <p class="text-xs text-muted">{{ p.sku }}</p>
-                </div>
-                <span class="w-24 text-right font-semibold text-primary">{{ formatPrice(p.price) }}</span>
-                <UBadge :label="statusLabel(p.status)" :color="statusColor(p.status)" variant="subtle" size="sm" />
-                <span v-if="switches.customListApi" class="w-24 text-right">
-                  <UBadge :label="inventoryLabel(p.inventoryStatus)" :color="inventoryColor(p.inventoryStatus)" variant="subtle" size="sm" />
-                </span>
-              </li>
-              <li v-if="!customItems.length && !customPending" class="py-6 text-center text-sm text-muted">No templates yet — create one.</li>
-            </ul>
+            <p class="text-sm text-muted">Total templates</p>
+            <p class="mt-1 text-2xl font-semibold text-highlighted">{{ customStats.total }}</p>
+          </UCard>
+          <UCard>
+            <p class="text-sm text-muted">In stock</p>
+            <p class="mt-1 text-2xl font-semibold text-success">{{ customStats.total - customStats.out - customStats.low }}</p>
+          </UCard>
+          <UCard>
+            <p class="text-sm text-muted">Low stock</p>
+            <p class="mt-1 text-2xl font-semibold text-warning">{{ customStats.low }}</p>
+          </UCard>
+          <UCard>
+            <p class="text-sm text-muted">Average price</p>
+            <p class="mt-1 text-2xl font-semibold text-highlighted">{{ formatPrice(customStats.avg) }}</p>
           </UCard>
         </div>
-      </UContainer>
 
-      <!-- ================= L0/L1/L2/L3: generic CRUD page with conditional slots ================= -->
-      <DashboardCrudPage v-else-if="tableMeta" ref="crudRef" :meta="tableMeta">
-        <!-- ---- L3: custom toolbar ---- -->
-        <template #toolbar="{ openCreate, refresh: toolbarRefresh }">
-          <div v-if="switches.customToolbar" class="flex items-center gap-2">
-            <UButton icon="i-lucide-check-check" color="success" variant="soft" label="Bulk approve (L3)" @click="bulkApprove" />
-            <UButton icon="i-lucide-plus" color="primary" label="Create (L3)" @click="openCreate" />
-            <UButton icon="i-lucide-refresh-cw" variant="ghost" color="neutral" label="Reload" @click="toolbarRefresh" />
-          </div>
-          <!-- default toolbar is rendered by the generic page when the slot is absent;
-               when customToolbar is ON we fully replace it with the custom one above. -->
-        </template>
-
-        <!-- ---- L2: custom table cells ---- -->
-        <template v-if="switches.cellOverrides" #table-price="{ value }">
-          <span class="font-semibold text-primary">{{ formatPrice(value) }}</span>
-        </template>
-        <template v-if="switches.cellOverrides" #table-status="{ value }">
-          <UBadge :label="statusLabel(value)" :color="statusColor(value)" variant="subtle" size="sm" />
-        </template>
-        <template v-if="switches.cellOverrides" #table-tags="{ value }">
-          <div class="flex flex-wrap gap-1">
-            <UBadge v-for="tg in (value ?? [])" :key="String(tg)" :label="String(tg)" color="neutral" variant="subtle" size="sm" />
-          </div>
-        </template>
-        <template v-if="switches.cellOverrides" #table-releasedAt="{ value }">
-          <span>{{ value ? new Date(String(value)).toLocaleDateString() : '-' }}</span>
-        </template>
-        <template v-if="switches.cellOverrides" #table-inventoryStatus="{ value }">
-          <UBadge :label="inventoryLabel(value)" :color="inventoryColor(value)" variant="subtle" size="sm" />
-        </template>
-
-        <!-- ---- L2: custom detail head ---- -->
-        <template v-if="switches.detailOverrides" #detail-before="{ item }">
-          <div v-if="item" class="mb-4 rounded-lg border border-default bg-muted/30 p-4">
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <p class="text-xs text-muted">Inventory (L1)</p>
-                <UBadge v-if="switches.customListApi" :label="inventoryLabel(item.inventoryStatus)" :color="inventoryColor(item.inventoryStatus)" variant="subtle" size="sm" />
-                <span v-else class="text-sm text-muted">Enable L1 to see</span>
-              </div>
-              <div class="text-right">
-                <p class="text-xs text-muted">Price</p>
-                <p class="text-lg font-semibold text-primary">{{ formatPrice(item.price) }}</p>
-              </div>
-            </div>
-          </div>
-        </template>
-        <template v-if="switches.detailOverrides" #detail-tags="{ value }">
-          <div class="flex flex-wrap gap-1">
-            <UBadge v-for="tg in (value ?? [])" :key="String(tg)" :label="String(tg)" color="neutral" variant="subtle" size="sm" />
-          </div>
-        </template>
-        <!-- Always render the `content` field as rich text (Tiptap JSON) in the detail view. -->
-        <template #detail-content="{ value }">
-          <div class="max-h-72 overflow-y-auto rounded border border-default p-3">
-            <BaseUeditorRender v-if="value" :json="value" />
-            <span v-else class="text-muted">-</span>
-          </div>
-        </template>
-
-        <!-- ---- L2: custom form fields ---- -->
-        <template v-if="switches.formOverrides" #form-price="{ modelValue, update }">
-          <div class="flex w-full items-center gap-2">
-            <UIcon name="i-lucide-dollar-sign" class="text-muted shrink-0" />
-            <UInput
-              :model-value="modelValue ?? ''"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="0.00"
-              class="min-w-0 flex-1"
-              @update:model-value="(v) => update(v === '' || v == null ? null : Number(v))"
-            />
-          </div>
-        </template>
-        <template v-if="switches.formOverrides" #form-status="{ modelValue, update }">
-          <USelectMenu
-            :model-value="modelValue ?? ''"
-            value-key="value"
-            :items="statusSelectOptions"
-            placeholder="Select status"
-            class="min-w-0 flex-1"
-            @update:model-value="(v) => update(v === undefined ? null : v)"
-          />
-        </template>
-      </DashboardCrudPage>
-
-      <!-- ================= Switch panel (shown under the table) ================= -->
-      <UContainer class="pt-6">
         <UCard>
           <template #header>
-            <div class="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <h3 class="font-semibold text-highlighted">Templates — customization switcher</h3>
-                <p class="text-sm text-muted">Turn each personalization layer on to compare it against plain generic CRUD (L0).</p>
-              </div>
-              <UButton size="xs" variant="ghost" color="neutral" icon="i-lucide-rotate-ccw" label="Reset all" @click="resetSwitches" />
+            <div class="flex items-center justify-between">
+              <span class="font-medium">Custom template list</span>
+              <UButton size="xs" variant="ghost" icon="i-lucide-refresh-cw" label="Refresh" :loading="customPending" @click="refreshL4" />
             </div>
           </template>
-
-          <div class="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-            <div
-              v-for="d in SWITCH_DEFS"
-              :key="d.key"
-              class="flex items-start gap-3 rounded-lg border border-default p-3"
-            >
-              <USwitch
-                :model-value="switches[d.key]"
-                @update:model-value="toggleSwitch(d.key)"
-              />
-              <div class="min-w-0">
-                <div class="flex flex-wrap items-center gap-2">
-                  <span class="text-sm font-medium text-highlighted">{{ d.title }}</span>
-                  <UBadge :label="d.tier" variant="subtle" size="sm" color="info" />
-                  <UBadge v-if="switches[d.key]" label="ON" variant="solid" size="sm" color="success" />
-                </div>
-                <p class="mt-0.5 text-xs text-muted">{{ d.desc }}</p>
+          <ul class="divide-y divide-default">
+            <li v-for="p in customItems" :key="String(p.id)" class="flex items-center gap-4 py-2">
+              <span class="w-10 shrink-0 text-sm text-muted">#{{ p.id }}</span>
+              <div class="min-w-0 flex-1">
+                <p class="truncate font-medium text-highlighted">{{ p.name }}</p>
+                <p class="text-xs text-muted">{{ p.sku }}</p>
               </div>
+              <span class="w-24 text-right font-semibold text-primary">{{ formatPrice(p.price) }}</span>
+              <UBadge :label="statusLabel(p.status)" :color="statusColor(p.status)" variant="subtle" size="sm" />
+              <span v-if="switches.customListApi" class="w-24 text-right">
+                <UBadge :label="inventoryLabel(p.inventoryStatus)" :color="inventoryColor(p.inventoryStatus)" variant="subtle" size="sm" />
+              </span>
+            </li>
+            <li v-if="!customItems.length && !customPending" class="py-6 text-center text-sm text-muted">No templates yet — create one.</li>
+          </ul>
+        </UCard>
+      </div>
+    </UContainer>
+
+    <!-- ================= L0/L1/L2/L3: generic CRUD page with conditional slots ================= -->
+    <DashboardCrudPage v-else-if="tableMeta" ref="crudRef" :meta="tableMeta">
+      <!-- ---- L3: custom toolbar ---- -->
+      <template #toolbar="{ openCreate, refresh: toolbarRefresh }">
+        <div v-if="switches.customToolbar" class="flex items-center gap-2">
+          <UButton icon="i-lucide-check-check" color="success" variant="soft" label="Bulk approve (L3)" @click="bulkApprove" />
+          <UButton icon="i-lucide-plus" color="primary" label="Create (L3)" @click="openCreate" />
+          <UButton icon="i-lucide-refresh-cw" variant="ghost" color="neutral" label="Reload" @click="toolbarRefresh" />
+        </div>
+        <!-- default toolbar is rendered by the generic page when the slot is absent;
+             when customToolbar is ON we fully replace it with the custom one above. -->
+      </template>
+
+      <!-- ---- L2: custom table cells ---- -->
+      <template v-if="switches.cellOverrides" #table-price="{ value }">
+        <span class="font-semibold text-primary">{{ formatPrice(value) }}</span>
+      </template>
+      <template v-if="switches.cellOverrides" #table-status="{ value }">
+        <UBadge :label="statusLabel(value)" :color="statusColor(value)" variant="subtle" size="sm" />
+      </template>
+      <template v-if="switches.cellOverrides" #table-tags="{ value }">
+        <div class="flex flex-wrap gap-1">
+          <UBadge v-for="tg in (value ?? [])" :key="String(tg)" :label="String(tg)" color="neutral" variant="subtle" size="sm" />
+        </div>
+      </template>
+      <template v-if="switches.cellOverrides" #table-releasedAt="{ value }">
+        <span>{{ value ? new Date(String(value)).toLocaleDateString() : '-' }}</span>
+      </template>
+      <template v-if="switches.cellOverrides" #table-inventoryStatus="{ value }">
+        <UBadge :label="inventoryLabel(value)" :color="inventoryColor(value)" variant="subtle" size="sm" />
+      </template>
+
+      <!-- ---- L2: custom detail head ---- -->
+      <template v-if="switches.detailOverrides" #detail-before="{ item }">
+        <div v-if="item" class="mb-4 rounded-lg border border-default bg-muted/30 p-4">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p class="text-xs text-muted">Inventory (L1)</p>
+              <UBadge v-if="switches.customListApi" :label="inventoryLabel(item.inventoryStatus)" :color="inventoryColor(item.inventoryStatus)" variant="subtle" size="sm" />
+              <span v-else class="text-sm text-muted">Enable L1 to see</span>
+            </div>
+            <div class="text-right">
+              <p class="text-xs text-muted">Price</p>
+              <p class="text-lg font-semibold text-primary">{{ formatPrice(item.price) }}</p>
             </div>
           </div>
-        </UCard>
-      </UContainer>
-    </template>
-  </DashboardShell>
+        </div>
+      </template>
+      <template v-if="switches.detailOverrides" #detail-tags="{ value }">
+        <div class="flex flex-wrap gap-1">
+          <UBadge v-for="tg in (value ?? [])" :key="String(tg)" :label="String(tg)" color="neutral" variant="subtle" size="sm" />
+        </div>
+      </template>
+      <!-- Always render the `content` field as rich text (Tiptap JSON) in the detail view. -->
+      <template #detail-content="{ value }">
+        <div class="max-h-72 overflow-y-auto rounded border border-default p-3">
+          <BaseUeditorRender v-if="value" :json="value" />
+          <span v-else class="text-muted">-</span>
+        </div>
+      </template>
+
+      <!-- ---- L2: custom form fields ---- -->
+      <template v-if="switches.formOverrides" #form-price="{ modelValue, update }">
+        <div class="flex w-full items-center gap-2">
+          <UIcon name="i-lucide-dollar-sign" class="text-muted shrink-0" />
+          <UInput
+            :model-value="modelValue ?? ''"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="0.00"
+            class="min-w-0 flex-1"
+            @update:model-value="(v) => update(v === '' || v == null ? null : Number(v))"
+          />
+        </div>
+      </template>
+      <template v-if="switches.formOverrides" #form-status="{ modelValue, update }">
+        <USelectMenu
+          :model-value="modelValue ?? ''"
+          value-key="value"
+          :items="statusSelectOptions"
+          placeholder="Select status"
+          class="min-w-0 flex-1"
+          @update:model-value="(v) => update(v === undefined ? null : v)"
+        />
+      </template>
+    </DashboardCrudPage>
+
+    <!-- ================= Switch panel (shown under the table) ================= -->
+    <UContainer class="pt-6">
+      <UCard>
+        <template #header>
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h3 class="font-semibold text-highlighted">Templates — customization switcher</h3>
+              <p class="text-sm text-muted">Turn each personalization layer on to compare it against plain generic CRUD (L0).</p>
+            </div>
+            <UButton size="xs" variant="ghost" color="neutral" icon="i-lucide-rotate-ccw" label="Reset all" @click="resetSwitches" />
+          </div>
+        </template>
+
+        <div class="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div
+            v-for="d in SWITCH_DEFS"
+            :key="d.key"
+            class="flex items-start gap-3 rounded-lg border border-default p-3"
+          >
+            <USwitch
+              :model-value="switches[d.key]"
+              @update:model-value="toggleSwitch(d.key)"
+            />
+            <div class="min-w-0">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="text-sm font-medium text-highlighted">{{ d.title }}</span>
+                <UBadge :label="d.tier" variant="subtle" size="sm" color="info" />
+                <UBadge v-if="switches[d.key]" label="ON" variant="solid" size="sm" color="success" />
+              </div>
+              <p class="mt-0.5 text-xs text-muted">{{ d.desc }}</p>
+            </div>
+          </div>
+        </div>
+      </UCard>
+    </UContainer>
+  </div>
 </template>

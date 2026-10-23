@@ -18,11 +18,6 @@ definePageMeta({ middleware: 'admin', layout: 'dashboard', keepalive: true })
 const { t } = useI18n()
 useSeoMeta({ title: () => `${t('users.title')} · ${t('dashboard.table.seoSuffix')}` })
 
-function navigate(table: string) {
-  if (table === 'users') return
-  navigateTo(`/dashboard/${table}`)
-}
-
 // ---------- Fetch table meta (includes relation options for roleId) ----------
 const { data: meta } = await useAsyncData(
   'dashboard:meta:users',
@@ -72,7 +67,7 @@ function roleColor(roleName: string | undefined): 'primary' | 'neutral' {
 </script>
 
 <template>
-  <DashboardShell active-table="users" @navigate="navigate">
+  <div>
     <DashboardCrudPage v-if="meta" ref="crudRef" :meta="meta">
       <!-- Toolbar: Create + Import + Export -->
       <template #toolbar="{ openCreate, trashed }">
@@ -230,5 +225,5 @@ function roleColor(roleName: string | undefined): 'primary' | 'neutral' {
 
     <!-- Import modal -->
     <DashboardUsersImportModal v-model:open="importModalOpen" @imported="onImported" />
-  </DashboardShell>
+  </div>
 </template>

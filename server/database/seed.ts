@@ -66,7 +66,7 @@ const DEFAULT_CONFIGS = [
   { key: 'security.passwordResetTtlMinutes', value: '30', type: 'number', description: 'Password reset token TTL (minutes)' },
   { key: 'security.emailVerificationTtlMinutes', value: '1440', type: 'number', description: 'Email verification token TTL (minutes)' },
   { key: 'security.sessionTtlDays', value: '7', type: 'number', description: 'Session token TTL (days)' },
-  { key: 'security.captchaEnabled', value: 'true', type: 'boolean', description: 'Enable graphic captcha on the login page' },
+  { key: 'security.captchaEnabled', value: 'false', type: 'boolean', description: 'Enable graphic captcha on the login page' },
   { key: 'security.captchaSecret', value: '', type: 'string', description: 'CAPTCHA HMAC signing secret (leave blank to use env NUXT_CAPTCHA_SECRET or the dev default)' },
   { key: 'security.loginMaxAttempts', value: '5', type: 'number', description: 'Number of consecutive failed logins before the account is locked' },
   { key: 'security.loginLockMinutes', value: '15', type: 'number', description: 'Account lock duration (minutes)' },
@@ -79,6 +79,16 @@ const DEFAULT_CONFIGS = [
   { key: 'oauth.callbackRedirect', value: '/', type: 'string', description: 'Frontend path to redirect to after a successful SSO sign-in (default "/")' },
   { key: 'upload.maxFileSize', value: '10', type: 'number', description: 'Max upload file size (MB)' },
   { key: 'upload.allowedMimeTypes', value: '', type: 'string', description: 'Allowed upload MIME types (comma-separated, empty = all)' },
+  // ---- WeChat Mini Program configs ----
+  { key: 'wx.appid', value: 'wx17e518ae011cb1f9', type: 'string', description: 'WeChat Mini Program AppID (for phone number / openid APIs)' },
+  { key: 'wx.secret', value: '', type: 'string', description: 'WeChat Mini Program AppSecret' },
+  { key: 'wx.sessionTtlDays', value: '30', type: 'number', description: 'Mini-program session token TTL (days)' },
+  { key: 'wx.pay.enabled', value: 'false', type: 'boolean', description: 'Enable WeChat Pay v3 JSAPI' },
+  { key: 'wx.pay.mchid', value: '', type: 'string', description: 'WeChat Pay merchant ID (mchid)' },
+  { key: 'wx.pay.serialNo', value: '', type: 'string', description: 'Merchant API certificate serial number' },
+  { key: 'wx.pay.privateKey', value: '', type: 'string', description: 'Merchant API private key (full PEM text with BEGIN/END lines)' },
+  { key: 'wx.pay.apiv3Key', value: '', type: 'string', description: 'WeChat Pay APIv3 key (32 chars)' },
+  { key: 'wx.pay.notifyUrl', value: '', type: 'string', description: 'Payment notify callback URL (e.g. https://your.host/api/wx/pay/notify)' },
   {
     key: 'dashboard.menu',
     value: JSON.stringify([

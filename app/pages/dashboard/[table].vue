@@ -58,15 +58,6 @@ const CUSTOM_PAGE_MAP: Record<string, Component> = {
   configs: markRaw(DashboardConfigsPage)
 }
 
-function navigate(path: string) {
-  if (path.startsWith('/') || path.startsWith('http')) {
-    navigateTo(path)
-    return
-  }
-  if (activeTable.value === path) return
-  navigateTo(`/dashboard/${path}`)
-}
-
 // ---------- Load full metadata (menu + tables list with custom flags) ----------
 const { data: metaData } = await useDashboardMeta()
 
@@ -111,44 +102,42 @@ const tableMetaError = computed(() =>
 </script>
 
 <template>
-  <DashboardShell :active-table="activeTable" @navigate="navigate">
-    <template #default>
-      <!-- Error loading metadata (generic tables only) -->
-      <UContainer v-if="tableMetaError" class="py-10">
-        <UAlert color="error" :title="t('dashboard.table.loadFailed')" :description="tableMetaError" />
-      </UContainer>
+  <div>
+    <!-- Error loading metadata (generic tables only) -->
+    <UContainer v-if="tableMetaError" class="py-10">
+      <UAlert color="error" :title="t('dashboard.table.loadFailed')" :description="tableMetaError" />
+    </UContainer>
 
-      <!-- Custom page: backend says custom:true AND we have a component -->
-      <component
-        v-else-if="isCustomTable && customComponent"
-        :is="customComponent"
+    <!-- Custom page: backend says custom:true AND we have a component -->
+    <component
+      v-else-if="isCustomTable && customComponent"
+      :is="customComponent"
+    />
+
+    <!-- Custom table but no frontend component yet -->
+    <UContainer v-else-if="isCustomTable && !customComponent" class="py-10">
+      <UAlert
+        color="warning"
+        :title="t('dashboard.table.customNotImplemented')"
+        :description="t('dashboard.table.customNotImplementedDesc', { table: activeTable })"
       />
+    </UContainer>
 
-      <!-- Custom table but no frontend component yet -->
-      <UContainer v-else-if="isCustomTable && !customComponent" class="py-10">
-        <UAlert
-          color="warning"
-          :title="t('dashboard.table.customNotImplemented')"
-          :description="t('dashboard.table.customNotImplementedDesc', { table: activeTable })"
-        />
-      </UContainer>
-
-      <!-- Generic CRUD (e.g. /dashboard/roles) -->
-      <template v-else-if="!isUnknownTable && tableMetaState && !tableMetaState.custom">
-        <DashboardCrudPage v-if="!metaLoading" :meta="tableMetaState" />
-        <UContainer v-else class="py-10">
-          <UCard class="h-96"><div class="p-6 text-muted">{{ t('dashboard.table.loadingMeta') }}</div></UCard>
-        </UContainer>
-      </template>
-
-      <!-- Unknown table (not in backend registry) -->
-      <UContainer v-else-if="isUnknownTable && !metaLoading" class="py-10">
-        <UAlert
-          color="warning"
-          :title="t('dashboard.table.unknownTable')"
-          :description="t('dashboard.table.unknownTableDesc', { table: activeTable })"
-        />
+    <!-- Generic CRUD (e.g. /dashboard/roles) -->
+    <template v-else-if="!isUnknownTable && tableMetaState && !tableMetaState.custom">
+      <DashboardCrudPage v-if="!metaLoading" :meta="tableMetaState" />
+      <UContainer v-else class="py-10">
+        <UCard class="h-96"><div class="p-6 text-muted">{{ t('dashboard.table.loadingMeta') }}</div></UCard>
       </UContainer>
     </template>
-  </DashboardShell>
+
+    <!-- Unknown table (not in backend registry) -->
+    <UContainer v-else-if="isUnknownTable && !metaLoading" class="py-10">
+      <UAlert
+        color="warning"
+        :title="t('dashboard.table.unknownTable')"
+        :description="t('dashboard.table.unknownTableDesc', { table: activeTable })"
+      />
+    </UContainer>
+  </div>
 </template>

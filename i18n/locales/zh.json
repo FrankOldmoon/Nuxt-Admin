@@ -302,6 +302,10 @@
         "loginMaxAttempts": "连续登录失败多少次后锁定账号",
         "loginLockMinutes": "账号锁定时长（分钟）"
       },
+      "wx": {
+        "appid": "微信小程序 AppID",
+        "secret": "微信小程序 AppSecret"
+      },
       "oauth": {
         "github": {
           "enabled": "启用 GitHub 登录（OAuth2）",

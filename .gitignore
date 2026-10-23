@@ -147,3 +147,6 @@ vite.config.ts.timestamp-*
 # switches, never committed here.
 modules/
 .workbuddy
+# Large model / runtime assets (exceed GitHub limits, kept local)
+public/models/
+public/ort/

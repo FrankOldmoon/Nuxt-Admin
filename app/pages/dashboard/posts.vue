@@ -16,30 +16,21 @@ const { data: meta } = await useAsyncData<TableMetaWithOptions | null>(
   'posts:meta',
   () => cGet<TableMetaWithOptions>('/api/dashboard/meta/posts').catch(() => null)
 )
-
-function navigate(table: string) {
-  if (table === 'posts') return
-  navigateTo(`/dashboard/${table}`)
-}
 </script>
 
 <template>
-  <DashboardShell active-table="posts" @navigate="navigate">
-    <template #default>
-      <DashboardCrudPage v-if="meta" :meta="meta">
-        <template #table-actions-prepend="{ item }">
-          <BaseVersionHistoryModal
-            :table="'posts'"
-            :id="item.id"
-            variant="icon"
-          />
-        </template>
-      </DashboardCrudPage>
-      <UContainer v-else class="py-10">
-        <UCard class="h-96">
-          <div class="p-6 text-muted">{{ $t('dashboard.table.loadingMeta') }}</div>
-        </UCard>
-      </UContainer>
+  <DashboardCrudPage v-if="meta" :meta="meta">
+    <template #table-actions-prepend="{ item }">
+      <BaseVersionHistoryModal
+        :table="'posts'"
+        :id="item.id"
+        variant="icon"
+      />
     </template>
-  </DashboardShell>
+  </DashboardCrudPage>
+  <UContainer v-else class="py-10">
+    <UCard class="h-96">
+      <div class="p-6 text-muted">{{ $t('dashboard.table.loadingMeta') }}</div>
+    </UCard>
+  </UContainer>
 </template>

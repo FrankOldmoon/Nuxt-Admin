@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
   }
 
   // Captcha (can be disabled via security.captchaEnabled config)
-  const captchaEnabled = await getConfigValue<boolean>('security.captchaEnabled', true)
+  const captchaEnabled = await getConfigValue<boolean>('security.captchaEnabled', false)
   if (captchaEnabled && !(await verifyCaptcha(body?.captchaId, body?.captchaText))) {
     throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'Invalid or expired captcha' })
   }

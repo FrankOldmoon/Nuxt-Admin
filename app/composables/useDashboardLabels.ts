@@ -6,22 +6,27 @@
  * they fall back to the backend-provided `FieldMeta.label`. This keeps the
  * default `en` and switched `zh` consistent and removes the "backend Chinese
  * label + frontend i18n" mix.
+ *
+ * Existence is probed with `te()` instead of comparing `t(key) === key`:
+ * calling `t()` on a missing key emits a `[intlify] Not found ...` WARN, and
+ * every auto-discovered table that has no translation would spam one per
+ * render. Modules are expected to ship their own `dashboard.tables.*` entries
+ * (see `modules/sms/nuxt.config.ts`); anything they forget silently falls back
+ * to the backend label.
  */
 export function useDashboardLabels() {
-  const { t } = useI18n()
+  const { t, te } = useI18n()
 
   /** Field label: prefer i18n, fall back to backend label */
   function fieldLabel(table: string, field: { key: string, label: string }): string {
     const key = `dashboard.fields.${table}.${field.key}`
-    const translated = t(key)
-    return translated === key ? field.label : translated
+    return te(key) ? t(key) : field.label
   }
 
   /** Table label: prefer i18n, fall back to backend label */
   function tableLabel(table: string, fallback: string): string {
     const key = `dashboard.tables.${table}`
-    const translated = t(key)
-    return translated === key ? fallback : translated
+    return te(key) ? t(key) : fallback
   }
 
   /**
