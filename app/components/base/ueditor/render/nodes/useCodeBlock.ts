@@ -1,13 +1,13 @@
 import { ref, computed, inject } from 'vue'
 import hljs from 'highlight.js'
 
-/** 渲染节点：codeBlock 的 attrs 与 content 结构 */
+/** Render node: attrs and content structure of codeBlock */
 interface CodeBlockAttrs { language?: string, theme?: string }
 interface CodeBlockText { text?: string }
 interface CodeBlockNode { attrs?: CodeBlockAttrs, content?: CodeBlockText[] }
 interface CodeBlockProps { node: CodeBlockNode }
 
-/** 语言别名 → highlight.js 注册名（js/ts/py/sh 等常见简写需映射） */
+/** Language aliases -> highlight.js registered names (common shorthands like js/ts/py/sh need mapping) */
 const LANG_ALIASES: Record<string, string> = {
   'js': 'javascript', 'jsx': 'javascript', 'mjs': 'javascript', 'cjs': 'javascript', 'node': 'javascript',
   'ts': 'typescript', 'tsx': 'typescript',
@@ -22,7 +22,7 @@ const LANG_ALIASES: Record<string, string> = {
   'jsonc': 'json'
 }
 
-/** 在 .dark（含 [theme-mode=dark]）下是否处于暗色 */
+/** Whether dark mode is active under .dark (including [theme-mode=dark]) */
 function isDark(): boolean {
   if (typeof document === 'undefined') return false
   const html = document.documentElement
@@ -38,7 +38,7 @@ export function useCodeBlock(props: CodeBlockProps) {
   const language = computed(() => attrs.value.language || 'plaintext')
   const normLang = computed(() => (language.value || '').toLowerCase().trim())
 
-  // 未显式指定 theme 时跟随宿主明暗模式
+  // Follow the host light/dark mode when theme is not explicitly set
   const theme = computed(() => attrs.value.theme || (isDark() ? 'dark' : 'light'))
 
   const codeText = computed(() =>

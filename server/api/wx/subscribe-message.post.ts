@@ -4,10 +4,10 @@ import { db } from '~~/server/database'
 import { wxUsers } from '~~/server/database/schema'
 import { wxApiPost } from '~~/server/utils/wx'
 
-// POST /api/wx/subscribe-message — 发送小程序订阅消息（后台 admin 操作）
+// POST /api/wx/subscribe-message — Send a mini-program subscribe message (admin operation)
 // body: { openid?: string, wxUserId?: number, templateId: string, data: Record<string, {value: string}>, page?: string, miniprogramState?: 'developer'|'trial'|'formal' }
-// openid 与 wxUserId 二选一；给 wxUserId 时自动查表取 openid。
-// 文档: https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/mp-message-management/subscribe-message/sendMessage.html
+// Provide either openid or wxUserId; when wxUserId is given, the openid is looked up from the table automatically.
+// Docs: https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/mp-message-management/subscribe-message/sendMessage.html
 export default defineEventHandler(async (event) => {
   await requireAdmin(event)
 
@@ -46,7 +46,7 @@ export default defineEventHandler(async (event) => {
     miniprogram_state: body.miniprogramState || 'formal'
   })
 
-  // 43101: 用户拒绝/未订阅该模板 — 常见，返回给调用方自行处理
+  // 43101: user refused / not subscribed to this template — common; return it for the caller to handle
   console.log('[wx] subscribe/send openid:', openid, '| template:', templateId, '| errcode:', res.errcode)
   return {
     ok: res.errcode === 0 || res.errcode === undefined,

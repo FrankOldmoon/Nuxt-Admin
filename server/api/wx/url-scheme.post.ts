@@ -1,10 +1,10 @@
 import { createError } from 'h3'
 import { wxApiPost } from '~~/server/utils/wx'
 
-// POST /api/wx/url-scheme — 生成小程序 URL Scheme（短信/邮件/外部浏览器唤起小程序）
+// POST /api/wx/url-scheme — Generate a mini-program URL Scheme (launch the mini-program from SMS/email/external browser)
 // body: { path?: string, query?: string, isExpire?: boolean, expireType?: 0|1, expireInterval?: number, expireTime?: number }
-// 返回 { openlink }（weixin://dl/business/?t=xxx 形式）。
-// 文档: https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/qrcode-link/url-scheme/generateScheme.html
+// Returns { openlink } (in the form weixin://dl/business/?t=xxx).
+// Docs: https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/qrcode-link/url-scheme/generateScheme.html
 export default defineEventHandler(async (event) => {
   await requireUser(event)
 
@@ -18,12 +18,12 @@ export default defineEventHandler(async (event) => {
   }>(event)
 
   const jumpWxa: Record<string, unknown> = {
-    path: body?.path || '', // 空串 = 默认首页
+    path: body?.path || '', // empty string = default home page
     query: body?.query || ''
   }
   if (body?.isExpire) {
     jumpWxa.is_expire = true
-    jumpWxa.expire_type = body.expireType ?? 1 // 0=失效时间 1=失效间隔天数
+    jumpWxa.expire_type = body.expireType ?? 1 // 0=expire at a given time, 1=expire after N days
     if (jumpWxa.expire_type === 0 && body.expireTime) jumpWxa.expire_time = body.expireTime
     if (jumpWxa.expire_type === 1 && body.expireInterval) jumpWxa.expire_interval = body.expireInterval
   }

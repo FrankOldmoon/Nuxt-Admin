@@ -10,18 +10,18 @@ export function useHtmlRender(props: HtmlRenderProps) {
     const isFullscreen = ref(false)
 
     const userHtml = computed(() => props.node?.attrs?.content || '')
-    // 手动设置的高度：>0 时覆盖自适应高度
+    // Manually set height: overrides the auto height when > 0
     const fixedHeight = computed(() => {
       const h = Number(props.node?.attrs?.height)
       return h > 0 ? h : 0
     })
-    // 展示高度 = 手动高度或内容自适应高度
+    // Display height = manual height or content auto height
     const iframeHeight = computed(() => fixedHeight.value > 0 ? fixedHeight.value : autoHeight.value)
 
-    /** 构造 iframe srcdoc：包裹为基础 HTML 文档 + 高度上报脚本 */
+    /** Build the iframe srcdoc: wrap in a base HTML document + height reporting script */
     const iframeContent = computed(() => {
       const html = userHtml.value
-      // 已是完整 HTML 文档则直接使用
+      // Use as-is if already a full HTML document
       const isFullDoc = /<html[\s>]/i.test(html) || /<!DOCTYPE/i.test(html)
       if (isFullDoc) return html
 

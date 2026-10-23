@@ -17,7 +17,7 @@ export function useVfilesRender(props: VfilesRenderProps) {
 
     const selectedId = ref(null)
 
-    // 自动选择第一个文件
+    // Auto-select the first file
     watch(() => config.value.items, (items) => {
         if (!selectedId.value && items && items.length) {
             function findFirstFile(nodes) {

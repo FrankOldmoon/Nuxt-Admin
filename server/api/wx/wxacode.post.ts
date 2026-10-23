@@ -1,10 +1,10 @@
 import { createError, setResponseHeader } from 'h3'
 import { getWxAccessToken } from '~~/server/utils/wx'
 
-// POST /api/wx/wxacode — 生成小程序码（getwxacodeunlimit，数量不限）
-// body: { scene: string (≤32字符), page?: string, width?: number, checkPath?: boolean, envVersion?: 'release'|'trial'|'develop' }
-// 返回：image/jpeg 二进制（直接 <img src> 可用）。
-// 文档: https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/qrcode-link/qr-code/getUnlimitedQRCode.html
+// POST /api/wx/wxacode — Generate a mini-program QR code (getwxacodeunlimit, unlimited quantity)
+// body: { scene: string (≤32 chars), page?: string, width?: number, checkPath?: boolean, envVersion?: 'release'|'trial'|'develop' }
+// Returns: image/jpeg binary (directly usable as <img src>).
+// Docs: https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/qrcode-link/qr-code/getUnlimitedQRCode.html
 export default defineEventHandler(async (event) => {
   await requireUser(event)
 
@@ -40,7 +40,7 @@ export default defineEventHandler(async (event) => {
   const contentType = res.headers.get('content-type') || ''
   const buffer = Buffer.from(res._data as ArrayBuffer)
 
-  // 微信出错时返回 JSON（content-type: application/json）
+  // WeChat returns JSON on error (content-type: application/json)
   if (contentType.includes('application/json') || (!contentType.startsWith('image/') && buffer[0] === 0x7b)) {
     let msg = 'unknown wxacode error'
     try {

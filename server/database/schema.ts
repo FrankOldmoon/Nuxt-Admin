@@ -315,7 +315,7 @@ export type NewTemplateUser = typeof templateUsers.$inferInsert
 // ------------------------------------------------------------------
 // WeChat Mini Program — users / sessions / pay orders.
 // wxUsers: one row per WeChat openid (auto-created on first wx/login).
-// `userId` optionally links to a local admin-system account (方案A: 独立表 + 可选绑定).
+// `userId` optionally links to a local admin-system account (Plan A: separate table + optional binding).
 // ------------------------------------------------------------------
 export const wxUsers = pgTable(
   'wx_users',
@@ -364,7 +364,7 @@ export const wxSessions = pgTable(
   })
 )
 
-// WeChat Pay v3 orders (JSAPI). amount is in cents (分).
+// WeChat Pay v3 orders (JSAPI). amount is in cents (fen).
 export const wxPayOrders = pgTable(
   'wx_pay_orders',
   {

@@ -53,12 +53,12 @@ export default Node.create({
 
   addInputRules() {
     return [
-      // 单数类型：::type content:: 直接插入节点
+      // Singular type: ::type content:: inserts the node directly
       new InputRule({
         find: /^::(\w+)\s+(.*?)::$/,
         handler: ({ state, range, match, commands }) => {
-          const type = match[1];    // 例如 'pdf'
-          const content = match[2]; // 例如 '12'
+          const type = match[1];    // e.g. 'pdf'
+          const content = match[2]; // e.g. '12'
           commands.deleteRange(range);
           commands.insertContentAt(range.from, {
             type: 'vue',
@@ -74,11 +74,11 @@ export default Node.create({
     level: 'block',
     start: src => src.search(/::\w/),
     tokenize: (src, tokens, lexer) => {
-      const match = /^::(\w+)\s+(.*?)::$/s.exec(src)  // 注意用 s 标志让 . 匹配换行
+      const match = /^::(\w+)\s+(.*?)::$/s.exec(src)  // Note: the s flag makes . match newlines
       if (!match) return undefined
 
       return {
-        type: 'vue',          // 固定 token 类型
+        type: 'vue',          // Fixed token type
         raw: match[0],
         vueType: match[1],
         text: match[2],

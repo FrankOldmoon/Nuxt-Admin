@@ -1,30 +1,30 @@
 import { ref, computed, type Ref } from 'vue'
 
 export function useRichEditor(props: any, model: Ref<string | Record<string, any>>) {
-    // 判断当前值是否为 JSON 对象（非数组、非 null、非字符串）
+    // Whether the current value is a JSON object (not array, null, or string)
     const isJson = computed(
         () => typeof model.value === 'object' && model.value !== null && !Array.isArray(model.value)
     )
 
-    // 弹窗控制
+    // Modal control
     const isModalOpen = ref(false)
 
-    // 编辑器内临时 JSON 数据
+    // Temporary JSON data inside the editor
     const editJson = ref<any>(null)
 
-    /** 打开编辑器：将当前 model 转换为 JSON 赋给 editJson */
+    /** Open the editor: convert the current model to JSON and assign it to editJson */
     function openEditor() {
         editJson.value = model.value
         isModalOpen.value = true
     }
 
-    /** 保存编辑器内容：写回 model，自动切换至 JSON 渲染视图 */
+    /** Save editor content: write back to model and switch to the JSON render view */
     function saveJson() {
         model.value = editJson.value || { type: 'doc', content: [] }
         isModalOpen.value = false
     }
 
-    /** 从 JSON 模式切换回纯文本，提取文本写入 model */
+    /** Switch from JSON mode back to plain text, extract the text and write it to model */
     function switchToTextMode() {
         if (isJson.value) {
             const text = jsonToText(model.value as Record<string, any>)
@@ -32,19 +32,19 @@ export function useRichEditor(props: any, model: Ref<string | Record<string, any
         }
     }
 
-    // ============== Tiptap JSON 与纯文本互转 ==============
-    /** 从 Tiptap JSON 提取纯文本 */
+    // ============== Tiptap JSON <-> plain text conversion ==============
+    /** Extract plain text from Tiptap JSON */
     function jsonToText(doc: Record<string, any>): string {
         if (!doc || !doc.content) return ''
         return extractText(doc)
     }
 
-    /** 递归遍历 Tiptap JSON，拼接文本节点与内联内容 */
+    /** Recursively traverse the Tiptap JSON, concatenating text nodes and inline content */
     function extractText(node: Record<string, any>): string {
         if (!node) return ''
         if (node.type === 'text' && typeof node.text === 'string') return node.text
 
-        // 特殊块级节点（vue/table 等）以换行分隔
+        // Special block nodes (vue/table etc.) are separated by newlines
         if (node.type === 'vue') {
             const content = node.attrs?.content || ''
             return content ? `[${node.attrs?.type || 'vue'}] ${content}` : ''

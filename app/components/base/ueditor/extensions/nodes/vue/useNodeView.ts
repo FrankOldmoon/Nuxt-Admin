@@ -5,30 +5,30 @@ export function useNodeView(props: any, emit: any) {
     const comp = ref<any>(null)
     const loading = ref(false)
 
-    // ====================== 通用状态（provide 给子组件） ======================
+    // ====================== Shared state (provided to child components) ======================
 
-    // 配置面板开关
+    // Config panel toggle
     const showConfig = ref(false)
 
-    // 组件元信息（子组件在 setup 中设置）
+    // Component meta info (set by child components in setup)
     const meta = reactive({
         title: '',
         icon: '',
         hasSettings: false,
     })
 
-    // 提供给子组件
+    // Provided to child components
     provide('nodeViewShowConfig', showConfig)
     provide('nodeViewMeta', meta)
 
-    // ====================== 动态加载子组件 ======================
+    // ====================== Dynamic child component loading ======================
 
-    // 预注册所有扩展组件路径（import.meta.glob 在构建时生成映射，运行时按需懒加载）
+    // Pre-register all extension component paths (import.meta.glob generates the mapping at build time; lazily loaded at runtime)
     const extensionComponents = import.meta.glob([
         './*/*.vue',
     ])
 
-    // 组件创建后通过 emit('init', cid) 通知父级更新节点 content 属性
+    // After the component is created, notify the parent via emit('init', cid) to update the node content attribute
     function onInit(cid: any) {
         if (cid != null) {
             props.updateAttributes({ content: String(cid) })
@@ -38,7 +38,7 @@ export function useNodeView(props: any, emit: any) {
     watch(
         () => props.node.attrs.type,
         async (type: string) => {
-            // 切换组件时重置 meta
+            // Reset meta when switching components
             meta.title = ''
             meta.icon = ''
             meta.hasSettings = false
@@ -48,7 +48,7 @@ export function useNodeView(props: any, emit: any) {
             if (!type) return
             loading.value = true
             try {
-                // 查找本目录下的扩展：./timer/index.vue（主，三文件结构）
+                // Look for the extension in this directory: ./timer/index.vue (primary, three-file structure)
                 const primary = `./${type}/index.vue`
                 const loader = extensionComponents[primary]
                 if (loader) {

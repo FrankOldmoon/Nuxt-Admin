@@ -2,13 +2,13 @@ import { createSign, createVerify, createDecipheriv, randomBytes } from 'node:cr
 import { createError } from 'h3'
 import { getConfigValue } from './configs'
 
-// WeChat Pay v3 (JSAPI) 工具层：
-// - 商户私钥签名请求（WECHATPAY2-SHA256-RSA2048）
-// - 平台证书下载/缓存 + 回调验签
-// - 回调 resource 解密（AES-256-GCM, APIv3 key）
-// 配置项（dashboard configs）：wx.pay.enabled / wx.pay.mchid / wx.pay.serialNo /
-// wx.pay.privateKey(商户 API 私钥 PEM 全文) / wx.pay.apiv3Key / wx.pay.notifyUrl
-// 文档: https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_5_1.shtml
+// WeChat Pay v3 (JSAPI) utility layer:
+// - Signs requests with the merchant private key (WECHATPAY2-SHA256-RSA2048)
+// - Platform cert download/cache + callback signature verification
+// - Callback resource decryption (AES-256-GCM, APIv3 key)
+// Config (dashboard configs): wx.pay.enabled / wx.pay.mchid / wx.pay.serialNo /
+// wx.pay.privateKey (full merchant API private key PEM) / wx.pay.apiv3Key / wx.pay.notifyUrl
+// Docs: https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_5_1.shtml
 
 const WX_PAY_API = 'https://api.mch.weixin.qq.com'
 
@@ -203,7 +203,7 @@ export async function createJsapiOrder(params: {
     })
   }
 
-  // 二次签名：小程序端 wx.requestPayment 所需参数
+  // Second signature: params required by wx.requestPayment on the mini-program side
   const timeStamp = String(Math.floor(Date.now() / 1000))
   const nonceStr = randomBytes(16).toString('hex')
   const pkg = `prepay_id=${res.prepay_id}`
@@ -211,7 +211,7 @@ export async function createJsapiOrder(params: {
   return { prepayId: res.prepay_id, payment: { timeStamp, nonceStr, package: pkg, signType: 'RSA', paySign } }
 }
 
-// --- query order (对账/回调丢失兜底) ---
+// --- query order (reconciliation / fallback for lost callbacks) ---
 
 export async function queryWxPayOrderByOutTradeNo(outTradeNo: string): Promise<{
   tradeState?: string

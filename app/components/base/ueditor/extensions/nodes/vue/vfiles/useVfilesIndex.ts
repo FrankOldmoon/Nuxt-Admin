@@ -30,7 +30,7 @@ export function useVfilesIndex(props: VfilesIndexProps) {
         props.updateAttributes({ content: JSON.stringify(newConfig) })
     }
 
-    // 预览模式
+    // Preview mode
     const selectedId = ref(null)
     const selectedFile = computed(() => {
         if (!selectedId.value) return null
@@ -65,7 +65,7 @@ export function useVfilesIndex(props: VfilesIndexProps) {
         return build(config.value.items || [])
     })
 
-    // 编辑文件内容时防抖保存
+    // Debounced save when editing file content
     let saveTimer = null
     watch(() => selectedFile.value?.content, () => {
         if (saveTimer) clearTimeout(saveTimer)

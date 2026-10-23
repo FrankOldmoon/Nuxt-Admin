@@ -13,16 +13,16 @@
                 </div>
             </template>
         </UModal>
-        <!-- 字符串模式：markdown 文本域 + 右上角富文本弹窗按钮 + 右下角预览开关（默认隐藏 preview） -->
+        <!-- String mode: markdown textarea + top-right rich text modal button + bottom-right preview toggle (preview hidden by default) -->
         <div v-if="!isJson" class="relative space-y-2">
             <div class="relative">
                 <UTextarea v-model="model" :rows="3" class="w-full" :placeholder="t('richEditor.placeholder')" />
-                <!-- 富文本编辑弹窗 -->
+                <!-- Rich text editing modal -->
                 <UButton icon="i-heroicons-book-open" variant="ghost" size="sm"
                     class="absolute top-0 right-0 opacity-50 hover:opacity-100 transition-opacity z-10"
                     :aria-label="t('richEditor.openEditor')" @click="openEditor" />
             </div>
-            <!-- 右下角预览开关：点击才弹出下方 live preview，再点隐藏 -->
+            <!-- Bottom-right preview toggle: click to show the live preview below, click again to hide -->
             <div class="flex justify-end">
                 <UButton
                     v-if="model"
@@ -35,13 +35,13 @@
                     @click="showPreview = !showPreview"
                 />
             </div>
-            <!-- 文本模式的 live preview（需点击右下角眼睛按钮才显示） -->
+            <!-- Live preview for text mode (shown only after clicking the bottom-right eye button) -->
             <div v-if="showPreview && model" class="relative border rounded-md p-3">
                 <BaseUeditorRender :json="model" />
             </div>
         </div>
 
-        <!-- JSON 模式：点击整个预览框即可打开 ueditor 富文本编辑界面（无右上角按钮） -->
+        <!-- JSON mode: click the whole preview box to open the ueditor rich text editor (no top-right button) -->
         <div
             v-if="isJson"
             class="relative border rounded-md p-3 min-h-[72px] cursor-pointer"
@@ -65,14 +65,14 @@ const props = defineProps({
         type: Boolean,
         default: true,
     },
-    // 兼容旧调用方（如 test.vue）；JSON 模式现已改为点击整块预览框进入编辑，不再使用右上角切换按钮
+    // Backward compatibility for old callers (e.g. test.vue); JSON mode now enters editing by clicking the whole preview box, no longer using the top-right toggle button
     allowTextMode: {
         type: Boolean,
         default: true,
     },
 })
 
-// 文本模式的 live preview 开关（默认隐藏，点击右下角眼睛按钮再显示）
+// Live preview toggle for text mode (hidden by default, shown after clicking the bottom-right eye button)
 const showPreview = ref(false)
 
 const { isJson, isModalOpen, editJson, openEditor, saveJson } = useRichEditor(props, model)

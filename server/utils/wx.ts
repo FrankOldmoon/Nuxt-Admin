@@ -5,11 +5,11 @@ import { db } from './db'
 import { wxUsers, wxSessions, type WxUser } from '../database/schema'
 import { getConfigValue } from './configs'
 
-// WeChat Mini Program 基座：
-// - stable_token 获取 + 内存缓存（提前 5 分钟过期）
-// - code2session（wx.login code 换 openid/session_key）
-// - 小程序登录态：wx_sessions 表 + Authorization: Bearer <token>
-// 配置项：wx.appid / wx.secret / wx.sessionTtlDays（dashboard configs 可改）
+// WeChat Mini Program foundation:
+// - stable_token fetch + in-memory cache (expires 5 minutes early)
+// - code2session (wx.login code → openid/session_key)
+// - Mini-program login state: wx_sessions table + Authorization: Bearer <token>
+// Config: wx.appid / wx.secret / wx.sessionTtlDays (editable via dashboard configs)
 
 const WX_API_BASE = 'https://api.weixin.qq.com'
 
@@ -49,8 +49,8 @@ export async function getWxAccessToken(): Promise<string> {
       message: `WeChat token error: ${res.errmsg ?? 'unknown'}`
     })
   }
-  // stable_token 无需自己维护刷新，但这里做内存缓存避免每次请求都打微信接口
-  const expiresIn = (res.expires_in ?? 7200) - 300 // 提前 5 分钟过期
+  // stable_token requires no manual refresh, but we cache it in memory to avoid hitting the WeChat API on every request
+  const expiresIn = (res.expires_in ?? 7200) - 300 // expire 5 minutes early
   tokenCache = { token: res.access_token, expiresAt: Date.now() + expiresIn * 1000 }
   console.log('[wx] access_token refreshed, expires_in:', res.expires_in)
   return res.access_token

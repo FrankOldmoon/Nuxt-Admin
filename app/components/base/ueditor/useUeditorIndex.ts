@@ -7,12 +7,12 @@ export function useUeditorIndex(props: any, json: any) {
     const editorRef = ref<any>(null)
     const tiptapEditor = ref<any>(null)
     const cinsertsWrapper = ref<any>(null)
-    // 控制 cinsert 是否显示（避免 v-show 在重渲染时把 wrapper 重新隐藏）
+    // Controls whether cinsert is shown (avoids v-show re-hiding the wrapper on re-render)
     const cinsertsShown = ref(false)
 
-    // 监听工具栏刷新：umo-editor 每次更新都会重建 .umo-ribbon-container
-    // （元素会被整体替换而非仅子节点变化），故监听稳定的 body，
-    // 每次变化后重新查询 ribbon 并重新注入，避免 cinsert 消失
+    // Watch for ribbon refresh: umo-editor rebuilds .umo-ribbon-container on every update
+    // (the element is replaced entirely rather than just its children changing), so watch the stable body,
+    // re-query the ribbon and re-inject after each change to prevent cinsert from disappearing
     let ribbonObserver: MutationObserver | null = null
     function setupRibbonObserver() {
         const ribbon = document.querySelector('.umo-ribbon-container')
@@ -49,7 +49,7 @@ export function useUeditorIndex(props: any, json: any) {
         async onFileUpload(file: any) {
             if (!file) throw new Error('File not found')
 
-            // 图片压缩处理
+            // Image compression
             const processedFile = file.type.startsWith('image/')
                 ? await compressImageToWebp(file)
                 : file
@@ -69,11 +69,11 @@ export function useUeditorIndex(props: any, json: any) {
             }
         },
         onFileDelete(id: any, url: any) {
-            // 主项目无 /api/files/delete 接口，忽略删除回调
+            // The main project has no /api/files/delete endpoint; ignore the delete callback
         },
     }))
 
-    // editor 创建后，将 cinserts 移动到工具栏最前面并显示
+    // After the editor is created, move cinserts to the front of the toolbar and show it
     const onCreated = () => {
         nextTick(() => {
             setTimeout(() => {
@@ -83,7 +83,7 @@ export function useUeditorIndex(props: any, json: any) {
             if (isReadonly.value) {
                 editorRef.value?.useEditor()?.setEditable(false)
             }
-            // 禁用粘贴
+            // Disable paste
             if (!props.pasteable) {
                 editorRef.value?.useEditor()?.on('paste', ({ event }: any) => {
                     event.preventDefault()
@@ -93,7 +93,7 @@ export function useUeditorIndex(props: any, json: any) {
     }
 
     const onPaste = async () => {
-        // 粘贴后由 @umoteam/editor 内部处理上传，此处无需额外逻辑
+        // Upload after paste is handled internally by @umoteam/editor; no extra logic needed here
     }
 
     function injectCinserts() {
@@ -106,7 +106,7 @@ export function useUeditorIndex(props: any, json: any) {
         const wrapper = cinsertsWrapper.value
         if (!wrapper) return
 
-        // 每次重新确保显示并置于工具栏最前面，防止 ribbon 重建后 cinsert 消失
+        // Re-ensure visibility and front-most placement each time, preventing cinsert from disappearing after the ribbon is rebuilt
         wrapper.style.display = ''
         cinsertsShown.value = true
         if (!ribbon.contains(wrapper)) {

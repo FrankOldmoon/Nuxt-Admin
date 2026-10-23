@@ -18,7 +18,7 @@ const props = defineProps({
     type: [Object, String, Number, Boolean],
     default: () => ({}),
   },
-  // 默认行高
+  // Default line height
   lineHeight: {
     type: [Number, String],
     default: 1.75,

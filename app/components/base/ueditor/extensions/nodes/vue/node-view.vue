@@ -1,7 +1,7 @@
 <template>
     <node-view-wrapper class="vue-node-wrapper">
         <div class="vue-node-container" contenteditable="false">
-            <!-- 工具栏（仅有 meta.title 时显示） -->
+            <!-- Toolbar (shown only when meta.title exists) -->
             <div v-if="meta.title" class="vue-node-toolbar">
                 <div class="flex items-center">
                     <UIcon v-if="meta.icon" :name="meta.icon" class="text-gray-500" />
@@ -15,7 +15,7 @@
                 </div>
             </div>
 
-            <!-- 动态加载的组件（自行渲染 config panel + body） -->
+            <!-- Dynamically loaded component (renders its own config panel + body) -->
             <div v-if="loading" class="vue-node-loading">{{ t('common.loading') }}</div>
             <component v-else-if="comp" :is="comp" v-bind="props" style="width:100%" @init="onInit" />
         </div>

@@ -4,8 +4,8 @@ import { db } from '~~/server/database'
 import { wxPayOrders } from '~~/server/database/schema'
 import { queryWxPayOrderByOutTradeNo } from '~~/server/utils/wxPay'
 
-// GET /api/wx/pay/order?outTradeNo=xxx — 查询支付订单（限本人）
-// 本地 pending 时会主动调微信查单同步状态（回调丢失兜底）
+// GET /api/wx/pay/order?outTradeNo=xxx — Query a pay order (own orders only)
+// For locally pending orders, actively query WeChat to sync the status (fallback for lost callbacks)
 export default defineEventHandler(async (event) => {
   const wxUser = await requireWxUser(event)
 
@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Not Found', message: 'Order not found' })
   }
 
-  // pending 订单主动向微信查单，同步最终状态
+  // For pending orders, actively query WeChat to sync the final status
   if (order.status === 'pending') {
     try {
       const remote = await queryWxPayOrderByOutTradeNo(outTradeNo)

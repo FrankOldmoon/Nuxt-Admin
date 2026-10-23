@@ -4,11 +4,11 @@ import { db } from '~~/server/database'
 import { wxUsers } from '~~/server/database/schema'
 import { requireWxUser, wxApiPost } from '~~/server/utils/wx'
 
-// POST /api/wx/phone — 微信小程序手机号获取（wx 登录态版）
-// 前端 <button open-type="getPhoneNumber"> 授权后拿到一次性 code（5 分钟有效），
-// 本接口用 code 向微信服务器换取真实手机号，并写回 wx_users。
-// 需要 Authorization: Bearer <token>（先调 /api/wx/login）。
-// 文档: https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/user-info/phone-number/phonenumber.getUserPhoneNumber.html
+// POST /api/wx/phone — Get WeChat mini-program phone number (wx login-state version)
+// The frontend obtains a one-time code (valid for 5 minutes) after <button open-type="getPhoneNumber"> authorization;
+// this endpoint exchanges the code with the WeChat server for the real phone number and writes it back to wx_users.
+// Requires Authorization: Bearer <token> (call /api/wx/login first).
+// Docs: https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/user-info/phone-number/phonenumber.getUserPhoneNumber.html
 
 export default defineEventHandler(async (event) => {
   const wxUser = await requireWxUser(event)
@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
     })
   }
 
-  // 写回 wx_users，方便后台直接看到用户的手机号
+  // Write back to wx_users so the admin side can directly see the user's phone number
   const [updated] = await db.update(wxUsers)
     .set({
       phoneNumber: phoneRes.phone_info.purePhoneNumber,

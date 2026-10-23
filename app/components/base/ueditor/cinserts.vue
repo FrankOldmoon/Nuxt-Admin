@@ -8,13 +8,13 @@
         </UDropdownMenu>
     </div>
 
-    <!-- Markdown 弹窗 -->
+    <!-- Markdown modal -->
     <UeditorInsertMarkdown :editor="editor" v-model="markdownOpen" />
 
-    <!-- HTML 弹窗 -->
+    <!-- HTML modal -->
     <UeditorInsertHtml :editor="editor" v-model="htmlOpen" />
 
-    <!-- JSON 弹窗 -->
+    <!-- JSON modal -->
     <UeditorInsertJson :editor="editor" v-model="jsonOpen" />
 </template>
 

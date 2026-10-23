@@ -1,4 +1,4 @@
-// Tiptap 标准节点类型定义
+// Tiptap standard node type definitions
 interface TiptapMark {
   type: string;
   attrs?: Record<string, any>;
@@ -18,16 +18,16 @@ interface InlinePattern {
 }
 
 /**
- * Markdown 转 Tiptap JSON 格式（TypeScript 版）
- * 支持：标题、引用、无序/有序列表、分隔线、代码块、段落，
- * 行内：图片、链接、粗体、斜体、删除线、行内代码、硬换行。
+ * Markdown to Tiptap JSON conversion (TypeScript version)
+ * Supports: headings, blockquotes, unordered/ordered lists, horizontal rules, code blocks, paragraphs.
+ * Inline: images, links, bold, italic, strikethrough, inline code, hard breaks.
  */
 export function markdownToTiptap(markdown: string): TiptapNode {
-  // 预处理：统一换行符
+  // Preprocess: normalize line endings
   const text = markdown.replace(/\r\n/g, '\n').trim();
   if (!text) return { type: 'doc', content: [] };
 
-  // 判断一行是否为块级元素起始
+  // Whether a line starts a block element
   function isBlockStart(line: string): boolean {
     return /^```/.test(line)
       || /^#{1,6}\s+/.test(line)
@@ -37,14 +37,14 @@ export function markdownToTiptap(markdown: string): TiptapNode {
       || /^---+$/.test(line.trim());
   }
 
-  // 解析行内元素
+  // Parse inline elements
   function parseInline(str: string): TiptapNode[] {
     const nodes: TiptapNode[] = [];
     let remaining = str;
 
-    // 行内语法正则（优先级从高到低）
+    // Inline syntax patterns (priority from high to low)
     const inlinePatterns: InlinePattern[] = [
-      // 图片 ![alt](url "title")
+      // Image ![alt](url "title")
       {
         regex: /^!\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/,
         handler: (match) => ({
@@ -56,7 +56,7 @@ export function markdownToTiptap(markdown: string): TiptapNode {
           }
         })
       },
-      // 链接 [text](url "title")
+      // Link [text](url "title")
       {
         regex: /^\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/,
         handler: (match) => {
@@ -73,7 +73,7 @@ export function markdownToTiptap(markdown: string): TiptapNode {
           });
         }
       },
-      // 行内代码 `code`
+      // Inline code `code`
       {
         regex: /^`([^`]+)`/,
         handler: (match) => ({
@@ -82,7 +82,7 @@ export function markdownToTiptap(markdown: string): TiptapNode {
           marks: [{ type: 'code' }]
         })
       },
-      // 粗斜体 ***text***
+      // Bold italic ***text***
       {
         regex: /^\*\*\*([^*]+)\*\*\*/,
         handler: (match) => {
@@ -96,7 +96,7 @@ export function markdownToTiptap(markdown: string): TiptapNode {
           });
         }
       },
-      // 粗体 **text**
+      // Bold **text**
       {
         regex: /^\*\*([^*]+)\*\*/,
         handler: (match) => {
@@ -110,7 +110,7 @@ export function markdownToTiptap(markdown: string): TiptapNode {
           });
         }
       },
-      // 粗体 __text__
+      // Bold __text__
       {
         regex: /^__([^_]+)__/,
         handler: (match) => {
@@ -124,7 +124,7 @@ export function markdownToTiptap(markdown: string): TiptapNode {
           });
         }
       },
-      // 斜体 *text*
+      // Italic *text*
       {
         regex: /^\*([^*]+)\*/,
         handler: (match) => {
@@ -138,7 +138,7 @@ export function markdownToTiptap(markdown: string): TiptapNode {
           });
         }
       },
-      // 斜体 _text_
+      // Italic _text_
       {
         regex: /^_([^_]+)_/,
         handler: (match) => {
@@ -152,7 +152,7 @@ export function markdownToTiptap(markdown: string): TiptapNode {
           });
         }
       },
-      // 删除线 ~~text~~
+      // Strikethrough ~~text~~
       {
         regex: /^~~([^~]+)~~/,
         handler: (match) => {
@@ -166,7 +166,7 @@ export function markdownToTiptap(markdown: string): TiptapNode {
           });
         }
       },
-      // 硬换行（行尾两个空格）
+      // Hard break (two spaces at end of line)
       {
         regex: /^  $/,
         handler: () => ({ type: 'hardBreak' })
@@ -191,7 +191,7 @@ export function markdownToTiptap(markdown: string): TiptapNode {
         }
       }
 
-      // 普通文本
+      // Plain text
       if (!matched) {
         const specialIndex = remaining.search(/[!`*_~\[|]/);
         if (specialIndex === -1) {
@@ -210,7 +210,7 @@ export function markdownToTiptap(markdown: string): TiptapNode {
     return nodes;
   }
 
-  // 解析块级元素
+  // Parse block elements
   function parseBlocks(mdText: string): TiptapNode[] {
     const lines = mdText.split('\n');
     const blocks: TiptapNode[] = [];
@@ -220,7 +220,7 @@ export function markdownToTiptap(markdown: string): TiptapNode {
     let codeLang = '';
     let codeFenceLen = 0;
 
-    // 段落：连续非空行各自解析行内语法，行与行之间用 hardBreak 连接
+    // Paragraphs: parse inline syntax per consecutive non-empty line; lines are joined with hardBreak
     function parseParaLines(lines: string[]): TiptapNode[] {
       const content: TiptapNode[] = [];
       lines.forEach((ln, idx) => {
@@ -233,7 +233,7 @@ export function markdownToTiptap(markdown: string): TiptapNode {
     while (i < lines.length) {
       const line = lines[i];
 
-      // 代码块处理：支持 3+ 反引号围栏
+      // Code block: supports 3+ backtick fences
       const fenceMatch = line.match(/^(`{3,})(\w*)$/);
       if (fenceMatch) {
         if (!inCodeBlock) {
@@ -262,20 +262,20 @@ export function markdownToTiptap(markdown: string): TiptapNode {
         continue;
       }
 
-      // 空行跳过
+      // Skip empty lines
       if (line.trim() === '') {
         i++;
         continue;
       }
 
-      // 分隔线
+      // Horizontal rule
       if (/^---+$/.test(line.trim())) {
         blocks.push({ type: 'horizontalRule' });
         i++;
         continue;
       }
 
-      // 标题
+      // Heading
       const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
       if (headingMatch) {
         blocks.push({
@@ -287,7 +287,7 @@ export function markdownToTiptap(markdown: string): TiptapNode {
         continue;
       }
 
-      // 引用块
+      // Blockquote
       if (/^>\s?/.test(line)) {
         const quoteLines: string[] = [];
         while (i < lines.length && /^>\s?/.test(lines[i])) {
@@ -301,7 +301,7 @@ export function markdownToTiptap(markdown: string): TiptapNode {
         continue;
       }
 
-      // 无序列表
+      // Unordered list
       if (/^[-*+]\s+/.test(line)) {
         const items: TiptapNode[] = [];
         while (i < lines.length && /^[-*+]\s+/.test(lines[i])) {
@@ -316,7 +316,7 @@ export function markdownToTiptap(markdown: string): TiptapNode {
         continue;
       }
 
-      // 有序列表
+      // Ordered list
       if (/^\d+\.\s+/.test(line)) {
         const items: TiptapNode[] = [];
         while (i < lines.length && /^\d+\.\s+/.test(lines[i])) {
@@ -331,7 +331,7 @@ export function markdownToTiptap(markdown: string): TiptapNode {
         continue;
       }
 
-      // 普通段落（收集连续非块级非空行）
+      // Plain paragraphs (collect consecutive non-block, non-empty lines)
       const paraLines: string[] = [];
       while (
         i < lines.length
@@ -351,7 +351,7 @@ export function markdownToTiptap(markdown: string): TiptapNode {
       });
     }
 
-    // 流式期间可能出现未闭合的代码块：把已累积的内容也输出，避免内容丢失
+    // An unclosed code block may occur during streaming: also emit the accumulated content to avoid losing it
     if (inCodeBlock) {
       blocks.push({
         type: 'codeBlock',

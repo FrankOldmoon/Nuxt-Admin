@@ -9,15 +9,15 @@ export function useRenderIndex(props: any, emit: any) {
     if (props.json === null || props.json === undefined || props.json === '') {
       return null
     }
-    // 字符串：转 TipTap JSON（支持纯文本 / markdown）
+    // String: convert to TipTap JSON (supports plain text / markdown)
     if (typeof props.json === 'string') {
       return markdownToTiptap(props.json)
     }
-    // 数字 / 布尔：jsonb 纯数字字符串会被驱动解析为 number，需转回字符串
+    // Number / boolean: pure numeric jsonb strings get parsed as numbers by the driver, so convert back to string
     if (typeof props.json === 'number' || typeof props.json === 'boolean') {
       return markdownToTiptap(String(props.json))
     }
-    // 对象：空对象不渲染
+    // Object: empty objects are not rendered
     if (!Object.keys(props.json).length) {
       return null
     }

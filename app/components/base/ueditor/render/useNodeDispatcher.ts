@@ -1,7 +1,7 @@
 import { defineComponent, computed } from 'vue'
 import { renderTextWithMarks } from './helpers'
 
-// 所有节点类型 → 渲染组件 映射（导入保持不变）
+// Mapping of all node types -> render components (imports unchanged)
 import Paragraph from './nodes/paragraph.vue'
 import Heading from './nodes/heading.vue'
 import Blockquote from './nodes/blockquote.vue'
@@ -35,7 +35,7 @@ import TextBoxView from './nodes/text-box.vue'
 import VueView from './nodes/vue.vue'
 
 export const componentNodeTypes: Record<string, any> = {
-  // 基础节点
+  // Base nodes
   paragraph: Paragraph,
   heading: Heading,
   blockquote: Blockquote,
@@ -48,22 +48,22 @@ export const componentNodeTypes: Record<string, any> = {
   horizontalRule: HorizontalRule,
   pageBreak: PageBreak,
 
-  // 表格
+  // Table
   table: Table,
   tableRow: TableRow,
   tableCell: TableCell,
   tableHeader: TableHeader,
 
-  // 分栏
+  // Columns
   column: Column,
   columnContainer: ColumnContainer,
 
-  // 详情
+  // Details
   details: DetailsView,
   detailsSummary: DetailsSummary,
   detailsContent: DetailsContent,
 
-  // 媒体
+  // Media
   image: ImageView,
   inlineImage: ImageView,
   video: VideoView,
@@ -71,7 +71,7 @@ export const componentNodeTypes: Record<string, any> = {
   file: FileView,
   iframe: IframeView,
 
-  // 块级组件
+  // Block components
   codeBlock: CodeBlockView,
   callout: CalloutView,
   textBox: TextBoxView,
@@ -79,7 +79,7 @@ export const componentNodeTypes: Record<string, any> = {
   vue: VueView,
 }
 
-// 文本节点渲染组件：封装 renderTextWithMarks 逻辑
+// Text node render component: wraps the renderTextWithMarks logic
 export const TextRenderer = defineComponent({
   name: 'TextRenderer',
   props: {

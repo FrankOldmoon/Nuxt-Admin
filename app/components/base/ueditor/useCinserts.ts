@@ -11,7 +11,7 @@ export function useCinserts(props: any, emit: any) {
     const htmlOpen = ref(false)
     const jsonOpen = ref(false)
 
-    // 下拉菜单：Markdown | HTML | JSON | 快速插入空白 html / pdf / tabs / vfiles
+    // Dropdown menu: Markdown | HTML | JSON | quick insert of blank html / pdf / tabs / vfiles
     const allItems = computed(() => {
         return [
             { label: t('ueditor.markdown.title'), icon: 'i-lucide-square-code', onSelect: () => { markdownOpen.value = true } },
@@ -25,7 +25,7 @@ export function useCinserts(props: any, emit: any) {
         ]
     })
 
-    // 插入通用 vue 节点
+    // Insert a generic vue node
     function insertVueNode(type: string, content = '') {
         const editor = props.editor?.useEditor()
         if (!editor) return
@@ -35,12 +35,12 @@ export function useCinserts(props: any, emit: any) {
         }).run()
     }
 
-    // 插入带空配置的 vue 节点（html / pdf 等）
+    // Insert a vue node with an empty config (html / pdf etc.)
     function insertTypedSheet(type: string) {
         insertVueNode(type, '')
     }
 
-    // 插入 tabs 节点（带默认配置）
+    // Insert a tabs node (with default config)
     function insertTabs() {
         const defaultConfig = JSON.stringify({
             tabs: [
@@ -51,7 +51,7 @@ export function useCinserts(props: any, emit: any) {
         insertVueNode('tabs', defaultConfig)
     }
 
-    // 插入 vfiles 虚拟文件夹节点（带默认配置）
+    // Insert a vfiles virtual folder node (with default config)
     function insertVfiles() {
         const defaultConfig = JSON.stringify({
             items: [

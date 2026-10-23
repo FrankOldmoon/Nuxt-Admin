@@ -12,7 +12,7 @@ export function useVfilesEdit(props: VfilesEditProps, emit: (event: string, ...a
 
     function rebuildEditItems() {
         editItems.value = []
-        // 先扫描已有数值 id（形如 n0、n1）的最大序号，避免新增项与旧 id 冲突
+        // First scan the max sequence number of existing numeric ids (like n0, n1) to avoid conflicts between new items and old ids
         let maxNum = -1
         function scanMax(items) {
             for (const item of items) {
@@ -26,7 +26,7 @@ export function useVfilesEdit(props: VfilesEditProps, emit: (event: string, ...a
         scanMax(props.config?.items || [])
         if (maxNum + 1 > idCounter) idCounter = maxNum + 1
 
-        // 重建时对缺失或重复的 id 重新生成，确保唯一
+        // Regenerate missing or duplicate ids during rebuild to ensure uniqueness
         const seenIds = new Set()
         function walk(items, depth) {
             for (const item of items) {
@@ -98,7 +98,7 @@ export function useVfilesEdit(props: VfilesEditProps, emit: (event: string, ...a
         items.splice(newIdx, 0, moved)
     }
 
-    // 组件挂载时从 config 重建 editItems
+    // Rebuild editItems from config on component mount
     onMounted(() => {
         rebuildEditItems()
     })

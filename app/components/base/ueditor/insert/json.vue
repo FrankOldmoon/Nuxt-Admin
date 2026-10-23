@@ -24,7 +24,7 @@ const props = defineProps({
 
 const open = defineModel({ default: false })
 
-// 打开时读取编辑器 JSON 内容
+// Read the editor JSON content when opened
 const inputText = ref('')
 let isApplying = false
 
@@ -39,7 +39,7 @@ watch(open, (val) => {
     }
 })
 
-// 编辑后实时同步到内容
+// Sync to content in real time after editing
 watch(inputText, (val) => {
     if (isApplying) return
     if (!val.trim()) return
@@ -50,7 +50,7 @@ watch(inputText, (val) => {
             editor.chain().setContent(json).run()
         }
     } catch {
-        // JSON 无效时跳过
+        // Skip when JSON is invalid
     }
 })
 
@@ -63,7 +63,7 @@ function insertContent() {
             editor.chain().focus().setContent(json).run()
         }
     } catch {
-        // JSON 无效时跳过
+        // Skip when JSON is invalid
     }
     open.value = false
 }

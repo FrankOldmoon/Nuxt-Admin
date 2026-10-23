@@ -4,8 +4,8 @@ import withNuxt from './.nuxt/eslint.config.mjs'
 export default withNuxt(
   // Your custom configs here
   {
-    // 层内 pages/layouts/components 沿用层自身命名约定，允许单词文件名
-    // （`extends/*` 是旧的层目录，`modules/*/app` 是模块目录，两者同样适用）
+    // pages/layouts/components inside layers follow the layer's own naming conventions, allowing single-word filenames
+    // (`extends/*` are the old layer directories, `modules/*/app` are module directories; both apply the same way)
     files: [
       'extends/*/pages/**/*.vue',
       'extends/*/layouts/**/*.vue',

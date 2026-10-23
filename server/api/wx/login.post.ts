@@ -4,9 +4,9 @@ import { db } from '~~/server/database'
 import { wxUsers } from '~~/server/database/schema'
 import { wxCode2Session, createWxSession, purgeExpiredWxSessions, toPublicWxUser } from '~~/server/utils/wx'
 
-// POST /api/wx/login — 小程序登录（方案A：独立 wx_users，首次自动建号）
-// 前端 wx.login() 拿 code → 本接口换 openid → upsert wx_users → 签发 Bearer token。
-// 可选传 nickname/avatarUrl（头像昵称填写能力拿到的值），登录时一并更新。
+// POST /api/wx/login — Mini-program login (Plan A: separate wx_users table, account auto-created on first login)
+// Frontend wx.login() gets a code → this endpoint exchanges it for the openid → upsert wx_users → issue a Bearer token.
+// Optional nickname/avatarUrl (values from the avatar-nickname filling capability) are updated together on login.
 export default defineEventHandler(async (event) => {
   const body = await readBody<{ code?: string, nickname?: string, avatarUrl?: string }>(event)
   const code = body?.code?.trim()
@@ -21,7 +21,7 @@ export default defineEventHandler(async (event) => {
   let user
   let isNew = false
   if (existing) {
-    // 已有用户：更新 sessionKey / lastLoginAt，仅在传值时覆盖昵称头像
+    // Existing user: update sessionKey / lastLoginAt; only overwrite nickname/avatar when provided
     const set: Record<string, unknown> = {
       sessionKey: session.sessionKey ?? null,
       lastLoginAt: new Date(),
@@ -50,7 +50,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 500, statusMessage: 'Internal Server Error', message: 'Failed to upsert wx user' })
   }
 
-  // 顺手清理过期会话（best-effort，失败不影响登录）
+  // Best-effort cleanup of expired sessions (failure does not affect login)
   await purgeExpiredWxSessions().catch(e => console.warn('[wx] purge expired sessions failed:', e))
 
   const token = await createWxSession(user.id)

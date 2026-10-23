@@ -1,12 +1,12 @@
 import { createError } from 'h3'
 import { wxApiPost } from '~~/server/utils/wx'
 
-// POST /api/wx/security/check — 内容安全审核（msgSecCheck / imgSecCheck）
+// POST /api/wx/security/check — Content security check (msgSecCheck / imgSecCheck)
 // body: { type: 'text'|'image', content?: string, imageBase64?: string }
-// - text:  /wxa/msg_sec_check（openid 可选，userId 链路下自动带上）
-// - image: /wxa/img_sec_check（二进制 body，图片 ≤1M）
-// 双通道鉴权：小程序用户（Bearer wx token）或后台登录用户均可调用。
-// 文档: https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/security/security-check/
+// - text:  /wxa/msg_sec_check (openid optional, auto-filled on the userId path)
+// - image: /wxa/img_sec_check (binary body, image ≤1M)
+// Dual auth: both mini-program users (Bearer wx token) and logged-in admin users can call it.
+// Docs: https://developers.weixin.qq.com/miniprogram/dev/OpenApiDoc/security/security-check/
 
 interface WxUserLike { openid: string }
 
@@ -15,7 +15,7 @@ async function resolveCaller(event: Parameters<typeof requireWxUser>[0]): Promis
     return await requireWxUser(event)
   } catch {
     await requireUser(event)
-    return { openid: '' } // 后台用户调用时无 openid，msg_sec_check 的 openid 为可选参数
+    return { openid: '' } // No openid for admin callers; openid is an optional param for msg_sec_check
   }
 }
 
@@ -34,7 +34,7 @@ export default defineEventHandler(async (event) => {
       '/wxa/msg_sec_check',
       {
         version: 2,
-        scene: 2, // 2=评论/发帖内容
+        scene: 2, // 2=comment/post content
         openid: caller.openid || undefined,
         content
       }
@@ -61,6 +61,6 @@ export default defineEventHandler(async (event) => {
     body: buffer
   })
   console.log('[wx] img_sec_check errcode:', res.errcode)
-  // errcode 0 = 通过；87014 = 内容违规
+  // errcode 0 = pass; 87014 = content violation
   return { pass: res.errcode === 0, suggest: res.errcode === 0 ? 'pass' : 'risky', errcode: res.errcode ?? 0, errmsg: res.errmsg ?? 'ok' }
 })

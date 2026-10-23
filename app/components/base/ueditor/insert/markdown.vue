@@ -8,7 +8,7 @@
                 </div>
                 <div class="flex justify-end gap-2">
                     <UButton type="primary" @click="insertContent">{{ $t('ueditor.markdown.insert') }}</UButton>
-                    <!-- 关闭按钮可选，Nuxt UI 的 Modal 默认可通过点击遮罩层或 ESC 关闭 -->
+                    <!-- Close button optional: Nuxt UI Modal closes on overlay click or ESC by default -->
                 </div>
             </div>
         </template>

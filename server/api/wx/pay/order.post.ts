@@ -5,9 +5,9 @@ import { db } from '~~/server/database'
 import { wxPayOrders } from '~~/server/database/schema'
 import { createJsapiOrder } from '~~/server/utils/wxPay'
 
-// POST /api/wx/pay/order — JSAPI 统一下单（小程序用户）
-// body: { amount: number (分, >0), description: string, outTradeNo?: string }
-// 返回 wx.requestPayment 所需参数 { timeStamp, nonceStr, package, signType, paySign } + outTradeNo
+// POST /api/wx/pay/order — JSAPI unified order (mini-program users)
+// body: { amount: number (in cents/fen, >0), description: string, outTradeNo?: string }
+// Returns the params required by wx.requestPayment { timeStamp, nonceStr, package, signType, paySign } + outTradeNo
 export default defineEventHandler(async (event) => {
   const wxUser = await requireWxUser(event)
 
@@ -21,10 +21,10 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'description is required' })
   }
 
-  // 商户订单号：毫秒时间戳 + 4 位随机，≤32 字符
+  // Merchant order number: millisecond timestamp + 4 random digits, ≤32 chars
   const outTradeNo = (body?.outTradeNo?.trim() || `${Date.now()}${String(randomInt(0, 10000)).padStart(4, '0')}`).slice(0, 32)
 
-  // 先落库 pending，再调微信下单（失败则标记 closed）
+  // Persist as pending first, then place the order with WeChat (mark closed on failure)
   const [order] = await db.insert(wxPayOrders).values({
     outTradeNo,
     wxUserId: wxUser.id,

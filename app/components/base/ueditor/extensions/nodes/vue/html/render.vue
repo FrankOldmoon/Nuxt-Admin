@@ -3,7 +3,7 @@
     ref="contentBox"
     class="relative border border-gray-200 rounded-md bg-white overflow-hidden"
   >
-    <!-- 右上角全屏按钮 -->
+    <!-- Fullscreen button in the top-right corner -->
     <button
       @click="toggleFullscreen"
       class="absolute top-2 right-2 text-xs px-2.5 py-1 bg-gray-100 text-green-600 rounded hover:bg-green-200 transition-colors cursor-pointer z-10"
@@ -12,8 +12,8 @@
     </button>
 
     <!--
-      iframe 完全隔离用户 HTML：外部 CSS 不影响内容，内容 CSS 也不泄露。
-      sandbox="allow-scripts" 允许脚本运行和交互，但不允许访问父页面。
+      The iframe fully isolates user HTML: external CSS does not affect the content, and the content's CSS does not leak out.
+      sandbox="allow-scripts" allows scripts to run and interact, but not to access the parent page.
     -->
     <iframe
       :srcdoc="iframeContent"
@@ -35,7 +35,7 @@ const { contentBox, iframeHeight, isFullscreen, iframeContent, toggleFullscreen 
 </script>
 
 <style scoped>
-/* 全屏时容器撑满屏幕 */
+/* Container fills the screen in fullscreen */
 div:fullscreen {
   background: #fff;
   width: 100vw;

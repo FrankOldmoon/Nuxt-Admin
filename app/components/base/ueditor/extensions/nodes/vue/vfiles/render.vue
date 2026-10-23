@@ -1,15 +1,15 @@
 <template>
     <div class="vfiles-render-container">
         <div class="flex" style="min-height: 300px;">
-            <!-- 收缩按钮 -->
+            <!-- Collapse button -->
             <button class="vfiles-collapse-btn" @click="navCollapsed = !navCollapsed">
                 <UIcon :name="navCollapsed ? 'i-lucide-chevron-right' : 'i-lucide-chevron-left'" class="size-4" />
             </button>
-            <!-- 左侧导航 -->
+            <!-- Left navigation -->
             <div v-show="!navCollapsed" class="vfiles-render-nav">
                 <UNavigationMenu :items="navItems" orientation="vertical" class="w-full" />
             </div>
-            <!-- 右侧内容展示 -->
+            <!-- Right content display -->
             <div class="vfiles-render-content">
                 <div v-if="selectedFile" class="flex flex-col h-full">
                     <div class="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100 dark:border-gray-800">

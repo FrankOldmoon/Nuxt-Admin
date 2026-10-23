@@ -1,12 +1,12 @@
 /**
- * Monaco Editor：CDN 加载 + 初始化 + 格式化
+ * Monaco Editor: CDN loading + initialization + formatting
  */
 const CDN_BASE = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.2/min/vs'
 
-// 进行中的脚本加载 Promise，避免并发实例重复加载 / 在脚本未执行完就 resolve
+// In-flight script loading promises, avoiding duplicate loads by concurrent instances / premature resolution before the script finishes
 const scriptLoadPromises = new Map<string, Promise<void>>()
 
-// Monaco 全局加载 Promise（单例），保证 AMD loader 引导流程只执行一次
+// Monaco global loading promise (singleton), ensuring the AMD loader bootstrap runs only once
 let monacoLoadPromise: Promise<any> | null = null
 
 function loadScript(url: string): Promise<void> {
@@ -15,7 +15,7 @@ function loadScript(url: string): Promise<void> {
   const promise = new Promise<void>((resolve, reject) => {
     const existing = document.querySelector(`script[src="${url}"]`) as HTMLScriptElement | null
     if (existing) {
-      // 标签已存在：若已加载完成直接 resolve，否则等待其 onload（修复竞态）
+      // Tag already exists: resolve immediately if loaded, otherwise wait for its onload (fixes race condition)
       if (existing.dataset.loaded === 'true') {
         resolve()
         return
@@ -58,7 +58,7 @@ function loadMonaco(): Promise<any> {
     })
   })()
 
-  // 失败时清空缓存以便后续可重试
+  // Clear the cache on failure so it can be retried later
   monacoLoadPromise.catch(() => { monacoLoadPromise = null })
   return monacoLoadPromise
 }
@@ -90,7 +90,7 @@ export function useMonacoEditor(
         const newValue = editor.getValue()
         onUpdate(newValue)
       }
-    } catch (_) { /* 某些语言没有格式化器，静默忽略 */ }
+    } catch (_) { /* some languages have no formatter, silently ignore */ }
   }
 
   async function initEditor() {

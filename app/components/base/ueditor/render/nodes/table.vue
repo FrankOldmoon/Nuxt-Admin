@@ -20,7 +20,7 @@ const props = defineProps({
 
 const content = computed(() => props.node.content || [])
 
-// 从首行单元格的 colwidth 提取每列宽度，生成 <colgroup> 还原编辑时设置的列宽
+// Extract column widths from the colwidth of first-row cells, generating a <colgroup> to restore the column widths set during editing
 const colWidths = computed(() => {
   const firstRow = (props.node.content || []).find(c => c.type === 'tableRow')
   if (!firstRow) return []

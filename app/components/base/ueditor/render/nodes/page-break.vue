@@ -3,5 +3,5 @@
 </template>
 
 <script setup>
-// 无外部依赖
+// No external dependencies
 </script>

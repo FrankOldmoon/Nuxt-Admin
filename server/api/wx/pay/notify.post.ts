@@ -4,13 +4,13 @@ import { db } from '~~/server/database'
 import { wxPayOrders } from '~~/server/database/schema'
 import { verifyWxPayNotifySignature, decryptWxPayResource } from '~~/server/utils/wxPay'
 
-// POST /api/wx/pay/notify — 微信支付 v3 异步通知（微信服务器调用，无本地鉴权）
-// 流程：验签（平台证书）→ 解密 resource → 校验金额 → 更新订单 → 返回 {"code":"SUCCESS"}
-// 文档: https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_5_5.shtml
+// POST /api/wx/pay/notify — WeChat Pay v3 async notification (called by WeChat servers, no local auth)
+// Flow: verify signature (platform cert) → decrypt resource → validate amount → update order → return {"code":"SUCCESS"}
+// Docs: https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_5_5.shtml
 export default defineEventHandler(async (event) => {
   const rawBody = (await readRawBody(event)) ?? ''
 
-  // 1. 验签（任何一步失败都按微信规范返回 4xx/5xx + FAIL）
+  // 1. Verify signature (on any failure return 4xx/5xx + FAIL per the WeChat spec)
   const headers = {
     timestamp: getHeader(event, 'wechatpay-timestamp') || '',
     nonce: getHeader(event, 'wechatpay-nonce') || '',
@@ -26,7 +26,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized', message: 'Invalid notify signature' })
   }
 
-  // 2. 解析 + 解密 resource
+  // 2. Parse + decrypt resource
   const body = JSON.parse(rawBody) as {
     event_type?: string
     resource?: { ciphertext: string, nonce: string, associated_data?: string }
@@ -54,7 +54,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: 'Not Found', message: 'Unknown out_trade_no' })
   }
 
-  // 3. 支付成功：校验金额一致再落库（防篡改）
+  // 3. Payment success: validate the amount matches before persisting (anti-tampering)
   if (body.event_type === 'TRANSACTION.SUCCESS' && data.trade_state === 'SUCCESS') {
     if (data.amount?.total !== order.amount) {
       console.error('[wxpay] notify amount mismatch! expected:', order.amount, '| got:', data.amount?.total)
@@ -80,7 +80,7 @@ export default defineEventHandler(async (event) => {
     }).where(eq(wxPayOrders.id, order.id))
   }
 
-  // 4. 按规范应答成功
+  // 4. Acknowledge success per the spec
   setResponseStatus(event, 200)
   return { code: 'SUCCESS', message: '成功' }
 })

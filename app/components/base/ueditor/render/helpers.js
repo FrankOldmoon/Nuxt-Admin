@@ -1,11 +1,11 @@
-// 共享工具函数
+// Shared utility functions
 
 export const DEFAULT_LINE_HEIGHT = 1.75
 export const DEFAULT_TEXT_ALIGN = 'start'
 export const DEFAULT_INDENT_SIZE = 2
 export const DEFAULT_INDENT_UNIT = 'em'
 
-// margin 属性 → CSS style 对象
+// margin attribute -> CSS style object
 export const computeMarginStyle = (margin) => {
   if (!margin || typeof margin !== 'object') return {}
   const styles = {}
@@ -14,18 +14,18 @@ export const computeMarginStyle = (margin) => {
   return styles
 }
 
-// nodeAlign 属性 → CSS style 对象
+// nodeAlign attribute -> CSS style object
 export const computeNodeAlignStyle = (nodeAlign) => {
   return nodeAlign ? { justifyContent: nodeAlign } : {}
 }
 
-// 合并 margin + nodeAlign（原子节点常用）
+// Merge margin + nodeAlign (commonly used by atom nodes)
 export const computeAtomNodeStyle = (attrs) => ({
   ...computeNodeAlignStyle(attrs.nodeAlign),
   ...computeMarginStyle(attrs.margin),
 })
 
-// 段落/标题等节点的全局属性 → HTML attributes
+// Global attributes of paragraph/heading nodes -> HTML attributes
 export const computeNodeStyle = (node) => {
   const { attrs = {}, type } = node
   const styles = []
@@ -81,7 +81,7 @@ export const computeNodeStyle = (node) => {
   return result
 }
 
-// 表格单元格属性 → HTML attributes
+// Table cell attributes -> HTML attributes
 export const computeTableCellAttrs = (attrs) => {
   const result = {}
   if (attrs.align) result.align = attrs.align
@@ -94,7 +94,7 @@ export const computeTableCellAttrs = (attrs) => {
   return result
 }
 
-// 文本 + marks 渲染（返回 VNode 或字符串）
+// Render text + marks (returns a VNode or string)
 import { h } from 'vue'
 
 export const renderTextWithMarks = (text, marks) => {

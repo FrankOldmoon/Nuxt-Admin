@@ -23,7 +23,7 @@ const { t } = useI18n()
 const html = ref(props.config || '')
 const height = ref(Number(props.height) || 0)
 
-// 实时预览：输入时即通知父组件持久化
+// Live preview: notify the parent to persist on input
 watch(html, () => {
     emit('update:config', html.value)
 })

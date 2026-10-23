@@ -2,20 +2,20 @@
   <div class="mx-auto max-w-4xl space-y-8 p-6">
     <h1 class="text-xl font-bold">RichEditor / Ueditor 组件测试</h1>
 
-    <!-- 1. 文本模式 -->
+    <!-- 1. Text mode -->
     <section class="space-y-2">
       <h2 class="text-base font-semibold">1. 文本模式（v-model: string）</h2>
       <BaseRichEditor v-model="textContent" />
       <UInput v-model="textContent" label="当前文本值" size="sm" />
     </section>
 
-    <!-- 2. JSON 模式（含 html/pdf/vfiles/tabs 四种扩展） -->
+    <!-- 2. JSON mode (with html/pdf/vfiles/tabs extensions) -->
     <section class="space-y-2">
       <h2 class="text-base font-semibold">2. JSON 模式（含 4 种扩展节点，点右上角铅笔编辑）</h2>
       <BaseRichEditor v-model="jsonContent" :allow-text-mode="false" />
     </section>
 
-    <!-- 3. 直接渲染预览 -->
+    <!-- 3. Direct render preview -->
     <section class="space-y-2">
       <h2 class="text-base font-semibold">3. BaseUeditorRender 只读渲染</h2>
       <div class="rounded-md border border-default p-4">
@@ -23,7 +23,7 @@
       </div>
     </section>
 
-    <!-- 4. 独立编辑器 -->
+    <!-- 4. Standalone editor -->
     <section class="space-y-2">
       <h2 class="text-base font-semibold">4. BaseUeditor 独立编辑器（v-model: object）</h2>
       <div class="rounded-md border border-default p-4">
@@ -38,7 +38,7 @@ const textContent = ref('这是一段纯文本内容')
 
 const pdfUrl = 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf'
 
-// 包含 4 种扩展节点的 Tiptap JSON 示例
+// Tiptap JSON example with 4 extension nodes
 const jsonContent = ref({
   type: 'doc',
   content: [
@@ -91,6 +91,6 @@ const jsonContent = ref({
   ],
 })
 
-// 独立编辑器演示用（空文档）
+// For the standalone editor demo (empty document)
 const editorJson = ref<Record<string, any>>({ type: 'doc', content: [{ type: 'paragraph' }] })
 </script>

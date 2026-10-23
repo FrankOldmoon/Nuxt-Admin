@@ -6,10 +6,10 @@
     </template>
   </template>
 
-  <!-- 匹配到注册类型的节点：动态组件渲染 -->
+  <!-- Registered node type matched: dynamic component rendering -->
   <component v-else-if="currentComponent" :is="currentComponent" v-bind="componentProps" />
 
-  <!-- 未知节点类型：div 包裹降级渲染 -->
+  <!-- Unknown node type: fall back to a wrapping div -->
   <div v-else>
     <RenderNode v-for="(child, index) in node.content" :key="index" :node="child" />
   </div>

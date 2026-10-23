@@ -3,5 +3,5 @@
 </template>
 
 <script setup>
-// 无属性，纯标签
+// No attributes, plain tag
 </script>

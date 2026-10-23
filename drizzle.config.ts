@@ -8,8 +8,8 @@ export default defineConfig({
   dbCredentials: {
     url: process.env.DATABASE_URL || 'postgres://postgres:postgres@localhost:5432/nuxt_ai'
   },
-  // 与 server/plugins/database.ts 运行时 migrate() 的配置保持一致，
-  // 避免 CLI 与运行时各自使用不同的迁移记录表。
+  // Keep this in sync with the runtime migrate() config in server/plugins/database.ts,
+  // so the CLI and the runtime do not use different migration record tables.
   migrations: {
     schema: 'public',
     table: '__drizzle_migrations'

@@ -24,7 +24,7 @@ const props = defineProps({
 
 const open = defineModel({ default: false })
 
-// 打开时获取当前编辑器 HTML 内容
+// Fetch the current editor HTML content when opened
 const inputText = ref('')
 watch(open, (val) => {
     if (val) {

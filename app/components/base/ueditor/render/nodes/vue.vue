@@ -3,14 +3,14 @@
 </template>
 
 <script setup>
-// 统一加载 ../../extensions/nodes/vue/*/render.vue（所有渲染组件）
-// 如：../../extensions/nodes/vue/html/render.vue, ../../extensions/nodes/vue/pdf/render.vue
+// Uniformly load ../../extensions/nodes/vue/*/render.vue (all render components)
+// e.g. ../../extensions/nodes/vue/html/render.vue, ../../extensions/nodes/vue/pdf/render.vue
 const compModules = import.meta.glob('../../extensions/nodes/vue/*/render.vue', { eager: true })
 
-// 自动生成「组件名 → 组件实例」的映射
+// Automatically build a "component name -> component instance" mapping
 const compMap = Object.fromEntries(
   Object.entries(compModules).map(([filePath, module]) => {
-    // 提取目录名：../../extensions/nodes/vue/question/render.vue → question
+    // Extract the directory name: ../../extensions/nodes/vue/question/render.vue -> question
     const match = filePath.match(/\/extensions\/nodes\/vue\/([^/]+)\/render\.vue$/)
     return match ? [match[1], module.default] : []
   }).filter(([key]) => key)
@@ -22,7 +22,7 @@ const props = defineProps({
 
 const comp = computed(() => {
   const type = props.node?.attrs?.type
-  // 使用统一映射（所有组件走 vue/*/render.vue）
+  // Use the unified mapping (all components go through vue/*/render.vue)
   if (type && compMap[type]) return compMap[type]
   return null
 })
