@@ -399,3 +399,39 @@ export type WxSession = typeof wxSessions.$inferSelect
 export type NewWxSession = typeof wxSessions.$inferInsert
 export type WxPayOrder = typeof wxPayOrders.$inferSelect
 export type NewWxPayOrder = typeof wxPayOrders.$inferInsert
+
+// Stripe Checkout orders. amount is in the smallest currency unit (cents).
+export const stripeOrders = pgTable(
+  'stripe_orders',
+  {
+    id: serial('id').primaryKey(),
+    // Merchant order number (client_reference_id), generated server-side
+    outTradeNo: varchar('out_trade_no', { length: 64 }).notNull(),
+    userId: integer('user_id'),
+    email: varchar('email', { length: 255 }),
+    // Amount in cents, stored together with its currency (e.g. usd)
+    amount: integer('amount').notNull(),
+    currency: varchar('currency', { length: 10 }).notNull(),
+    description: varchar('description', { length: 255 }).notNull(),
+    // Stripe Checkout Session id (cs_...)
+    sessionId: varchar('session_id', { length: 255 }),
+    // pending | paid | closed
+    status: varchar('status', { length: 20 }).default('pending').notNull(),
+    transactionId: varchar('transaction_id', { length: 255 }),
+    paidAt: timestamp('paid_at', { withTimezone: true }),
+    // Raw webhook payload kept for audit
+    callbackPayload: jsonb('callback_payload').$type<Record<string, unknown>>(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    outTradeNoIdx: uniqueIndex('stripe_orders_out_trade_no_idx').on(table.outTradeNo),
+    sessionIdx: index('stripe_orders_session_idx').on(table.sessionId),
+    userFk: foreignKey({ columns: [table.userId], foreignColumns: [users.id] })
+      .onDelete('set null')
+      .onUpdate('cascade')
+  })
+)
+
+export type StripeOrder = typeof stripeOrders.$inferSelect
+export type NewStripeOrder = typeof stripeOrders.$inferInsert

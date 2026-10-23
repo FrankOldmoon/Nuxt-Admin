@@ -256,6 +256,8 @@
     "subtitle": "Manage site configuration values.",
     "save": "Save changes",
     "tabGeneral": "General",
+    "tabOauth": "OAuth / SSO",
+    "tabStripe": "Payments",
     "tabMail": "SMTP",
     "tabLlm": "LLM",
     "tabMenu": "Menu",
@@ -312,9 +314,27 @@
           "clientId": "GitHub OAuth Client ID",
           "clientSecret": "GitHub OAuth Client Secret"
         },
+        "google": {
+          "enabled": "Enable Sign in with Google (OAuth2/OIDC)",
+          "clientId": "Google OAuth Client ID",
+          "clientSecret": "Google OAuth Client Secret"
+        },
+        "microsoft": {
+          "enabled": "Enable Sign in with Microsoft (OAuth2/OIDC)",
+          "clientId": "Microsoft Application (client) ID",
+          "clientSecret": "Microsoft Client Secret"
+        },
         "provision": "Auto-create account on first SSO sign-in",
         "defaultRoleName": "Role assigned to SSO-created users",
         "callbackRedirect": "Frontend redirect path after SSO success"
+      },
+      "stripe": {
+        "enabled": "Enable Stripe payments",
+        "secretKey": "Stripe API secret key (sk_test_... / sk_live_...)",
+        "webhookSecret": "Webhook signing secret (whsec_...)",
+        "currency": "Charge currency (e.g. usd)",
+        "successUrl": "Redirect after successful payment",
+        "cancelUrl": "Redirect after cancelled payment"
       },
       "upload": {
         "maxFileSize": "Max upload file size (MB)",

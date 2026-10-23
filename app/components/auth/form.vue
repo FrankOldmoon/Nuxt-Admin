@@ -85,7 +85,7 @@ const { data: oauthData } = await useAsyncData('auth:oauth', () =>
   $fetch<{ providers: Array<{ name: string }> }>('/api/auth/oauth/providers')
 )
 const oauthProviders = computed(() => oauthData.value?.providers ?? [])
-const providerLabels: Record<string, string> = { github: 'GitHub' }
+const providerLabels: Record<string, string> = { github: 'GitHub', google: 'Google', microsoft: 'Microsoft' }
 
 function startOAuth(name: string) {
   window.location.href = `/api/auth/oauth/${name}/login`

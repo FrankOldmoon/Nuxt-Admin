@@ -78,9 +78,24 @@ const mailConfigs = computed(() =>
 const llmConfigs = computed(() =>
   configs.value.filter(c => c.key.startsWith('llm.'))
 )
+const oauthConfigs = computed(() =>
+  configs.value.filter(c => c.key.startsWith('oauth.'))
+)
+const stripeConfigs = computed(() =>
+  configs.value.filter(c => c.key.startsWith('stripe.'))
+)
+
+// Enabled switches first within the OAuth / payment tabs
+function enabledFirst(items: ConfigItem[]): ConfigItem[] {
+  return [...items.filter(c => c.key.endsWith('.enabled')), ...items.filter(c => !c.key.endsWith('.enabled'))]
+}
+const oauthSorted = computed(() => enabledFirst(oauthConfigs.value))
+const stripeSorted = computed(() => enabledFirst(stripeConfigs.value))
 
 const tabs = computed(() => [
   { label: t('settings.tabGeneral'), icon: 'i-lucide-settings', slot: 'general' },
+  { label: t('settings.tabOauth'), icon: 'i-lucide-key-round', slot: 'oauth' },
+  { label: t('settings.tabStripe'), icon: 'i-lucide-credit-card', slot: 'stripe' },
   { label: t('settings.tabMail'), icon: 'i-lucide-mail', slot: 'mail' },
   { label: t('settings.tabLlm'), icon: 'i-lucide-bot', slot: 'llm' },
   { label: t('settings.tabMenu'), icon: 'i-lucide-menu', slot: 'menu' },
@@ -99,9 +114,11 @@ function boolValue(v: string | undefined): boolean {
   return v === 'true' || v === '1'
 }
 
-// Keys ending with .pass / .password should be masked
+// Keys ending with .pass / .password / secrets should be masked
 function isSensitiveKey(key: string): boolean {
   return key.endsWith('.pass') || key.endsWith('.password')
+    || key.endsWith('.clientSecret') || key.endsWith('.secretKey')
+    || key.endsWith('.webhookSecret') || key.endsWith('.secret')
 }
 
 function inputType(cfg: ConfigItem): string {
@@ -200,6 +217,84 @@ void refresh
           <div class="space-y-4">
             <div
               v-for="cfg in generalConfigs"
+              :key="cfg.id"
+              class="grid grid-cols-1 gap-2 border-b border-default pb-4 last:border-0 md:grid-cols-[1fr_2fr]"
+            >
+              <div>
+                <div class="text-sm font-medium text-highlighted">
+                  {{ configLabel(cfg) }}
+                </div>
+                <div class="mt-1">
+                  <UBadge
+                    :label="cfg.type"
+                    color="neutral"
+                    variant="subtle"
+                    size="sm"
+                  />
+                </div>
+              </div>
+              <div>
+                <USwitch
+                  v-if="cfg.type === 'boolean'"
+                  :model-value="boolValue(editable[cfg.key])"
+                  @update:model-value="editable[cfg.key] = String($event)"
+                />
+                <UInput
+                  v-else
+                  v-model="editable[cfg.key]"
+                  class="w-full"
+                  :type="inputType(cfg)"
+                />
+              </div>
+            </div>
+          </div>
+        </UCard>
+      </template>
+
+      <template #oauth>
+        <UCard>
+          <div class="space-y-4">
+            <div
+              v-for="cfg in oauthSorted"
+              :key="cfg.id"
+              class="grid grid-cols-1 gap-2 border-b border-default pb-4 last:border-0 md:grid-cols-[1fr_2fr]"
+            >
+              <div>
+                <div class="text-sm font-medium text-highlighted">
+                  {{ configLabel(cfg) }}
+                </div>
+                <div class="mt-1">
+                  <UBadge
+                    :label="cfg.type"
+                    color="neutral"
+                    variant="subtle"
+                    size="sm"
+                  />
+                </div>
+              </div>
+              <div>
+                <USwitch
+                  v-if="cfg.type === 'boolean'"
+                  :model-value="boolValue(editable[cfg.key])"
+                  @update:model-value="editable[cfg.key] = String($event)"
+                />
+                <UInput
+                  v-else
+                  v-model="editable[cfg.key]"
+                  class="w-full"
+                  :type="inputType(cfg)"
+                />
+              </div>
+            </div>
+          </div>
+        </UCard>
+      </template>
+
+      <template #stripe>
+        <UCard>
+          <div class="space-y-4">
+            <div
+              v-for="cfg in stripeSorted"
               :key="cfg.id"
               class="grid grid-cols-1 gap-2 border-b border-default pb-4 last:border-0 md:grid-cols-[1fr_2fr]"
             >

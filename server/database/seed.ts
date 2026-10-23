@@ -74,6 +74,12 @@ const DEFAULT_CONFIGS = [
   { key: 'oauth.github.enabled', value: 'false', type: 'boolean', description: 'Enable "Sign in with GitHub" (OAuth2). Requires clientId/clientSecret below.' },
   { key: 'oauth.github.clientId', value: '', type: 'string', description: 'GitHub OAuth App Client ID' },
   { key: 'oauth.github.clientSecret', value: '', type: 'string', description: 'GitHub OAuth App Client Secret' },
+  { key: 'oauth.google.enabled', value: 'false', type: 'boolean', description: 'Enable "Sign in with Google" (OAuth2/OIDC). Requires clientId/clientSecret below.' },
+  { key: 'oauth.google.clientId', value: '', type: 'string', description: 'Google OAuth Client ID' },
+  { key: 'oauth.google.clientSecret', value: '', type: 'string', description: 'Google OAuth Client Secret' },
+  { key: 'oauth.microsoft.enabled', value: 'false', type: 'boolean', description: 'Enable "Sign in with Microsoft" (Entra ID / personal accounts, v2.0 common endpoint). Requires clientId/clientSecret below.' },
+  { key: 'oauth.microsoft.clientId', value: '', type: 'string', description: 'Microsoft OAuth Application (client) ID' },
+  { key: 'oauth.microsoft.clientSecret', value: '', type: 'string', description: 'Microsoft OAuth Client Secret' },
   { key: 'oauth.provision', value: 'true', type: 'boolean', description: 'Auto-create a local account on first SSO sign-in when no account is linked yet' },
   { key: 'oauth.defaultRoleName', value: 'user', type: 'string', description: 'Role assigned to SSO users created by auto-provisioning' },
   { key: 'oauth.callbackRedirect', value: '/', type: 'string', description: 'Frontend path to redirect to after a successful SSO sign-in (default "/")' },
@@ -89,6 +95,13 @@ const DEFAULT_CONFIGS = [
   { key: 'wx.pay.privateKey', value: '', type: 'string', description: 'Merchant API private key (full PEM text with BEGIN/END lines)' },
   { key: 'wx.pay.apiv3Key', value: '', type: 'string', description: 'WeChat Pay APIv3 key (32 chars)' },
   { key: 'wx.pay.notifyUrl', value: '', type: 'string', description: 'Payment notify callback URL (e.g. https://your.host/api/wx/pay/notify)' },
+  // ---- Stripe payment configs ----
+  { key: 'stripe.enabled', value: 'false', type: 'boolean', description: 'Enable Stripe Checkout payments' },
+  { key: 'stripe.secretKey', value: '', type: 'string', description: 'Stripe API secret key (sk_test_... / sk_live_...)' },
+  { key: 'stripe.webhookSecret', value: '', type: 'string', description: 'Stripe webhook signing secret (whsec_...) for /api/stripe/pay/notify' },
+  { key: 'stripe.currency', value: 'usd', type: 'string', description: 'Default charge currency (ISO code, e.g. usd)' },
+  { key: 'stripe.successUrl', value: '/', type: 'string', description: 'Redirect path after successful payment (absolute URL or path, default "/")' },
+  { key: 'stripe.cancelUrl', value: '/', type: 'string', description: 'Redirect path after cancelled payment (absolute URL or path, default "/")' },
   {
     key: 'dashboard.menu',
     value: JSON.stringify([

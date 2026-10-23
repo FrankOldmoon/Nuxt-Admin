@@ -49,10 +49,47 @@ const PROVIDERS: Record<string, OAuthProviderDef> = {
       username: j.login ?? null,
       avatarUrl: j.avatar_url ?? null
     })
+  },
+  google: {
+    name: 'google',
+    authorizeUrl: 'https://accounts.google.com/o/oauth2/v2/auth',
+    tokenUrl: 'https://oauth2.googleapis.com/token',
+    userinfoUrl: 'https://openidconnect.googleapis.com/v1/userinfo',
+    // OIDC standard scopes: sub + email + profile claims in the userinfo response.
+    scope: 'openid email profile',
+    profile: (j) => ({
+      provider: 'google',
+      id: String(j.sub ?? ''),
+      email: j.email ?? null,
+      name: j.name ?? null,
+      username: j.email ?? null,
+      avatarUrl: j.picture ?? null
+    })
+  },
+  microsoft: {
+    name: 'microsoft',
+    authorizeUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+    tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    userinfoUrl: 'https://graph.microsoft.com/oidc/userinfo',
+    // Microsoft Entra ID (Azure AD) + personal accounts via the v2.0 common endpoint.
+    scope: 'openid email profile',
+    profile: (j) => ({
+      provider: 'microsoft',
+      id: String(j.sub ?? j.oid ?? ''),
+      // preferred_username is usually the UPN / email for both account types.
+      email: j.email ?? j.preferred_username ?? null,
+      name: j.name ?? null,
+      username: j.preferred_username ?? j.email ?? null,
+      avatarUrl: null
+    })
   }
 }
 
 const PROVIDER_NAMES = Object.keys(PROVIDERS)
+
+export function listKnownOAuthProviders(): string[] {
+  return [...PROVIDER_NAMES]
+}
 
 export function isKnownOAuthProvider(name: string | undefined): boolean {
   return !!name && PROVIDER_NAMES.includes(name)

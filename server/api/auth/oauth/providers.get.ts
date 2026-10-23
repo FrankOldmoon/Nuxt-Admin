@@ -1,6 +1,4 @@
-import { getOAuthProviderCredentials } from '~~/server/utils/oauth'
-
-const KNOWN = ['github']
+import { listKnownOAuthProviders, getOAuthProviderCredentials } from '~~/server/utils/oauth'
 
 /**
  * GET /api/auth/oauth/providers
@@ -9,7 +7,7 @@ const KNOWN = ['github']
  */
 export default defineEventHandler(async () => {
   const providers: Array<{ name: string }> = []
-  for (const name of KNOWN) {
+  for (const name of listKnownOAuthProviders()) {
     const { enabled, clientId } = await getOAuthProviderCredentials(name)
     if (enabled && clientId) providers.push({ name })
   }
