@@ -7,12 +7,13 @@ describe('parseUiReply', () => {
   })
 
   it('extracts a registered card id and strips the block from the text', () => {
-    const reply = 'Sure, opening the mute tool.\n```ui\n{"ui": "tools.mute"}\n```'
+    const reply = 'Sure, opening the mute tool.\n```ui\n{"ui": "tools.video-mute"}\n```'
     const parsed = parseUiReply(reply)
     expect(parsed).not.toBeNull()
     expect(parsed!.cleanedText).toBe('Sure, opening the mute tool.')
-    expect(parsed!.ui.id).toBe('tools.mute')
-    expect(parsed!.ui.descriptor.target).toBe('/media/mute/')
+    expect(parsed!.ui.id).toBe('tools.video-mute')
+    expect(parsed!.ui.descriptor.toolId).toBe('video-mute')
+    expect(parsed!.ui.descriptor.kind).toBe('component')
   })
 
   it('returns null for unknown card ids (the model cannot invent components)', () => {
@@ -24,15 +25,26 @@ describe('parseUiReply', () => {
   })
 
   it('keeps only the last ui block when several are present', () => {
-    const reply = '```ui\n{"ui": "tools.mute"}\n```\nactually use this:\n```ui\n{"ui": "tools.rotate"}\n```'
+    const reply = '```ui\n{"ui": "tools.video-mute"}\n```\nactually use this:\n```ui\n{"ui": "tools.video-rotate"}\n```'
     const parsed = parseUiReply(reply)
-    expect(parsed!.cleanedText).toContain('"ui": "tools.mute"')
-    expect(parsed!.ui.id).toBe('tools.rotate')
+    expect(parsed!.cleanedText).toContain('"ui": "tools.video-mute"')
+    expect(parsed!.ui.id).toBe('tools.video-rotate')
   })
 
-  it('embed targets are same-origin whitelisted paths only', () => {
+  it('server-backed downloaders render through the same runner', () => {
+    for (const id of ['tools.bili', 'tools.xhs', 'tools.music']) {
+      const descriptor = CHAT_UI_REGISTRY[id]
+      expect(descriptor?.kind).toBe('component')
+      expect(descriptor?.target).toBe('ToolsRunnerCard')
+    }
+  })
+
+  it('client tools render as components, never as arbitrary markup', () => {
     for (const d of Object.values(CHAT_UI_REGISTRY)) {
-      if (d.kind === 'embed') expect(d.target.startsWith('/')).toBe(true)
+      if (d.toolId) {
+        expect(d.kind).toBe('component')
+        expect(d.target).toBe('ToolsRunnerCard')
+      }
     }
   })
 })
@@ -40,7 +52,7 @@ describe('parseUiReply', () => {
 describe('buildUiSystemPrompt', () => {
   it('lists all registered cards and the current login state', () => {
     const prompt = buildUiSystemPrompt(false)
-    expect(prompt).toContain('tools.mute')
+    expect(prompt).toContain('tools.video-mute')
     expect(prompt).toContain('auth.login')
     expect(prompt).toContain('NOT logged in')
     expect(buildUiSystemPrompt(true)).toContain('logged in')

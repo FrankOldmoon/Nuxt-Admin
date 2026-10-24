@@ -6,41 +6,52 @@
  * UI card:
  *
  *   ```ui
- *   {"ui": "tools.mute"}
+ *   {"ui": "tools.video-mute"}
  *   ```
  *
  * Cards are rendered by audited Vue components — the model can never inject
  * markup, scripts or arbitrary URLs, only reference ids from this registry:
- *  - kind "embed": an iframe of a whitelisted same-origin tool page (reuses
- *    the tools module UIs as-is, zero duplication; files stay on-device)
- *  - kind "component": a hand-written Vue component (e.g. the inline login
- *    card). Forms are just components — a future form card registers here.
+ *  - tool cards come from modules/tools/shared/tools.manifest.ts and render as
+ *    the same Vue runner used by `/tools/:slug`
+ *  - "component" cards beyond tools (e.g. the inline login card) are declared
+ *    below in CHAT_UI_REGISTRY and rendered by ChatUiBlock.
  *
- * Adding a new UI = add an entry below + render it in
- * app/components/chat/ChatUiBlock.vue.
+ * Adding a tool card = add a tool to the manifest. Adding another card = add an
+ * entry below + render it in app/components/chat/ChatUiBlock.vue.
  */
 
+import { toolChatCards } from '../../modules/tools/shared/tools.manifest'
+import type { ToolChatCard } from '../../modules/tools/shared/tools.manifest'
+
 export interface ChatUiDescriptor {
-  kind: 'embed' | 'component'
-  /** Same-origin path for embed cards; component tag for component cards. */
+  kind: 'component'
+  /** Component tag rendered by `<ChatUiBlock>`. */
   target: string
+  /** Tool id rendered by the globally registered `<ToolsRunnerCard>`. */
+  toolId?: string
   title: { en: string, zh: string }
   note: { en: string, zh: string }
 }
 
-function embed(target: string, en: string, zh: string, noteEn: string, noteZh: string): ChatUiDescriptor {
-  return { kind: 'embed', target, title: { en, zh }, note: { en: noteEn, zh: noteZh } }
-}
+/**
+ * Tool cards come from the manifest, so adding a tool never means editing the
+ * host chat widget. The model still only sees ids from this closed registry.
+ */
+const TOOL_CARDS: Record<string, ChatUiDescriptor> = Object.fromEntries(
+  toolChatCards().map((card: ToolChatCard) => [
+    card.id,
+    {
+      kind: card.kind,
+      target: card.target,
+      toolId: card.toolId,
+      title: card.title,
+      note: card.note
+    }
+  ])
+)
 
 export const CHAT_UI_REGISTRY: Record<string, ChatUiDescriptor> = {
-  'tools.compress': embed('/media/compress/', 'Media compress', '媒体压缩', 'On-device tool page', '本地处理 · 工具页'),
-  'tools.rotate': embed('/media/rotate/', 'Video rotate', '视频旋转', 'On-device tool page', '本地处理 · 工具页'),
-  'tools.mute': embed('/media/mute/', 'Video mute', '视频去除音轨', 'On-device tool page', '本地处理 · 工具页'),
-  'tools.mosaic': embed('/media/mosaic/', 'Video mosaic', '视频马赛克', 'On-device tool page', '本地处理 · 工具页'),
-  'tools.audio': embed('/media/audio/', 'Audio extract', '音频处理', 'On-device tool page', '本地处理 · 工具页'),
-  'tools.bili': embed('/bili/', 'Bilibili downloader', 'B站下载', 'Needs the downloader service', '需要后端下载服务'),
-  'tools.xhs': embed('/xhs/', 'Xiaohongshu downloader', '小红书下载', 'Needs the downloader service', '需要后端下载服务'),
-  'tools.music': embed('/music/', 'Music downloader', '音乐下载', 'Needs the downloader service', '需要后端下载服务'),
+  ...TOOL_CARDS,
   'auth.login': { kind: 'component', target: 'ChatLoginCard', title: { en: 'Sign in', zh: '登录' }, note: { en: 'Credentials go to the server only, never to the AI', zh: '密码直连服务端，不经过 AI' } }
 }
 

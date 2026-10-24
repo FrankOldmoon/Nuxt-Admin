@@ -150,3 +150,6 @@ modules/
 # Large model / runtime assets (exceed GitHub limits, kept local)
 public/models/
 public/ort/
+
+# Runtime data written by the tools layer (downloader files, quota)
+.data/

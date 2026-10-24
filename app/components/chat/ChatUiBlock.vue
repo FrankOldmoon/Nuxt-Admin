@@ -4,10 +4,9 @@ import type { ChatUiDescriptor } from '~/composables/useChatUi'
 /**
  * Renders one registered chat UI card (see useChatUi.ts).
  *
- * kind "embed"   → same-origin iframe of a whitelisted tool page (reuses the
- *                  tools module UIs as-is; files stay on-device)
- * kind "component" → a hand-written Vue component; extend the v-if chain as
- *                  new components are registered (forms, panels, ...).
+ * Every card is an audited Vue component: tool cards resolve to the globally
+ * registered `<ToolsRunnerCard>` (the same runner as `/tools/:slug`), other
+ * component cards are listed below.
  */
 const props = defineProps<{ ui: { id: string, descriptor: ChatUiDescriptor } }>()
 
@@ -15,6 +14,7 @@ const { locale } = useI18n()
 const isZh = computed(() => String(locale.value).toLowerCase().startsWith('zh'))
 const title = computed(() => (isZh.value ? props.ui.descriptor.title.zh : props.ui.descriptor.title.en))
 const note = computed(() => (isZh.value ? props.ui.descriptor.note.zh : props.ui.descriptor.note.en))
+const openHref = computed(() => (props.ui.descriptor.toolId ? `/tools/${props.ui.descriptor.toolId}` : ''))
 </script>
 
 <template>
@@ -29,8 +29,8 @@ const note = computed(() => (isZh.value ? props.ui.descriptor.note.zh : props.ui
       </p>
       <span class="hidden shrink-0 text-[10px] text-muted sm:inline">{{ note }}</span>
       <a
-        v-if="ui.descriptor.kind === 'embed'"
-        :href="ui.descriptor.target"
+        v-if="openHref"
+        :href="openHref"
         target="_blank"
         rel="noopener"
         class="shrink-0 text-muted transition-colors hover:text-primary"
@@ -43,15 +43,13 @@ const note = computed(() => (isZh.value ? props.ui.descriptor.note.zh : props.ui
       </a>
     </div>
 
-    <iframe
-      v-if="ui.descriptor.kind === 'embed'"
-      :src="ui.descriptor.target"
-      :title="title"
-      class="h-[26rem] w-full border-0 bg-default"
+    <ToolsRunnerCard
+      v-if="ui.descriptor.toolId"
+      :tool-id="ui.descriptor.toolId"
     />
 
     <ChatLoginCard
-      v-else-if="ui.descriptor.kind === 'component' && ui.descriptor.target === 'ChatLoginCard'"
+      v-else-if="ui.descriptor.target === 'ChatLoginCard'"
     />
 
     <!-- Unknown component kinds should never reach here (registry validates), but fail closed -->
