@@ -21,9 +21,19 @@ interface ChatRequest {
   maxTokens?: number
 }
 
-/** Load all LLM configs in one pass and return a typed bag. */
+/**
+ * Read a non-empty env var. Env values take precedence over the database so
+ * deployments can inject credentials (e.g. LLM_API_KEY) without storing them
+ * in the configs table.
+ */
+function readEnv(name: string): string | undefined {
+  const value = process.env[name]?.trim()
+  return value || undefined
+}
+
+/** Load all LLM configs in one pass and return a typed bag (env overrides DB). */
 export async function loadLlmConfig() {
-  const [apiKey, baseUrl, model, temperature, maxTokens, systemPrompt] = await Promise.all([
+  const [dbApiKey, dbBaseUrl, dbModel, temperature, maxTokens, systemPrompt] = await Promise.all([
     getConfigValue<string>('llm.apiKey', ''),
     getConfigValue<string>('llm.baseUrl', 'https://api.openai.com/v1'),
     getConfigValue<string>('llm.model', 'gpt-4o-mini'),
@@ -31,6 +41,9 @@ export async function loadLlmConfig() {
     getConfigValue<number>('llm.maxTokens', 2048),
     getConfigValue<string>('llm.systemPrompt', 'You are a helpful assistant.')
   ])
+  const apiKey = readEnv('LLM_API_KEY') ?? dbApiKey
+  const baseUrl = readEnv('LLM_BASE_URL') ?? dbBaseUrl
+  const model = readEnv('LLM_MODEL') ?? dbModel
   return { apiKey, baseUrl, model, temperature, maxTokens, systemPrompt }
 }
 
@@ -68,7 +81,7 @@ export function extractDelta(chunk: Record<string, unknown>): string {
 export async function runLlmChatSync(req: ChatRequest): Promise<string> {
   const cfg = await loadLlmConfig()
   if (!cfg.apiKey) {
-    throw new Error('LLM API key is not configured (set llm.apiKey in configs)')
+    throw new Error('LLM API key is not configured (set LLM_API_KEY in .env or llm.apiKey in configs)')
   }
   const messages: ChatMessage[] = [...req.messages]
   const hasSystem = messages.some(m => m.role === 'system')
@@ -130,34 +143,57 @@ export async function runLlmChatSync(req: ChatRequest): Promise<string> {
 
 /**
  * Connectivity check: call the /models endpoint with the configured apiKey/baseUrl to
- * verify the upstream is reachable and authentication works.
- * It performs no chat call, so it does not consume generation quota.
+ * verify the upstream is reachable and authentication works. If the gateway does not
+ * expose /models, fall back to a one-token chat call.
  */
 export async function testLlmConnection(): Promise<{ ok: boolean, message: string, modelCount?: number }> {
   const cfg = await loadLlmConfig()
   if (!cfg.apiKey) {
-    return { ok: false, message: 'LLM API key is not configured (set llm.apiKey in configs)' }
+    return { ok: false, message: 'LLM API key is not configured (set LLM_API_KEY in .env or llm.apiKey in configs)' }
   }
   const baseUrl = cfg.baseUrl.replace(/\/$/, '')
-  const url = `${baseUrl}/models`
   try {
-    const upstream = await fetch(url, {
+    const upstream = await fetch(`${baseUrl}/models`, {
       method: 'GET',
       headers: { Authorization: `Bearer ${cfg.apiKey}` }
     })
-    if (!upstream.ok) {
-      const errText = (await upstream.text()).slice(0, 500)
+    if (upstream.ok) {
+      let modelCount: number | undefined
+      try {
+        const json = await upstream.json() as { data?: unknown[] }
+        modelCount = Array.isArray(json.data) ? json.data.length : undefined
+      } catch { /* body not JSON — still reachable */ }
+      return {
+        ok: true,
+        message: `Connection OK (${baseUrl})${modelCount !== undefined ? ` · ${modelCount} models` : ''}`
+      }
+    }
+
+    const errText = (await upstream.text()).slice(0, 500)
+    // Some OpenAI-compatible gateways (e.g. Tencent TokenHub) do not expose
+    // /models; fall back to a minimal chat call so the test still works.
+    if (upstream.status !== 404 && upstream.status !== 405) {
       return { ok: false, message: `Upstream returned HTTP ${upstream.status}: ${errText}` }
     }
-    let modelCount: number | undefined
-    try {
-      const json = await upstream.json() as { data?: unknown[] }
-      modelCount = Array.isArray(json.data) ? json.data.length : undefined
-    } catch { /* body not JSON — still reachable */ }
-    return {
-      ok: true,
-      message: `Connection OK (${baseUrl})${modelCount !== undefined ? ` · ${modelCount} models` : ''}`
+
+    const chat = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${cfg.apiKey}`
+      },
+      body: JSON.stringify({
+        model: cfg.model,
+        messages: [{ role: 'user', content: 'ping' }],
+        max_tokens: 1,
+        stream: false
+      })
+    })
+    if (chat.ok) {
+      return { ok: true, message: `Connection OK (${baseUrl} · chat endpoint)` }
     }
+    const chatErr = (await chat.text()).slice(0, 500)
+    return { ok: false, message: `Upstream returned HTTP ${chat.status}: ${chatErr}` }
   } catch (e: unknown) {
     return { ok: false, message: e instanceof Error ? e.message : String(e) }
   }

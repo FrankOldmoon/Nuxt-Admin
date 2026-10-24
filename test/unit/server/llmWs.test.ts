@@ -100,6 +100,11 @@ function sseResponse(lines: string[], init: { ok?: boolean; status?: number; bod
 }
 
 beforeEach(() => {
+  // `dotenv/config` in the test setup loads `.env`, whose LLM_* values would
+  // otherwise override the mocked getConfigValue results.
+  vi.stubEnv('LLM_API_KEY', '')
+  vi.stubEnv('LLM_BASE_URL', '')
+  vi.stubEnv('LLM_MODEL', '')
   h.verifySessionToken.mockReset()
   h.findUserById.mockReset()
   h.getConfigValue.mockReset()

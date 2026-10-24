@@ -98,7 +98,7 @@ export default defineWebSocketHandler({
     // Load configs
     const cfg = await loadLlmConfig()
     if (!cfg.apiKey) {
-      peer.send(JSON.stringify({ type: 'llm:error', data: { message: 'LLM API key is not configured (set llm.apiKey in configs)' } }))
+      peer.send(JSON.stringify({ type: 'llm:error', data: { message: 'LLM API key is not configured (set LLM_API_KEY in .env or llm.apiKey in configs)' } }))
       return
     }
 

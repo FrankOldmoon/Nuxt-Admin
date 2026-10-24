@@ -142,5 +142,7 @@ const tech = [
         </div>
       </UCard>
     </section>
+
+    <BaseChatWidget />
   </UContainer>
 </template>
