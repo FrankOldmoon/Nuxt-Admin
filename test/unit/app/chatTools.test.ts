@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { parseToolReply, buildChatSystemPrompt, buildAttachmentNote } from '../../../app/composables/useChatTools'
+import { PDFDocument } from 'pdf-lib'
+import { parseToolReply, buildChatSystemPrompt, buildAttachmentNote, executeToolCall } from '../../../app/composables/useChatTools'
+
+async function makePdfFile(name: string, pages: number): Promise<File> {
+  const doc = await PDFDocument.create()
+  for (let i = 0; i < pages; i++) doc.addPage([200, 300])
+  const bytes = await doc.save()
+  return new File([bytes], name, { type: 'application/pdf' })
+}
 
 describe('parseToolReply', () => {
   it('returns null for a plain reply without a tool block', () => {
@@ -48,9 +56,41 @@ describe('parseToolReply', () => {
 describe('buildChatSystemPrompt', () => {
   it('documents the registered tools and the protocol', () => {
     const prompt = buildChatSystemPrompt()
-    expect(prompt).toContain('media.compress')
+    expect(prompt).toContain('pdf.delete-pages')
+    expect(prompt).toContain('image.compress')
+    expect(prompt).toContain('file.zip')
     expect(prompt).toContain('```tool')
     expect(prompt).toContain('[tool result]')
+  })
+})
+
+describe('executeToolCall', () => {
+  it('runs an auto tool and returns the file plus the matching tool card', async () => {
+    const file = await makePdfFile('lesson.pdf', 3)
+    const result = await executeToolCall(
+      { tool: 'pdf.delete-pages', args: { pages: '2' }, file: 'lesson.pdf' },
+      [{ name: file.name, size: file.size, type: file.type, file }]
+    )
+
+    expect(result.ok).toBe(true)
+    expect(result.uiId).toBe('tools.pdf-organize')
+    expect(result.outputs).toHaveLength(1)
+
+    const output = result.outputs![0]!
+    expect(output.name).toBe('lesson-edited.pdf')
+    const bytes = await (await fetch(output.url)).arrayBuffer()
+    expect((await PDFDocument.load(bytes)).getPageCount()).toBe(2)
+  })
+
+  it('still returns the tool card when no usable file is attached', async () => {
+    const result = await executeToolCall(
+      { tool: 'pdf.delete-pages', args: { pages: '2' }, file: 'lesson.pdf' },
+      []
+    )
+
+    expect(result.ok).toBe(false)
+    expect(result.uiId).toBe('tools.pdf-organize')
+    expect(result.error).toContain('no suitable file')
   })
 })
 

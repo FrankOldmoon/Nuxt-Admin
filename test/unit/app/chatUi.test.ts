@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseUiReply, buildUiSystemPrompt, CHAT_UI_REGISTRY } from '../../../app/composables/useChatUi'
+import { parseUiReply, buildUiSystemPrompt, CHAT_UI_REGISTRY, chatUiRegistry } from '../../../app/composables/useChatUi'
 
 describe('parseUiReply', () => {
   it('returns null for a plain reply without a ui block', () => {
@@ -46,6 +46,39 @@ describe('parseUiReply', () => {
         expect(d.target).toBe('ToolsRunnerCard')
       }
     }
+  })
+})
+
+describe('region filtering', () => {
+  it('drops China-only downloaders from the international registry', () => {
+    const globalCards = chatUiRegistry('global')
+    expect(globalCards['tools.bili']).toBeUndefined()
+    expect(globalCards['tools.xhs']).toBeUndefined()
+    expect(globalCards['tools.music']).toBeUndefined()
+    expect(globalCards['tools.pdf-organize']).toBeDefined()
+    expect(globalCards['auth.login']).toBeDefined()
+  })
+
+  it('offers the international extras only in the global registry', () => {
+    expect(chatUiRegistry('global')['tools.youtube']).toBeDefined()
+    expect(chatUiRegistry('global')['tools.citation']).toBeDefined()
+    expect(chatUiRegistry('global')['tools.readability']).toBeDefined()
+    expect(chatUiRegistry('cn')['tools.youtube']).toBeUndefined()
+    expect(chatUiRegistry('cn')['tools.citation']).toBeUndefined()
+  })
+
+  it('keeps every card in the mainland-China registry', () => {
+    const cnCards = chatUiRegistry('cn')
+    expect(cnCards['tools.bili']).toBeDefined()
+    expect(cnCards['tools.pdf-organize']).toBeDefined()
+  })
+
+  it('rejects a ui block for a card the active region does not serve', () => {
+    const reply = '```ui\n{"ui": "tools.bili"}\n```'
+    expect(parseUiReply(reply, 'cn')).not.toBeNull()
+    expect(parseUiReply(reply, 'global')).toBeNull()
+    expect(buildUiSystemPrompt(false, 'global')).not.toContain('tools.bili')
+    expect(buildUiSystemPrompt(false, 'cn')).toContain('tools.bili')
   })
 })
 

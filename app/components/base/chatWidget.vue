@@ -3,7 +3,8 @@ import type { LlmChatMessage } from '~/composables/useLlmChat'
 import type { ChatAttachment, ToolCallOutput } from '~/composables/useChatTools'
 import { buildAttachmentNote, buildChatSystemPrompt, executeToolCall, parseToolReply } from '~/composables/useChatTools'
 import type { ChatUiInstance } from '~/composables/useChatUi'
-import { buildUiSystemPrompt, parseUiReply } from '~/composables/useChatUi'
+import { chatUiRegistry, buildUiSystemPrompt, parseUiReply } from '~/composables/useChatUi'
+import { seedTool } from '../../../modules/tools/app/composables/useToolSeed'
 
 /**
  * Floating AI chat widget (bottom-right).
@@ -71,8 +72,12 @@ const PAST_PAPER_INTENT = /past\s*papers?|pastpapers?|mark\s*scheme|真题|试�
 /** Only auto-trigger a download when the user explicitly asks for it. */
 const DOWNLOAD_INTENT = /download|下载|保存|导出|给我|发我/i
 
-/** Client-side cap for chat attachments (canvas decoding is memory-bound). */
-const MAX_ATTACH_MB = 20
+/** Client-side caps for chat attachments (decoding happens in memory). */
+const MAX_ATTACH_MB = 50
+const MAX_ATTACH_FILES = 5
+/** Files the browsers tools can work on; anything else is rejected up front. */
+const ATTACH_ACCEPT = 'image/*,application/pdf,.pdf,.csv,.xlsx,.xls,.zip'
+const ATTACH_EXT = /\.(pdf|csv|xlsx|xls|zip)$/i
 
 const { t } = useI18n()
 const { isLoggedIn } = useAuth()
@@ -84,11 +89,29 @@ const input = ref('')
 const messages = ref<ChatUiMessage[]>([])
 const status = ref<ChatStatus>('ready')
 const abortController = ref<AbortController | null>(null)
-const pendingFile = ref<File | null>(null)
+const pendingFiles = ref<File[]>([])
 const attachError = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
 
 const busy = computed(() => status.value === 'submitted' || status.value === 'streaming')
+
+/**
+ * Catalog version of this deployment (`cn` / `global`). Used to hide cards the
+ * active version does not serve. Falls back to "no filtering" when the tools
+ * module (and therefore the endpoint) is not mounted.
+ */
+const { data: regionData } = await useAsyncData<{ region: 'cn' | 'global' } | null>(
+  'tools:region',
+  async () => {
+    try {
+      return await $fetch<{ region: 'cn' | 'global' }>('/api/tools/region')
+    } catch {
+      return null
+    }
+  },
+  { default: () => null }
+)
+const region = computed(() => regionData.value?.region)
 
 let messageSeq = 0
 
@@ -114,7 +137,7 @@ function reset() {
   revokeOutputUrls()
   messages.value = []
   input.value = ''
-  pendingFile.value = null
+  pendingFiles.value = []
   attachError.value = ''
   status.value = 'ready'
 }
@@ -143,7 +166,7 @@ async function streamInto(
 
 /** Strip the (last) ```ui block from the reply text and attach the card. */
 function applyUiBlock(assistant: ChatUiMessage) {
-  const parsedUi = parseUiReply(assistant.parts[0]!.text)
+  const parsedUi = parseUiReply(assistant.parts[0]!.text, region.value)
   if (parsedUi) {
     assistant.parts[0]!.text = parsedUi.cleanedText
     assistant.ui = parsedUi.ui
@@ -161,7 +184,7 @@ async function run(prompt: string, appendUser = true, attachments: ChatAttachmen
     .map(m => ({ role: m.role, content: messageText(m) + buildAttachmentNote(m.attachments ?? []) }))
   const systemMsg: LlmChatMessage = {
     role: 'system',
-    content: `${buildChatSystemPrompt()}\n\n${buildUiSystemPrompt(isLoggedIn.value)}`
+    content: `${buildChatSystemPrompt()}\n\n${buildUiSystemPrompt(isLoggedIn.value, region.value)}`
   }
 
   status.value = 'submitted'
@@ -181,14 +204,17 @@ async function run(prompt: string, appendUser = true, attachments: ChatAttachmen
       assistant.parts[0]!.text = parsed.cleanedText
       status.value = 'submitted'
       const result = await executeToolCall(parsed.call, attachments)
+      const outputs = result.outputs ?? []
 
-      if (result.ok && result.output) {
-        assistant.files = [...(assistant.files ?? []), result.output]
-      }
+      if (outputs.length) assistant.files = [...(assistant.files ?? []), ...outputs]
+      // Always offer the matching tool card, preloaded with the same files, so
+      // the user can tweak the parameters and re-run without uploading again.
+      showToolCard(assistant, result.uiId, attachments, parsed.call.args)
 
-      const resultText = result.ok && result.output
-        ? `[tool result] ${parsed.call.tool}: success, produced "${result.output.name}" (${formatBytes(result.output.size)}; original ${formatBytes(result.originalSize ?? 0)}). Briefly confirm the outcome.`
-        : `[tool result] ${parsed.call.tool}: failed — ${result.error}. Briefly apologize and suggest what to do next.`
+      const produced = outputs.map(item => `"${item.name}" (${formatBytes(item.size)})`).join(', ')
+      const resultText = result.ok
+        ? `[tool result] ${parsed.call.tool}: success, produced ${produced || 'no files'}${result.note ? ` — ${result.note}` : ''}. Briefly confirm the outcome and mention that the tool card below is preloaded for adjustments.`
+        : `[tool result] ${parsed.call.tool}: failed — ${result.error}. Briefly apologize and tell the user the tool card below is preloaded so they can adjust it there.`
 
       await streamInto(systemMsg, [
         ...baseHistory,
@@ -222,13 +248,12 @@ function onSubmit() {
   else void run(prompt, true, attachments)
 }
 
-/** Move the pending file into an attachment for the message being sent. */
+/** Move the pending files into attachments for the message being sent. */
 function takePendingAttachments(): ChatAttachment[] {
-  const file = pendingFile.value
-  pendingFile.value = null
+  const files = pendingFiles.value
+  pendingFiles.value = []
   attachError.value = ''
-  if (!file) return []
-  return [{ name: file.name, size: file.size, type: file.type, file }]
+  return files.map(file => ({ name: file.name, size: file.size, type: file.type, file }))
 }
 
 function onPickFile() {
@@ -237,28 +262,57 @@ function onPickFile() {
 
 function onFileChange(e: Event) {
   const inputEl = e.target as HTMLInputElement
-  const file = inputEl.files?.[0]
+  const picked = [...(inputEl.files ?? [])]
   inputEl.value = ''
-  if (!file) return
-  if (!file.type.startsWith('image/')) {
-    attachError.value = t('chat.onlyImages')
-    return
+  if (!picked.length) return
+
+  const accepted: File[] = []
+  for (const file of picked) {
+    if (!file.type.startsWith('image/') && !ATTACH_EXT.test(file.name)) {
+      attachError.value = t('chat.unsupportedFile', { name: file.name })
+      return
+    }
+    if (file.size > MAX_ATTACH_MB * 1024 * 1024) {
+      attachError.value = t('chat.fileTooLarge', { max: MAX_ATTACH_MB })
+      return
+    }
+    accepted.push(file)
   }
-  if (file.size > MAX_ATTACH_MB * 1024 * 1024) {
-    attachError.value = t('chat.fileTooLarge', { max: MAX_ATTACH_MB })
-    return
+
+  const merged = [...pendingFiles.value, ...accepted].slice(0, MAX_ATTACH_FILES)
+  if (pendingFiles.value.length + accepted.length > MAX_ATTACH_FILES) {
+    attachError.value = t('chat.tooManyFiles', { max: MAX_ATTACH_FILES })
+  } else {
+    attachError.value = ''
   }
-  pendingFile.value = file
+  pendingFiles.value = merged
+}
+
+function removePendingFile(index: number) {
+  pendingFiles.value = pendingFiles.value.filter((_, position) => position !== index)
   attachError.value = ''
 }
 
-function clearPendingFile() {
-  pendingFile.value = null
-  attachError.value = ''
+/** Chat runs the tool, then hands the same files (and args) to the tool card. */
+function showToolCard(assistant: ChatUiMessage, uiId: string | undefined, attachments: ChatAttachment[], args: Record<string, unknown>) {
+  if (!uiId) return
+  const descriptor = chatUiRegistry(region.value)[uiId]
+  if (!descriptor) return
+  if (descriptor.toolId) seedTool(descriptor.toolId, attachments.map(item => item.file), args)
+  assistant.ui = { id: uiId, descriptor }
 }
 
 function messageText(message: ChatUiMessage): string {
   return message.parts.filter(part => part.type === 'text').map(part => part.text).join('')
+}
+
+/** Attachment/download icon that reflects the actual file type. */
+function fileIcon(name: string): string {
+  if (/\.pdf$/i.test(name)) return 'i-lucide-file-text'
+  if (/\.(csv|xlsx|xls)$/i.test(name)) return 'i-lucide-file-spreadsheet'
+  if (/\.zip$/i.test(name)) return 'i-lucide-folder-archive'
+  if (/\.(png|jpe?g|webp|gif|bmp|avif)$/i.test(name)) return 'i-lucide-image'
+  return 'i-lucide-file'
 }
 
 function paperLabel(label: PaperMatch['label']): string {
@@ -453,7 +507,7 @@ function onReload() {
                   class="inline-flex items-center gap-1 rounded-md border border-default bg-elevated px-2 py-0.5 text-[11px] text-muted"
                 >
                   <UIcon
-                    name="i-lucide-image"
+                    :name="fileIcon(att.name)"
                     class="size-3 shrink-0"
                   />
                   <span class="max-w-40 truncate">{{ att.name }}</span>
@@ -478,7 +532,7 @@ function onReload() {
                   class="flex items-center gap-2 rounded-lg border border-default px-2.5 py-1.5 text-xs font-medium text-primary transition-colors hover:border-primary/40 hover:bg-primary/5"
                 >
                   <UIcon
-                    name="i-lucide-file-image"
+                    :name="fileIcon(file.name)"
                     class="size-3.5 shrink-0"
                   />
                   <span class="min-w-0 flex-1 truncate">{{ file.name }}</span>
@@ -533,7 +587,8 @@ function onReload() {
                 <input
                   ref="fileInput"
                   type="file"
-                  accept="image/*"
+                  :accept="ATTACH_ACCEPT"
+                  multiple
                   class="hidden"
                   @change="onFileChange"
                 >
@@ -547,19 +602,20 @@ function onReload() {
                   @click="onPickFile"
                 />
                 <span
-                  v-if="pendingFile"
+                  v-for="(file, index) in pendingFiles"
+                  :key="`${file.name}-${index}`"
                   class="inline-flex items-center gap-1 rounded-md bg-elevated px-2 py-0.5 text-[11px] text-muted"
                 >
                   <UIcon
-                    name="i-lucide-image"
+                    :name="fileIcon(file.name)"
                     class="size-3 shrink-0"
                   />
-                  <span class="max-w-32 truncate">{{ pendingFile.name }}</span>
+                  <span class="max-w-32 truncate">{{ file.name }}</span>
                   <button
                     type="button"
                     class="rounded transition-colors hover:text-highlighted"
                     :aria-label="t('chat.removeAttachment')"
-                    @click="clearPendingFile"
+                    @click="removePendingFile(index)"
                   >
                     <UIcon
                       name="i-lucide-x"

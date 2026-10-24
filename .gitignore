@@ -146,6 +146,8 @@ vite.config.ts.timestamp-*
 # is its own repo; enabled from nuxt.config.ts via `<NAME>_ENABLED=true` env
 # switches, never committed here.
 modules/
+# ...but tests that exercise module code belong to this repo.
+!test/unit/modules/
 .workbuddy
 # Large model / runtime assets (exceed GitHub limits, kept local)
 public/models/
