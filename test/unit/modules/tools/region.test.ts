@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { TOOLS, toolAvailableIn, toolRegionScope } from '../../../../modules/tools/shared/tools.manifest'
+import { TOOLS, toolAvailableIn, toolRegionScope, toolRegions } from '../../../../modules/tools/shared/tools.manifest'
 import { detectToolRegion, isCardVisibleInRegion, isMainlandTimezone } from '../../../../modules/tools/server/utils/region'
 
 describe('detectToolRegion', () => {
@@ -60,6 +60,35 @@ describe('tool region metadata', () => {
       expect(tool).toBeDefined()
       expect(toolRegionScope(tool)).toBe('global')
       expect(toolAvailableIn(tool, 'cn')).toBe(false)
+    }
+  })
+
+  it('keeps every resource card external and pinned to one edition', () => {
+    const resources = TOOLS.filter(tool => tool.group === 'resources')
+    expect(resources.length).toBeGreaterThan(20)
+    for (const tool of resources) {
+      expect(tool.runtime).toBe('external')
+      expect(tool.externalHref).toMatch(/^https:\/\//)
+      expect(tool.regions).toHaveLength(1)
+      expect(toolRegions(tool)).toHaveLength(1)
+    }
+    expect(resources.some(tool => tool.regions?.[0] === 'cn')).toBe(true)
+    expect(resources.some(tool => tool.regions?.[0] === 'global')).toBe(true)
+  })
+
+  it('marks the new classroom kit tools for the right editions', () => {
+    const universal = ['seat-chart', 'scoreboard', 'noise-meter', 'wheel-spinner', 'buzz-in', 'scroll-text', 'latex-editor', 'report-comments']
+    for (const id of universal) {
+      expect(toolAvailableIn(TOOLS.find(tool => tool.id === id)!, 'cn')).toBe(true)
+      expect(toolAvailableIn(TOOLS.find(tool => tool.id === id)!, 'global')).toBe(true)
+    }
+    for (const id of ['multiplication-table', 'exam-countdown', 'hanzi-copybook']) {
+      expect(toolAvailableIn(TOOLS.find(tool => tool.id === id)!, 'cn')).toBe(true)
+      expect(toolAvailableIn(TOOLS.find(tool => tool.id === id)!, 'global')).toBe(false)
+    }
+    for (const id of ['voice-level', 'word-search', 'bingo-cards']) {
+      expect(toolAvailableIn(TOOLS.find(tool => tool.id === id)!, 'global')).toBe(true)
+      expect(toolAvailableIn(TOOLS.find(tool => tool.id === id)!, 'cn')).toBe(false)
     }
   })
 })
