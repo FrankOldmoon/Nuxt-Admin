@@ -54,6 +54,13 @@ const { data: myMembership, refresh: refreshMembership } = await useAsyncData<Me
   { watch: [isLoggedIn] }
 )
 
+/** The monthly credit allowance is a member perk; show it while selling the plan. */
+const { data: creditPerk } = await useAsyncData<{ memberMonthly: number }>(
+  'membership:creditPerk',
+  () => $fetch<{ memberMonthly: number }>('/api/credits/packages'),
+  { default: () => ({ memberMonthly: 0 }) }
+)
+
 // Returning from a payment provider: sync the order status (callback fallback) and refresh.
 // Stripe sends only `outTradeNo`; Alipay appends `channel=alipay` to the return URL.
 const route = useRoute()
@@ -113,6 +120,11 @@ function canPayWithStripe(): boolean {
 function hasAnyChannel(plan: Plan): boolean {
   return canPayWithStripe() || canPayWithWechat(plan) || canPayWithAlipay(plan)
 }
+
+/** No channel at all is a page-level problem, not a per-plan one. */
+const anyChannelEnabled = computed(() => Boolean(
+  planData.value?.payments.stripe || planData.value?.payments.wechat || planData.value?.payments.alipay
+))
 
 async function requireLogin(): Promise<boolean> {
   if (isLoggedIn.value) return true
@@ -245,7 +257,27 @@ onBeforeUnmount(stopWxPolling)
       <p class="mx-auto mt-3 max-w-2xl text-muted">
         {{ t('membership.subtitle') }}
       </p>
+      <p
+        v-if="creditPerk && creditPerk.memberMonthly > 0"
+        class="mx-auto mt-3 inline-flex items-center gap-1.5 rounded-full bg-warning/10 px-3 py-1 text-xs font-medium text-warning"
+      >
+        <UIcon
+          name="i-lucide-coins"
+          class="size-3.5"
+        />
+        {{ t('membership.creditPerk', { count: creditPerk.memberMonthly }) }}
+      </p>
     </div>
+
+    <UAlert
+      v-if="planData?.enabled && planData.plans.length && !anyChannelEnabled"
+      class="mt-8"
+      color="warning"
+      variant="soft"
+      icon="i-lucide-credit-card"
+      :title="t('membership.noChannelTitle')"
+      :description="t('membership.noChannelDesc')"
+    />
 
     <!-- Current membership status -->
     <UCard
@@ -372,10 +404,10 @@ onBeforeUnmount(stopWxPolling)
               {{ t('membership.payWithAlipay') }}
             </UButton>
             <p
-              v-if="!hasAnyChannel(plan)"
+              v-if="anyChannelEnabled && !hasAnyChannel(plan)"
               class="text-center text-xs text-muted"
             >
-              {{ t('membership.noPaymentMethod') }}
+              {{ t('membership.noPaymentMethod', { currency: plan.currency.toUpperCase() }) }}
             </p>
           </div>
         </div>

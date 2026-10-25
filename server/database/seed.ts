@@ -19,7 +19,10 @@ function richDoc(text: string): Record<string, unknown> {
   let i = 0
   while (i < lines.length) {
     const line = lines[i].trim()
-    if (!line) { i++; continue }
+    if (!line) {
+      i++
+      continue
+    }
     if (/^#{1,6}\s+/.test(line)) {
       const level = line.match(/^#+/)![0].length
       blocks.push({ type: 'heading', attrs: { level }, content: [{ type: 'text', text: line.replace(/^#+\s*/, '') }] })
@@ -221,6 +224,8 @@ export async function seed(db: Database): Promise<void> {
   }
 
   // 0d. Membership plans (idempotent: only seeds when the table is empty).
+  // Priced in CNY because the default deployment is the mainland-China edition
+  // and the enabled payment channels (Alipay / WeChat Pay) settle in CNY only.
   const [planCount] = await db.select({ value: count() }).from(membershipPlansTable)
   if (Number(planCount?.value ?? 0) === 0) {
     await db.insert(membershipPlansTable).values([
@@ -230,18 +235,18 @@ export async function seed(db: Database): Promise<void> {
         nameZh: '月度会员',
         description: '30 days of full membership access.',
         durationDays: 30,
-        priceCents: 990,
-        currency: 'usd',
+        priceCents: 2900,
+        currency: 'cny',
         sortOrder: 10
       },
       {
         slug: 'quarterly',
         nameEn: 'Quarterly',
         nameZh: '季度会员',
-        description: '90 days of full membership access, 10% off monthly.',
+        description: '90 days of full membership access, about 10% off monthly.',
         durationDays: 90,
-        priceCents: 2673,
-        currency: 'usd',
+        priceCents: 7900,
+        currency: 'cny',
         sortOrder: 20,
         isFeatured: true
       },
@@ -249,10 +254,10 @@ export async function seed(db: Database): Promise<void> {
         slug: 'yearly',
         nameEn: 'Yearly',
         nameZh: '年度会员',
-        description: '365 days of full membership access, 20% off monthly.',
+        description: '365 days of full membership access, about 28% off monthly.',
         durationDays: 365,
-        priceCents: 9504,
-        currency: 'usd',
+        priceCents: 24900,
+        currency: 'cny',
         sortOrder: 30
       }
     ])
