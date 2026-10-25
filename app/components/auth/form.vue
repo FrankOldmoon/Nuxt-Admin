@@ -76,9 +76,17 @@ async function refreshCaptcha() {
   }
 }
 
+// Fetch the challenge after mount only. The SVG (and the dev self-fill that
+// types it for the developer) exists only once the request has completed, so
+// fetching during SSR would render the image on the server and the "loading"
+// placeholder on the client — a hydration mismatch by definition.
+onMounted(() => {
+  if (mode.value === 'login' && captchaEnabled.value && !captcha.value) void refreshCaptcha()
+})
+
 watch(mode, (m) => {
-  if (m === 'login' && captchaEnabled.value && !captcha.value) refreshCaptcha()
-}, { immediate: true })
+  if (m === 'login' && captchaEnabled.value && !captcha.value) void refreshCaptcha()
+})
 
 // --- Third-party sign-in (SSO / OAuth2) ---
 const { data: oauthData } = await useAsyncData('auth:oauth', () =>
