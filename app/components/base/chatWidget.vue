@@ -4,7 +4,7 @@ import type { ChatAttachment, ToolCallOutput, ToolCallRequest } from '~/composab
 import { buildAttachmentNote, buildChatSystemPrompt, executeToolCall, parseToolReply } from '~/composables/useChatTools'
 import type { ChatUiInstance } from '~/composables/useChatUi'
 import { chatUiRegistry, buildUiSystemPrompt, parseUiReply } from '~/composables/useChatUi'
-import { applyChatCardSeed, findChatTool, getChatCatalogProvider, quoteChatTool } from '~/composables/useChatExtensions'
+import { applyChatCardSeed, chatExtensionsVersion, findChatTool, getChatCatalogProvider, quoteChatTool } from '~/composables/useChatExtensions'
 
 /**
  * Floating AI chat widget (bottom-right).
@@ -157,7 +157,7 @@ interface ChatCatalogContext {
   allowedToolIds?: Set<string>
 }
 
-const { data: chatContext } = await useAsyncData<ChatCatalogContext>(
+const { data: chatContext, refresh: refreshChatContext } = await useAsyncData<ChatCatalogContext>(
   'chat:catalog-context',
   async () => {
     const provider = getChatCatalogProvider()
@@ -174,6 +174,14 @@ const { data: chatContext } = await useAsyncData<ChatCatalogContext>(
 )
 const region = computed(() => chatContext.value?.region)
 const allowedToolIds = computed(() => chatContext.value?.allowedToolIds)
+
+// Modules may register after this component mounted (their chat plugin is
+// deferred to keep the first load small); resolve the context once they do.
+watch(chatExtensionsVersion, () => {
+  if (!getChatCatalogProvider()) return
+  if (chatContext.value?.region || chatContext.value?.allowedToolIds) return
+  void refreshChatContext()
+})
 
 let messageSeq = 0
 

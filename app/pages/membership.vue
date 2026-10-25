@@ -16,6 +16,15 @@ import QRCode from 'qrcode'
 const { t, locale } = useI18n()
 const { isLoggedIn } = useAuth()
 
+const isZh = computed(() => String(locale.value).toLowerCase().startsWith('zh'))
+
+usePageMeta({
+  title: () => (isZh.value ? '会员套餐：解锁全部工具' : 'Membership plans for every tool'),
+  description: () => (isZh.value
+    ? '开通会员即可使用会员专享工具与全部下载功能，会员期内每月自动获赠积分。支持支付宝与微信支付。'
+    : 'A membership unlocks member-only tools and every download tool, with credits included each month. Pay with Alipay, WeChat Pay or card.')
+})
+
 interface Plan {
   id: number
   slug: string

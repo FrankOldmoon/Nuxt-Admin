@@ -10,7 +10,7 @@ import NotificationsPageView from '~/components/dashboard/notificationsPage.vue'
 
 definePageMeta({ middleware: 'auth' })
 const { t } = useI18n()
-useSeoMeta({ title: () => t('notifications.title') })
+usePageMeta({ title: () => t('notifications.title'), indexable: false })
 </script>
 
 <template>

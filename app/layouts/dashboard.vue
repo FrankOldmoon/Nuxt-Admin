@@ -15,6 +15,10 @@
  */
 const route = useRoute()
 
+// Every dashboard route sits behind `middleware: 'admin'`; keep the whole area
+// out of search indexes even if a page forgets its own robots tag.
+useHead({ meta: [{ name: 'robots', content: 'noindex, nofollow' }] })
+
 const activeTable = computed<string>(() => {
   const tableName = (route.params as { table?: string }).table
   if (typeof tableName === 'string') return tableName

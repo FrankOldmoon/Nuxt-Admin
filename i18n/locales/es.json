@@ -1,0 +1,388 @@
+{
+  "site": {
+    "title": "OfficeBao",
+    "description": "Herramientas de PDF, imagen, vídeo y oficina directamente en el navegador. Tus archivos nunca se suben."
+  },
+  "nav": {
+    "home": "Inicio",
+    "files": "Archivos",
+    "users": "Usuarios",
+    "settings": "Ajustes",
+    "profile": "Perfil",
+    "notifications": "Notificaciones",
+    "messages": "Mensajes",
+    "language": "Idioma"
+  },
+  "home": {
+    "welcome": "Hello World",
+    "heroDescription": "Un framework de administración basado en metadatos, con CRUD, RBAC, SSO, tiempo real y LLM.",
+    "hero": {
+      "badge": "Framework de administración basado en metadatos",
+      "title": "Crea back-offices empresariales más rápido",
+      "subtitle": "Una demo de administración de nivel producción con Nuxt 4: tablas, formularios, RBAC, seguridad y LLM definidos por metadatos de la base de datos, no por código escrito a mano.",
+      "cta": "Explorar el panel",
+      "ctaReturn": "Abrir el panel",
+      "ctaSecondary": "Ver el código"
+    },
+    "sectionFeatures": "Capacidades clave",
+    "sectionFeaturesHint": "Todo lo que un back-office moderno necesita, listo para usar.",
+    "feature": {
+      "crud": {
+        "title": "CRUD genérico",
+        "desc": "Tablas, formularios y fichas basados en metadatos, con búsqueda, filtros, ordenación, importación/exportación, acciones por lotes y papelera."
+      },
+      "rbac": {
+        "title": "RBAC y permisos",
+        "desc": "Permisos por rol, menú, dato y botón para un control de acceso detallado."
+      },
+      "security": {
+        "title": "Seguridad y SSO",
+        "desc": "CAPTCHA, bloqueo por intentos fallidos, registro del último acceso e inicio de sesión con GitHub OAuth2."
+      },
+      "metadata": {
+        "title": "Descubrimiento de esquema",
+        "desc": "Cualquier tabla de Drizzle se convierte en una página CRUD completa; un registro permite sobrescribir la API o la UI por tabla y añadir transformaciones getter/setter por campo."
+      },
+      "realtime": {
+        "title": "Notificaciones en tiempo real",
+        "desc": "Notificaciones y mensajes sin leer enviados por WebSocket."
+      },
+      "llm": {
+        "title": "Integración LLM",
+        "desc": "Gestiona la configuración del proveedor y prueba la conexión con un clic."
+      },
+      "i18n": {
+        "title": "Listo para varios idiomas",
+        "desc": "Varios idiomas incluidos y conmutables desde la cabecera en cualquier momento."
+      },
+      "config": {
+        "title": "Menú y configuración del sistema",
+        "desc": "Edita el menú lateral in situ y ajusta SMTP, seguridad, subida y LLM desde un solo panel."
+      }
+    },
+    "sectionTech": "Creado con",
+    "cta": {
+      "title": "¿Quieres verlo en acción?",
+      "desc": "Entra en el panel y prueba todas las funciones de la demo."
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "Iniciar sesión",
+      "subtitle": "Bienvenido de nuevo. Inicia sesión para continuar.",
+      "submit": "Iniciar sesión",
+      "noAccount": "Crear una cuenta",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "demoHint": "Admin de demo:"
+    },
+    "register": {
+      "title": "Crear cuenta",
+      "subtitle": "Registra una cuenta nueva.",
+      "submit": "Registrarse",
+      "hasAccount": "¿Ya tienes una cuenta?"
+    },
+    "forgotPassword": {
+      "title": "Olvidé mi contraseña",
+      "subtitle": "Introduce tu correo para recibir un enlace de restablecimiento.",
+      "submit": "Enviar enlace",
+      "backToLogin": "Volver al inicio de sesión",
+      "success": "Si el correo existe, se ha generado un enlace de restablecimiento.",
+      "sent": "Enlace de restablecimiento generado",
+      "devTitle": "Enlace de restablecimiento (dev, sin servidor de correo)"
+    },
+    "resetPassword": {
+      "title": "Restablecer contraseña",
+      "subtitle": "Elige una nueva contraseña para tu cuenta.",
+      "submit": "Restablecer contraseña",
+      "success": "Contraseña actualizada. Volviendo al inicio...",
+      "successTitle": "Hecho",
+      "noToken": "Falta el token de restablecimiento en la URL."
+    },
+    "logout": {
+      "title": "Cerrar sesión"
+    },
+    "modal": {
+      "title": "Cuenta"
+    },
+    "oauth": {
+      "divider": "o continúa con",
+      "loginWith": "Iniciar sesión con {name}",
+      "errorTitle": "Error al iniciar sesión con terceros"
+    },
+    "fields": {
+      "identifier": "Usuario o correo",
+      "identifierPlaceholder": "admin",
+      "username": "Usuario",
+      "usernamePlaceholder": "tu_usuario",
+      "email": "Correo",
+      "emailPlaceholder": "tu{'@'}ejemplo.com",
+      "password": "Contraseña",
+      "passwordPlaceholder": "••••••••",
+      "passwordConfirm": "Confirmar contraseña",
+      "passwordConfirmPlaceholder": "••••••••",
+      "captcha": "Código de verificación",
+      "captchaPlaceholder": "Introduce el código",
+      "captchaRefresh": "Haz clic para actualizar"
+    },
+    "errors": {
+      "title": "Error",
+      "requiredFields": "Completa todos los campos obligatorios.",
+      "passwordMismatch": "Las contraseñas no coinciden.",
+      "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
+      "emailRequired": "El correo es obligatorio.",
+      "captchaRequired": "Introduce el código de verificación.",
+      "generic": "Algo salió mal. Inténtalo de nuevo."
+    }
+  },
+  "common": {
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "confirmAction": "¿Seguro?",
+    "confirmDelete": "¿Eliminar este elemento?",
+    "confirmPermanentDelete": "¿Eliminar definitivamente este elemento? No se puede deshacer.",
+    "save": "Guardar",
+    "close": "Cerrar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "detail": "Detalle",
+    "restore": "Restaurar",
+    "permanentDelete": "Eliminación definitiva",
+    "trash": "Papelera",
+    "back": "Volver",
+    "preview": "Vista previa",
+    "download": "Descargar",
+    "trashEmpty": "La papelera está vacía",
+    "batchDelete": "Eliminar seleccionados",
+    "batchRestore": "Restaurar seleccionados",
+    "batchPermanentDelete": "Eliminar definitivamente",
+    "confirmBatchDelete": "¿Mover {count} elemento(s) seleccionado(s) a la papelera?",
+    "confirmBatchRestore": "¿Restaurar {count} elemento(s) seleccionado(s)?",
+    "confirmBatchPermanentDelete": "¿Eliminar definitivamente {count} elemento(s) seleccionado(s)? No se puede deshacer.",
+    "restored": "Se restauraron {count} elemento(s).",
+    "permanentlyDeleted": "Se eliminaron definitivamente {count} elemento(s).",
+    "loading": "Cargando...",
+    "refresh": "Actualizar",
+    "refreshed": "Actualizado",
+    "searchPlaceholder": "Buscar...",
+    "filters": "Filtros",
+    "clearFilters": "Borrar filtros",
+    "all": "Todos",
+    "value": "Valor",
+    "fullscreen": "Pantalla completa",
+    "exitFullscreen": "Salir de pantalla completa",
+    "upload": "Subir",
+    "uploadFailed": "Error al subir"
+  },
+  "chat": {
+    "title": "Asistente de IA",
+    "subtitle": "Archivos y tareas de clase: solo pregunta",
+    "open": "Abrir asistente de IA",
+    "close": "Cerrar asistente de IA",
+    "clear": "Nueva conversación",
+    "placeholder": "Escribe tu pregunta...",
+    "hint": "Enter para enviar · Mayús+Enter para nueva línea",
+    "welcomeTitle": "¿En qué puedo ayudarte?",
+    "welcomeHint": "Pregunta lo que quieras: las respuestas llegan en tiempo real.",
+    "loginHint": "Inicia sesión para hablar con el asistente de IA.",
+    "login": "Iniciar sesión",
+    "error": "Algo salió mal. Inténtalo de nuevo.",
+    "attach": "Adjuntar archivos",
+    "removeAttachment": "Quitar adjunto",
+    "onlyImages": "Solo se admiten imágenes",
+    "unsupportedFile": "Tipo de archivo no admitido: {name}",
+    "tooManyFiles": "Máximo {max} archivos por mensaje",
+    "dropFiles": "Suelta los archivos para adjuntarlos",
+    "fileTooLarge": "El archivo supera el límite de {max} MB",
+    "expand": "Ampliar chat",
+    "collapse": "Salir de pantalla completa",
+    "loginIdentifier": "Usuario o correo",
+    "loginPassword": "Contraseña",
+    "loginSubmit": "Iniciar sesión",
+    "loginSuccess": "Sesión iniciada. Ya puedes chatear.",
+    "loginFailed": "Error al iniciar sesión. Revisa tus credenciales.",
+    "creditConfirmTitle": "Esta ejecución cuesta {cost} créditos",
+    "creditConfirmDesc": "Saldo {balance}. Los créditos se descuentan una vez y se devuelven automáticamente si falla.",
+    "creditConfirmGo": "Ejecutar y pagar {cost}",
+    "creditConfirmCancel": "Cancelar",
+    "creditSkip": "No volver a preguntar",
+    "creditCancelled": "Cancelado: no se gastaron créditos.",
+    "creditInsufficient": "Créditos insuficientes. Recarga en la página de créditos.",
+    "papers": {
+      "example": "Prueba: descargar el examen 2024 AQA GCSE Chemistry",
+      "found": "Se encontraron {count} archivo(s) para {course}:",
+      "choose": "Elige el archivo que necesitas:",
+      "downloading": "Iniciando descarga: {title}",
+      "candidates": "Coinciden varios cursos; añade el examen o la titulación (p. ej. AQA / Edexcel):",
+      "noYear": "No hay exámenes de {year} para {course}. Años disponibles: {years}.",
+      "noCourse": "Ningún examen coincide con «{query}».",
+      "availableCourses": "Cursos con exámenes descargables:",
+      "openCourse": "Abrir exámenes del curso",
+      "questionPaper": "Examen",
+      "markScheme": "Criterios de corrección"
+    }
+  },
+  "profile": {
+    "title": "Perfil",
+    "subtitle": "Gestiona la información de tu cuenta y la contraseña.",
+    "name": "Nombre",
+    "telephone": "Teléfono",
+    "accountTitle": "Información de la cuenta",
+    "save": "Guardar perfil",
+    "saved": "Perfil actualizado.",
+    "passwordTitle": "Cambiar contraseña",
+    "currentPassword": "Contraseña actual",
+    "newPassword": "Nueva contraseña",
+    "changePassword": "Actualizar contraseña",
+    "passwordChanged": "Contraseña cambiada.",
+    "gender": "Género",
+    "genderPlaceholder": "Selecciona género",
+    "genderMale": "Hombre",
+    "genderFemale": "Mujer",
+    "genderOther": "Otro",
+    "birthday": "Cumpleaños",
+    "verified": "Verificado",
+    "notVerified": "No verificado",
+    "resendVerification": "Reenviar verificación",
+    "verificationSent": "Correo de verificación enviado.",
+    "verificationDevSent": "SMTP no configurado. Se generó un enlace de verificación de desarrollo.",
+    "emailVerified": "Correo verificado correctamente.",
+    "verifyInvalid": "El enlace de verificación no es válido o ha caducado.",
+    "emailChanged": "Correo actualizado. Se envió un enlace de verificación a la nueva dirección.",
+    "emailChangedDev": "Correo actualizado. SMTP no configurado; el enlace de verificación se muestra abajo.",
+    "devVerifyTitle": "Enlace de verificación (dev)"
+  },
+  "notifications": {
+    "title": "Notificaciones",
+    "subtitle": "Anuncios y novedades del sistema.",
+    "loading": "Cargando notificaciones...",
+    "empty": "No hay notificaciones.",
+    "markAllRead": "Marcar todo como leído",
+    "markAllReadSuccess": "Se marcaron {count} notificación(es) como leídas.",
+    "create": "Crear notificación",
+    "createTitle": "Crear notificación",
+    "created": "Notificación creada.",
+    "deleted": "Notificación eliminada.",
+    "confirmDelete": "¿Eliminar esta notificación?",
+    "colTitle": "Título",
+    "colContent": "Contenido",
+    "colCreated": "Creada",
+    "colStatus": "Estado",
+    "read": "Leída",
+    "unread": "No leída",
+    "fieldsTitle": "Título",
+    "fieldsContent": "Contenido",
+    "fieldsTitlePlaceholder": "Título de la notificación",
+    "fieldsContentPlaceholder": "Escribe el contenido...",
+    "fieldsTargets": "Usuarios destinatarios",
+    "targetsHint": "Déjalo vacío para enviar a todos o selecciona usuarios concretos.",
+    "searchUsers": "Buscar usuarios...",
+    "errors": {
+      "required": "El título y el contenido son obligatorios.",
+      "saveFailed": "No se pudo crear la notificación.",
+      "deleteFailed": "No se pudo eliminar la notificación.",
+      "loadFailed": "No se pudieron cargar las notificaciones."
+    }
+  },
+  "membership": {
+    "badge": "Membresía",
+    "title": "Hazte miembro",
+    "subtitle": "Elige un plan y disfruta de todas las ventajas durante el periodo. La renovación amplía tu fecha de caducidad actual.",
+    "activeTitle": "Eres miembro",
+    "expiresOn": "Válido hasta el {date}",
+    "daysLeft": "Quedan {days} días",
+    "durationDays": "{days} días de acceso",
+    "recommended": "Recomendado",
+    "subscribe": "Suscribirse",
+    "renew": "Renovar",
+    "subscribeFailed": "No se pudo iniciar el pago. Inténtalo más tarde.",
+    "paymentNote": "Los pagos se procesan de forma segura con Stripe, WeChat Pay o Alipay. La membresía se activa en cuanto se completa el pago.",
+    "payWithWechat": "Pagar con WeChat",
+    "payWithAlipay": "Pagar con Alipay",
+    "noPaymentMethod": "Este plan se factura en {currency}; los canales activos solo liquidan en yuanes.",
+    "noChannelTitle": "El pago en línea aún no está activado",
+    "noChannelDesc": "Pide a un administrador que active Alipay, WeChat Pay o Stripe en la configuración del sistema, o que active tu membresía manualmente.",
+    "creditPerk": "Los miembros también reciben {count} créditos cada mes",
+    "wechatTitle": "Pagar con WeChat por QR",
+    "wechatHint": "Abre WeChat en tu teléfono, escanea el código QR y confirma el pago.",
+    "wechatScanning": "Esperando la confirmación del pago…",
+    "wechatPaid": "Pago completado: tu membresía está activa.",
+    "wechatClosed": "Este pedido se cerró o caducó. Inicia un nuevo pago.",
+    "close": "Cerrar",
+    "disabled": "Las suscripciones están desactivadas actualmente."
+  },
+  "messages": {
+    "title": "Mensajes",
+    "subtitle": "Mensajes privados con otros usuarios.",
+    "contacts": "Contactos",
+    "noContacts": "Aún no hay conversaciones.",
+    "searchUsers": "Busca usuarios para empezar a chatear...",
+    "noResults": "No se encontraron usuarios.",
+    "typeMessage": "Escribe un mensaje...",
+    "send": "Enviar",
+    "online": "En línea",
+    "offline": "Desconectado",
+    "unread": "sin leer",
+    "selectContact": "Selecciona un contacto para chatear",
+    "startChat": "Iniciar chat",
+    "noMessages": "Aún no hay mensajes. ¡Envía el primero!",
+    "loadMore": "Cargar mensajes anteriores",
+    "errors": {
+      "loadFailed": "No se pudieron cargar los mensajes.",
+      "sendFailed": "No se pudo enviar el mensaje."
+    }
+  },
+  "avatar": {
+    "title": "Avatar",
+    "upload": "Subir avatar",
+    "remove": "Eliminar",
+    "hint": "PNG, JPEG, WebP o BMP.",
+    "cropperTitle": "Recortar avatar",
+    "confirm": "Confirmar",
+    "updated": "Avatar actualizado.",
+    "removed": "Avatar eliminado.",
+    "confirmRemove": "¿Eliminar tu avatar?",
+    "errors": {
+      "imageOnly": "Selecciona un archivo de imagen.",
+      "noGif": "No se permiten GIF como avatar.",
+      "loadFailed": "No se pudo cargar la imagen.",
+      "cropFailed": "No se pudo recortar la imagen.",
+      "uploadFailed": "No se pudo subir el avatar.",
+      "removeFailed": "No se pudo eliminar el avatar."
+    }
+  },
+  "oauthConsent": {
+    "title": "Autorizar aplicación",
+    "subtitle": "Una aplicación quiere acceder a tu cuenta",
+    "signedInAs": "Sesión iniciada como",
+    "permissions": "Esta aplicación podrá:",
+    "approve": "Permitir",
+    "deny": "Denegar",
+    "errorTitle": "Error en la solicitud de autorización",
+    "errorHint": "Comprueba que la URI de redirección de la aplicación esté registrada en el panel y vuelve a intentarlo.",
+    "invalidRequest": "La solicitud de autorización no es válida.",
+    "requestFailed": "No se pudo completar la solicitud de autorización.",
+    "footer": "Estás iniciando sesión en una aplicación de terceros con tu cuenta de {issuer}.",
+    "scope": {
+      "openid": "Verificar tu identidad",
+      "profile": "Leer tu perfil básico (nombre, usuario, avatar)",
+      "email": "Leer tu correo y su estado de verificación",
+      "roles": "Leer los roles asignados a tu cuenta"
+    }
+  },
+  "credits": {
+    "balance": "Saldo de créditos",
+    "balanceHint": "Las funciones de pago por uso consumen créditos. Recarga en la página de créditos; los miembros reciben además una asignación mensual."
+  },
+  "footer": {
+    "builtWith": "Creado con Nuxt UI"
+  },
+  "html": {
+    "height": "Altura",
+    "heightPlaceholder": "Ajustar al contenido (dejar vacío)"
+  },
+  "pagination": {
+    "total": "{total} elementos",
+    "range": "{from}-{to}",
+    "page": "página"
+  }
+}

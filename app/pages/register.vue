@@ -2,7 +2,7 @@
 const { t } = useI18n()
 
 definePageMeta({ layout: false, middleware: 'guest' })
-useSeoMeta({ title: () => t('auth.register.title') })
+usePageMeta({ title: () => t('auth.register.title'), indexable: false })
 </script>
 
 <template>

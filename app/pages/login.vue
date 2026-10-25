@@ -2,7 +2,7 @@
 const { t } = useI18n()
 
 definePageMeta({ layout: false, middleware: 'guest' })
-useSeoMeta({ title: () => t('auth.login.title') })
+usePageMeta({ title: () => t('auth.login.title'), indexable: false })
 
 const route = useRoute()
 

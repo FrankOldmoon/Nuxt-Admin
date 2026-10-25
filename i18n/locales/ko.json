@@ -1,0 +1,388 @@
+{
+  "site": {
+    "title": "OfficeBao",
+    "description": "브라우저에서 실행되는 PDF·이미지·동영상·일상 업무 도구. 파일은 서버에 업로드되지 않습니다."
+  },
+  "nav": {
+    "home": "홈",
+    "files": "파일",
+    "users": "사용자",
+    "settings": "설정",
+    "profile": "프로필",
+    "notifications": "알림",
+    "messages": "메시지",
+    "language": "언어"
+  },
+  "home": {
+    "welcome": "Hello World",
+    "heroDescription": "CRUD·RBAC·SSO·실시간 통신·LLM을 갖춘 메타데이터 기반 관리 시스템.",
+    "hero": {
+      "badge": "메타데이터 기반 관리자 프레임워크",
+      "title": "기업용 백오피스를 더 빠르게",
+      "subtitle": "Nuxt 4로 만든 실서비스 수준의 관리자 데모. 테이블·폼·RBAC·보안·LLM을 직접 작성한 코드가 아니라 데이터베이스 메타데이터로 동작시킵니다.",
+      "cta": "대시보드 살펴보기",
+      "ctaReturn": "대시보드 열기",
+      "ctaSecondary": "소스 보기"
+    },
+    "sectionFeatures": "핵심 기능",
+    "sectionFeaturesHint": "현대적인 관리 시스템에 필요한 모든 것을 바로 사용할 수 있습니다.",
+    "feature": {
+      "crud": {
+        "title": "범용 CRUD",
+        "desc": "메타데이터 기반 테이블·폼·상세 화면. 검색, 필터, 정렬, 가져오기/내보내기, 일괄 작업, 휴지통을 기본 제공합니다."
+      },
+      "rbac": {
+        "title": "RBAC 및 권한",
+        "desc": "역할·메뉴·데이터·버튼 4단계 권한으로 세밀한 접근 제어를 구현합니다."
+      },
+      "security": {
+        "title": "보안 및 SSO",
+        "desc": "CAPTCHA, 로그인 실패 잠금, 마지막 로그인 기록, GitHub OAuth2 기반 외부 로그인."
+      },
+      "metadata": {
+        "title": "스키마 자동 탐색",
+        "desc": "Drizzle 테이블이 곧바로 CRUD 페이지가 됩니다. 레지스트리로 테이블별 API/UI를 재정의하고 필드별 getter/setter 변환도 추가할 수 있습니다."
+      },
+      "realtime": {
+        "title": "실시간 알림",
+        "desc": "WebSocket으로 읽지 않은 알림과 메시지를 실시간 전송합니다."
+      },
+      "llm": {
+        "title": "LLM 연동",
+        "desc": "공급자 설정을 관리하고 클릭 한 번으로 연결을 테스트합니다."
+      },
+      "i18n": {
+        "title": "다국어 지원",
+        "desc": "여러 언어를 기본 제공하며 헤더에서 언제든 전환할 수 있습니다."
+      },
+      "config": {
+        "title": "메뉴 및 시스템 설정",
+        "desc": "사이드바 메뉴를 즉석에서 편집하고 SMTP·보안·업로드·LLM 설정을 한 패널에서 조정합니다."
+      }
+    },
+    "sectionTech": "기술 스택",
+    "cta": {
+      "title": "직접 확인해 볼까요?",
+      "desc": "대시보드로 들어가 데모의 모든 기능을 체험해 보세요."
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "로그인",
+      "subtitle": "다시 오신 것을 환영합니다. 로그인하고 계속하세요.",
+      "submit": "로그인",
+      "noAccount": "계정 만들기",
+      "forgotPassword": "비밀번호를 잊으셨나요?",
+      "demoHint": "데모 관리자:"
+    },
+    "register": {
+      "title": "계정 만들기",
+      "subtitle": "새 계정을 등록합니다.",
+      "submit": "가입",
+      "hasAccount": "이미 계정이 있으신가요?"
+    },
+    "forgotPassword": {
+      "title": "비밀번호 찾기",
+      "subtitle": "이메일을 입력하면 재설정 링크를 받을 수 있습니다.",
+      "submit": "재설정 링크 보내기",
+      "backToLogin": "로그인으로 돌아가기",
+      "success": "해당 이메일이 존재하면 재설정 링크가 생성됩니다.",
+      "sent": "재설정 링크가 생성되었습니다",
+      "devTitle": "개발용 재설정 링크(메일 서버 미설정)"
+    },
+    "resetPassword": {
+      "title": "비밀번호 재설정",
+      "subtitle": "계정의 새 비밀번호를 설정하세요.",
+      "submit": "비밀번호 재설정",
+      "success": "비밀번호가 변경되었습니다. 홈으로 이동합니다...",
+      "successTitle": "완료",
+      "noToken": "URL에 재설정 토큰이 없습니다."
+    },
+    "logout": {
+      "title": "로그아웃"
+    },
+    "modal": {
+      "title": "계정"
+    },
+    "oauth": {
+      "divider": "또는 다음으로 계속",
+      "loginWith": "{name}(으)로 로그인",
+      "errorTitle": "외부 로그인에 실패했습니다"
+    },
+    "fields": {
+      "identifier": "사용자 이름 또는 이메일",
+      "identifierPlaceholder": "admin",
+      "username": "사용자 이름",
+      "usernamePlaceholder": "your_username",
+      "email": "이메일",
+      "emailPlaceholder": "you{'@'}example.com",
+      "password": "비밀번호",
+      "passwordPlaceholder": "••••••••",
+      "passwordConfirm": "비밀번호 확인",
+      "passwordConfirmPlaceholder": "••••••••",
+      "captcha": "인증 코드",
+      "captchaPlaceholder": "코드를 입력하세요",
+      "captchaRefresh": "클릭하여 새로 고침"
+    },
+    "errors": {
+      "title": "오류",
+      "requiredFields": "필수 항목을 모두 입력해 주세요.",
+      "passwordMismatch": "비밀번호가 일치하지 않습니다.",
+      "passwordTooShort": "비밀번호는 8자 이상이어야 합니다.",
+      "emailRequired": "이메일은 필수입니다.",
+      "captchaRequired": "인증 코드를 입력해 주세요.",
+      "generic": "문제가 발생했습니다. 다시 시도해 주세요."
+    }
+  },
+  "common": {
+    "cancel": "취소",
+    "confirm": "확인",
+    "confirmAction": "계속하시겠습니까?",
+    "confirmDelete": "이 항목을 삭제하시겠습니까?",
+    "confirmPermanentDelete": "이 항목을 영구 삭제하시겠습니까? 되돌릴 수 없습니다.",
+    "save": "저장",
+    "close": "닫기",
+    "delete": "삭제",
+    "edit": "편집",
+    "detail": "상세",
+    "restore": "복원",
+    "permanentDelete": "영구 삭제",
+    "trash": "휴지통",
+    "back": "뒤로",
+    "preview": "미리 보기",
+    "download": "다운로드",
+    "trashEmpty": "휴지통이 비어 있습니다",
+    "batchDelete": "선택 항목 삭제",
+    "batchRestore": "선택 항목 복원",
+    "batchPermanentDelete": "영구 삭제",
+    "confirmBatchDelete": "선택한 {count}개 항목을 휴지통으로 이동하시겠습니까?",
+    "confirmBatchRestore": "선택한 {count}개 항목을 복원하시겠습니까?",
+    "confirmBatchPermanentDelete": "선택한 {count}개 항목을 영구 삭제하시겠습니까? 되돌릴 수 없습니다.",
+    "restored": "{count}개 항목을 복원했습니다.",
+    "permanentlyDeleted": "{count}개 항목을 영구 삭제했습니다.",
+    "loading": "불러오는 중...",
+    "refresh": "새로 고침",
+    "refreshed": "새로 고쳤습니다",
+    "searchPlaceholder": "검색...",
+    "filters": "필터",
+    "clearFilters": "필터 지우기",
+    "all": "전체",
+    "value": "값",
+    "fullscreen": "전체 화면",
+    "exitFullscreen": "전체 화면 종료",
+    "upload": "업로드",
+    "uploadFailed": "업로드에 실패했습니다"
+  },
+  "chat": {
+    "title": "AI 도우미",
+    "subtitle": "파일 작업과 수업 잡무, 그냥 물어보세요",
+    "open": "AI 도우미 열기",
+    "close": "AI 도우미 닫기",
+    "clear": "새 대화 시작",
+    "placeholder": "질문을 입력하세요...",
+    "hint": "Enter 전송 · Shift+Enter 줄바꿈",
+    "welcomeTitle": "무엇을 도와드릴까요?",
+    "welcomeHint": "무엇이든 물어보세요. 답변이 실시간으로 표시됩니다.",
+    "loginHint": "로그인하면 AI 도우미와 대화할 수 있습니다.",
+    "login": "로그인",
+    "error": "문제가 발생했습니다. 다시 시도해 주세요.",
+    "attach": "파일 첨부",
+    "removeAttachment": "첨부 삭제",
+    "onlyImages": "이미지 파일만 지원합니다",
+    "unsupportedFile": "지원하지 않는 파일 형식: {name}",
+    "tooManyFiles": "메시지당 최대 {max}개 파일",
+    "dropFiles": "파일을 놓아 첨부",
+    "fileTooLarge": "파일이 {max} MB를 초과합니다",
+    "expand": "채팅 전체 화면",
+    "collapse": "전체 화면 종료",
+    "loginIdentifier": "사용자 이름 또는 이메일",
+    "loginPassword": "비밀번호",
+    "loginSubmit": "로그인",
+    "loginSuccess": "로그인되었습니다. 대화를 시작할 수 있습니다.",
+    "loginFailed": "로그인에 실패했습니다. 자격 증명을 확인하세요.",
+    "creditConfirmTitle": "이번 실행에는 {cost} 크레딧이 필요합니다",
+    "creditConfirmDesc": "잔액 {balance}. 확인하면 한 번 차감되며, 실패하면 자동으로 환불됩니다.",
+    "creditConfirmGo": "{cost} 크레딧으로 실행",
+    "creditConfirmCancel": "취소",
+    "creditSkip": "다시 묻지 않기",
+    "creditCancelled": "취소되었습니다. 크레딧은 차감되지 않았습니다.",
+    "creditInsufficient": "크레딧이 부족합니다. 크레딧 페이지에서 충전하세요.",
+    "papers": {
+      "example": "예: 2024 AQA GCSE Chemistry 기출문제 다운로드",
+      "found": "{course}에서 {count}개 파일을 찾았습니다:",
+      "choose": "아래에서 필요한 파일을 선택하세요:",
+      "downloading": "다운로드 시작: {title}",
+      "candidates": "여러 과정이 일치합니다. 시험 위원회나 자격(AQA / Edexcel 등)을 추가하세요:",
+      "noYear": "{course}의 {year}년 기출문제가 없습니다. 다운로드 가능한 연도: {years}.",
+      "noCourse": "\"{query}\"와 일치하는 기출문제가 없습니다.",
+      "availableCourses": "기출문제를 다운로드할 수 있는 과정:",
+      "openCourse": "과정 기출문제 열기",
+      "questionPaper": "문제지",
+      "markScheme": "채점 기준"
+    }
+  },
+  "profile": {
+    "title": "프로필",
+    "subtitle": "계정 정보와 비밀번호를 관리합니다.",
+    "name": "이름",
+    "telephone": "전화번호",
+    "accountTitle": "계정 정보",
+    "save": "프로필 저장",
+    "saved": "프로필이 업데이트되었습니다.",
+    "passwordTitle": "비밀번호 변경",
+    "currentPassword": "현재 비밀번호",
+    "newPassword": "새 비밀번호",
+    "changePassword": "비밀번호 업데이트",
+    "passwordChanged": "비밀번호가 변경되었습니다.",
+    "gender": "성별",
+    "genderPlaceholder": "성별 선택",
+    "genderMale": "남성",
+    "genderFemale": "여성",
+    "genderOther": "기타",
+    "birthday": "생일",
+    "verified": "인증됨",
+    "notVerified": "미인증",
+    "resendVerification": "인증 메일 다시 보내기",
+    "verificationSent": "인증 메일을 보냈습니다.",
+    "verificationDevSent": "SMTP가 설정되지 않았습니다. 개발용 인증 링크를 생성했습니다.",
+    "emailVerified": "이메일 인증이 완료되었습니다.",
+    "verifyInvalid": "인증 링크가 유효하지 않거나 만료되었습니다.",
+    "emailChanged": "이메일이 업데이트되었습니다. 새 주소로 인증 링크를 보냈습니다.",
+    "emailChangedDev": "이메일이 업데이트되었습니다. SMTP가 없어 개발용 인증 링크를 아래에 표시합니다.",
+    "devVerifyTitle": "개발용 인증 링크"
+  },
+  "notifications": {
+    "title": "알림",
+    "subtitle": "시스템 공지와 업데이트.",
+    "loading": "알림을 불러오는 중...",
+    "empty": "알림이 없습니다.",
+    "markAllRead": "모두 읽음으로 표시",
+    "markAllReadSuccess": "{count}개 알림을 읽음으로 표시했습니다.",
+    "create": "알림 만들기",
+    "createTitle": "알림 만들기",
+    "created": "알림을 만들었습니다.",
+    "deleted": "알림을 삭제했습니다.",
+    "confirmDelete": "이 알림을 삭제하시겠습니까?",
+    "colTitle": "제목",
+    "colContent": "내용",
+    "colCreated": "생성일",
+    "colStatus": "상태",
+    "read": "읽음",
+    "unread": "읽지 않음",
+    "fieldsTitle": "제목",
+    "fieldsContent": "내용",
+    "fieldsTitlePlaceholder": "알림 제목",
+    "fieldsContentPlaceholder": "알림 내용을 입력하세요...",
+    "fieldsTargets": "대상 사용자",
+    "targetsHint": "비워 두면 모든 사용자에게 보내고, 특정 사용자를 선택할 수도 있습니다.",
+    "searchUsers": "사용자 검색...",
+    "errors": {
+      "required": "제목과 내용은 필수입니다.",
+      "saveFailed": "알림 생성에 실패했습니다.",
+      "deleteFailed": "알림 삭제에 실패했습니다.",
+      "loadFailed": "알림을 불러오지 못했습니다."
+    }
+  },
+  "membership": {
+    "badge": "멤버십",
+    "title": "멤버가 되기",
+    "subtitle": "요금제를 선택하면 기간 동안 모든 멤버 혜택을 이용할 수 있습니다. 갱신하면 현재 만료일이 연장됩니다.",
+    "activeTitle": "멤버입니다",
+    "expiresOn": "{date}까지 유효",
+    "daysLeft": "{days}일 남음",
+    "durationDays": "{days}일 이용",
+    "recommended": "추천",
+    "subscribe": "구독",
+    "renew": "갱신",
+    "subscribeFailed": "결제를 시작하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "paymentNote": "결제는 Stripe·WeChat Pay·Alipay로 안전하게 처리되며, 성공 즉시 멤버십이 활성화됩니다.",
+    "payWithWechat": "WeChat Pay로 결제",
+    "payWithAlipay": "Alipay로 결제",
+    "noPaymentMethod": "이 요금제는 {currency}로 책정되었지만, 활성화된 결제 수단은 위안화만 지원합니다.",
+    "noChannelTitle": "온라인 결제가 아직 활성화되지 않았습니다",
+    "noChannelDesc": "관리자에게 시스템 설정에서 Alipay·WeChat Pay·Stripe를 활성화하거나 멤버십을 수동으로 활성화해 달라고 요청하세요.",
+    "creditPerk": "멤버는 매달 {count} 크레딧도 받습니다",
+    "wechatTitle": "WeChat으로 QR 결제",
+    "wechatHint": "휴대폰 WeChat에서 QR 코드를 스캔하고 결제를 확인하세요.",
+    "wechatScanning": "결제 확인을 기다리는 중…",
+    "wechatPaid": "결제가 완료되었습니다. 멤버십이 활성화되었습니다.",
+    "wechatClosed": "주문이 닫혔거나 만료되었습니다. 새로 결제를 시작하세요.",
+    "close": "닫기",
+    "disabled": "멤버십 구독이 현재 비활성화되어 있습니다."
+  },
+  "messages": {
+    "title": "메시지",
+    "subtitle": "다른 사용자와의 비공개 메시지.",
+    "contacts": "연락처",
+    "noContacts": "아직 대화가 없습니다.",
+    "searchUsers": "사용자를 검색해 대화를 시작하세요...",
+    "noResults": "사용자를 찾을 수 없습니다.",
+    "typeMessage": "메시지를 입력하세요...",
+    "send": "보내기",
+    "online": "온라인",
+    "offline": "오프라인",
+    "unread": "읽지 않음",
+    "selectContact": "연락처를 선택해 대화를 시작하세요",
+    "startChat": "대화 시작",
+    "noMessages": "메시지가 없습니다. 첫 메시지를 보내보세요!",
+    "loadMore": "이전 메시지 불러오기",
+    "errors": {
+      "loadFailed": "메시지를 불러오지 못했습니다.",
+      "sendFailed": "메시지를 보내지 못했습니다."
+    }
+  },
+  "avatar": {
+    "title": "아바타",
+    "upload": "아바타 업로드",
+    "remove": "삭제",
+    "hint": "PNG, JPEG, WebP 또는 BMP.",
+    "cropperTitle": "아바타 자르기",
+    "confirm": "확인",
+    "updated": "아바타가 업데이트되었습니다.",
+    "removed": "아바타가 삭제되었습니다.",
+    "confirmRemove": "아바타를 삭제하시겠습니까?",
+    "errors": {
+      "imageOnly": "이미지 파일을 선택해 주세요.",
+      "noGif": "아바타에는 GIF를 사용할 수 없습니다.",
+      "loadFailed": "이미지를 불러오지 못했습니다.",
+      "cropFailed": "이미지를 자르지 못했습니다.",
+      "uploadFailed": "아바타 업로드에 실패했습니다.",
+      "removeFailed": "아바타 삭제에 실패했습니다."
+    }
+  },
+  "oauthConsent": {
+    "title": "앱 승인",
+    "subtitle": "앱이 계정 접근을 요청합니다",
+    "signedInAs": "로그인한 계정",
+    "permissions": "이 앱에 허용되는 권한:",
+    "approve": "허용",
+    "deny": "거부",
+    "errorTitle": "승인 요청에 실패했습니다",
+    "errorHint": "앱의 리디렉션 URI가 관리자 화면에 등록되어 있는지 확인한 후 다시 시도하세요.",
+    "invalidRequest": "승인 요청이 유효하지 않습니다.",
+    "requestFailed": "승인 요청을 완료하지 못했습니다.",
+    "footer": "{issuer} 계정으로 외부 앱에 로그인하려고 합니다.",
+    "scope": {
+      "openid": "신원 확인",
+      "profile": "기본 프로필(이름, 사용자 이름, 아바타) 읽기",
+      "email": "이메일 주소와 인증 상태 읽기",
+      "roles": "계정에 할당된 역할 읽기"
+    }
+  },
+  "credits": {
+    "balance": "크레딧 잔액",
+    "balanceHint": "종량제 기능은 크레딧을 사용합니다. 크레딧 페이지에서 충전할 수 있으며, 멤버는 매달 지급량도 받습니다."
+  },
+  "footer": {
+    "builtWith": "Nuxt UI로 제작"
+  },
+  "html": {
+    "height": "높이",
+    "heightPlaceholder": "내용에 맞춤(비워 두기)"
+  },
+  "pagination": {
+    "total": "총 {total}개",
+    "range": "{from}-{to}",
+    "page": "페이지"
+  }
+}

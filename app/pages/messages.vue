@@ -7,7 +7,7 @@ const { user } = useAuth()
 const { sendMessage, markMessagesRead, onMessage, onMessageSent, onMessageRead, onPresence } = useWebSocket()
 
 definePageMeta({ middleware: 'auth' })
-useSeoMeta({ title: () => t('messages.title') })
+usePageMeta({ title: () => t('messages.title'), indexable: false })
 
 interface Contact {
   id: number

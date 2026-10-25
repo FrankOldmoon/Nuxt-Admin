@@ -30,7 +30,7 @@ interface ConsentData {
 definePageMeta({ layout: false, middleware: 'auth' })
 
 const { t } = useI18n()
-useSeoMeta({ title: () => t('oauthConsent.title') })
+usePageMeta({ title: () => t('oauthConsent.title'), indexable: false })
 
 const route = useRoute()
 

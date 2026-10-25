@@ -4,7 +4,7 @@ const { resetPassword } = useAuth()
 const route = useRoute()
 
 definePageMeta({ layout: false })
-useSeoMeta({ title: () => t('auth.resetPassword.title') })
+usePageMeta({ title: () => t('auth.resetPassword.title'), indexable: false })
 
 const token = computed(() => (route.query.token as string) || '')
 const password = ref('')

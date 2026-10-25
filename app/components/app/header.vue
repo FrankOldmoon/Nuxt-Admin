@@ -2,14 +2,21 @@
 import type { NavigationMenuItem } from '@nuxt/ui'
 import type { AuthMode } from '~/components/auth/form.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { isLoggedIn } = useAuth()
 const { unreadNotifications, unreadMessages } = useWebSocket()
 
-// Site title comes from the configs table (site.title, editable by admin),
-// falling back to the i18n translation only when unset.
+// Site title comes from the configs table (site.title / site.titleZh, editable
+// by admin), falling back to the i18n translation only when unset.
 const { data: publicConfig } = usePublicConfig()
-const siteTitle = computed(() => publicConfig.value?.configs?.['site.title'] || t('site.title'))
+const siteTitle = computed(() => {
+  const configs = publicConfig.value?.configs ?? {}
+  const lower = String(locale.value).toLowerCase()
+  const localized = lower.startsWith('zh-tw')
+    ? (configs['site.titleZhTw'] || configs['site.titleZh'])
+    : lower.startsWith('zh') ? configs['site.titleZh'] : ''
+  return localized || configs['site.title'] || t('site.title')
+})
 
 // Header navigation links from site.navigation config
 interface HeaderNavItem {

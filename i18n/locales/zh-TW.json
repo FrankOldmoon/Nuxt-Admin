@@ -1,0 +1,388 @@
+{
+  "site": {
+    "title": "辦公寶",
+    "description": "瀏覽器裡的 PDF、圖片、影片與日常辦公工具，檔案不上傳伺服器。"
+  },
+  "nav": {
+    "home": "首頁",
+    "files": "檔案",
+    "users": "使用者",
+    "settings": "設定",
+    "profile": "個人資料",
+    "notifications": "通知",
+    "messages": "訊息",
+    "language": "語言"
+  },
+  "home": {
+    "welcome": "你好，世界",
+    "heroDescription": "中繼資料驅動的管理系統框架，內建 CRUD、RBAC、SSO、即時通訊與 LLM 能力。",
+    "hero": {
+      "badge": "中繼資料驅動的管理端框架",
+      "title": "更快地建置企業級後台系統",
+      "subtitle": "一個基於 Nuxt 4 的生產級管理端 Demo — 表格、表單、RBAC、安全與 LLM 能力由資料庫中繼資料驅動，而非手寫程式碼。",
+      "cta": "探索管理端",
+      "ctaReturn": "開啟管理端",
+      "ctaSecondary": "查看原始碼"
+    },
+    "sectionFeatures": "核心能力",
+    "sectionFeaturesHint": "現代管理端所需的一切，開箱即用。",
+    "feature": {
+      "crud": {
+        "title": "通用 CRUD",
+        "desc": "由中繼資料驅動的表格、表單與詳情，內建搜尋、篩選、排序、匯入匯出、批次操作與回收站。"
+      },
+      "rbac": {
+        "title": "RBAC 與權限",
+        "desc": "角色—選單—資料—按鈕四級權限，實現細粒度存取控制。"
+      },
+      "security": {
+        "title": "安全與 SSO",
+        "desc": "驗證碼、登入失敗鎖定、最後登入資訊追蹤，以及 GitHub OAuth2 第三方登入。"
+      },
+      "metadata": {
+        "title": "Schema 自動探索",
+        "desc": "任意 Drizzle 表即可瞬間得到完整 CRUD 頁面；透過註冊表可按表覆寫 API 或 UI，還能為欄位自訂 getter/setter 轉換。"
+      },
+      "realtime": {
+        "title": "即時通知",
+        "desc": "透過 WebSocket 推送即時未讀通知與訊息。"
+      },
+      "llm": {
+        "title": "LLM 整合",
+        "desc": "管理大模型設定，並可一鍵測試連線是否可用。"
+      },
+      "i18n": {
+        "title": "多語言支援",
+        "desc": "內建多國語言，隨時可從頂部欄切換。"
+      },
+      "config": {
+        "title": "選單與系統設定",
+        "desc": "就地編輯側邊欄選單，並在同一面板中調整 SMTP、安全、上傳與 LLM 等設定。"
+      }
+    },
+    "sectionTech": "技術棧",
+    "cta": {
+      "title": "準備好體驗一下了嗎？",
+      "desc": "進入管理端，親自體驗這個 Demo 的全部功能。"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "登入",
+      "subtitle": "歡迎回來。登入後繼續。",
+      "submit": "登入",
+      "noAccount": "建立帳號",
+      "forgotPassword": "忘記密碼？",
+      "demoHint": "示範管理員："
+    },
+    "register": {
+      "title": "建立帳號",
+      "subtitle": "註冊一個新帳號。",
+      "submit": "註冊",
+      "hasAccount": "已有帳號？"
+    },
+    "forgotPassword": {
+      "title": "忘記密碼",
+      "subtitle": "輸入電子郵件以接收密碼重設連結。",
+      "submit": "傳送重設連結",
+      "backToLogin": "返回登入",
+      "success": "如果該電子郵件存在，系統將產生密碼重設連結。",
+      "sent": "重設連結已產生",
+      "devTitle": "開發環境重設連結（未設定郵件伺服器）"
+    },
+    "resetPassword": {
+      "title": "重設密碼",
+      "subtitle": "為帳號設定一個新密碼。",
+      "submit": "重設密碼",
+      "success": "密碼已更新。正在返回首頁...",
+      "successTitle": "完成",
+      "noToken": "URL 中缺少重設權杖。"
+    },
+    "logout": {
+      "title": "登出"
+    },
+    "modal": {
+      "title": "帳號"
+    },
+    "oauth": {
+      "divider": "或使用第三方帳號",
+      "loginWith": "使用 {name} 登入",
+      "errorTitle": "第三方登入失敗"
+    },
+    "fields": {
+      "identifier": "使用者名稱或電子郵件",
+      "identifierPlaceholder": "admin",
+      "username": "使用者名稱",
+      "usernamePlaceholder": "your_username",
+      "email": "電子郵件",
+      "emailPlaceholder": "you{'@'}example.com",
+      "password": "密碼",
+      "passwordPlaceholder": "••••••••",
+      "passwordConfirm": "確認密碼",
+      "passwordConfirmPlaceholder": "••••••••",
+      "captcha": "驗證碼",
+      "captchaPlaceholder": "請輸入驗證碼",
+      "captchaRefresh": "點擊重新整理驗證碼"
+    },
+    "errors": {
+      "title": "錯誤",
+      "requiredFields": "請填寫所有必填欄位。",
+      "passwordMismatch": "兩次輸入的密碼不一致。",
+      "passwordTooShort": "密碼長度至少為 8 個字元。",
+      "emailRequired": "電子郵件不能為空。",
+      "captchaRequired": "請輸入驗證碼。",
+      "generic": "發生了一些問題，請重試。"
+    }
+  },
+  "common": {
+    "cancel": "取消",
+    "confirm": "確認",
+    "confirmAction": "確定要繼續嗎？",
+    "confirmDelete": "確定要刪除此項目嗎？",
+    "confirmPermanentDelete": "確定要永久刪除此項目嗎？此操作無法復原。",
+    "save": "儲存",
+    "close": "關閉",
+    "delete": "刪除",
+    "edit": "編輯",
+    "detail": "詳情",
+    "restore": "還原",
+    "permanentDelete": "永久刪除",
+    "trash": "回收站",
+    "back": "返回",
+    "preview": "預覽",
+    "download": "下載",
+    "trashEmpty": "回收站為空",
+    "batchDelete": "刪除所選項目",
+    "batchRestore": "還原所選項目",
+    "batchPermanentDelete": "永久刪除所選項目",
+    "confirmBatchDelete": "確定要將選中的 {count} 個項目移入回收站嗎？",
+    "confirmBatchRestore": "確定要還原選中的 {count} 個項目嗎？",
+    "confirmBatchPermanentDelete": "確定要永久刪除選中的 {count} 個項目嗎？此操作無法復原。",
+    "restored": "已還原 {count} 個項目。",
+    "permanentlyDeleted": "已永久刪除 {count} 個項目。",
+    "loading": "載入中...",
+    "refresh": "重新整理",
+    "refreshed": "已重新整理",
+    "searchPlaceholder": "搜尋...",
+    "filters": "篩選",
+    "clearFilters": "清除篩選",
+    "all": "全部",
+    "value": "值",
+    "fullscreen": "全螢幕編輯",
+    "exitFullscreen": "退出全螢幕",
+    "upload": "上傳",
+    "uploadFailed": "上傳失敗"
+  },
+  "chat": {
+    "title": "AI 助手",
+    "subtitle": "檔案處理、課堂雜事，直接說",
+    "open": "開啟 AI 助手",
+    "close": "關閉 AI 助手",
+    "clear": "開始新對話",
+    "placeholder": "輸入你的問題...",
+    "hint": "Enter 傳送 · Shift+Enter 換行",
+    "welcomeTitle": "有什麼可以幫你？",
+    "welcomeHint": "隨便問，回答會即時串流輸出。",
+    "loginHint": "登入後即可與 AI 助手對話。",
+    "login": "去登入",
+    "error": "出了點問題，請稍後重試。",
+    "attach": "加入檔案",
+    "removeAttachment": "移除附件",
+    "onlyImages": "僅支援圖片檔案",
+    "unsupportedFile": "不支援的檔案類型：{name}",
+    "tooManyFiles": "每則訊息最多 {max} 個檔案",
+    "dropFiles": "放開即可加入檔案",
+    "fileTooLarge": "檔案不能超過 {max} MB",
+    "expand": "全螢幕聊天",
+    "collapse": "退出全螢幕",
+    "loginIdentifier": "使用者名稱或電子郵件",
+    "loginPassword": "密碼",
+    "loginSubmit": "登入",
+    "loginSuccess": "登入成功，可以開始對話了。",
+    "loginFailed": "登入失敗，請檢查帳號和密碼。",
+    "creditConfirmTitle": "本次處理需要 {cost} 積分",
+    "creditConfirmDesc": "目前餘額 {balance}。確認後扣一次積分；處理失敗會自動退回。",
+    "creditConfirmGo": "消耗 {cost} 積分並處理",
+    "creditConfirmCancel": "取消",
+    "creditSkip": "以後不再提醒",
+    "creditCancelled": "已取消，未扣積分。",
+    "creditInsufficient": "積分不足，請先到積分頁儲值。",
+    "papers": {
+      "example": "試試：幫我下載 2024 年 AQA GCSE Chemistry 真題",
+      "found": "在 {course} 找到 {count} 份檔案：",
+      "choose": "請在下面選擇需要的檔案下載：",
+      "downloading": "已開始下載：{title}",
+      "candidates": "符合多門課程，請補充考試局或學歷（如 AQA / Edexcel）：",
+      "noYear": "{course} 沒有 {year} 年的真題。可下載年份：{years}。",
+      "noCourse": "沒有找到與「{query}」相符的真題。",
+      "availableCourses": "目前可下載真題的課程：",
+      "openCourse": "開啟課程真題頁",
+      "questionPaper": "試卷",
+      "markScheme": "評分標準"
+    }
+  },
+  "profile": {
+    "title": "個人資料",
+    "subtitle": "管理帳號資訊和密碼。",
+    "name": "姓名",
+    "telephone": "電話",
+    "accountTitle": "帳號資訊",
+    "save": "儲存個人資料",
+    "saved": "個人資料更新成功。",
+    "passwordTitle": "修改密碼",
+    "currentPassword": "目前密碼",
+    "newPassword": "新密碼",
+    "changePassword": "更新密碼",
+    "passwordChanged": "密碼修改成功。",
+    "gender": "性別",
+    "genderPlaceholder": "選擇性別",
+    "genderMale": "男",
+    "genderFemale": "女",
+    "genderOther": "其他",
+    "birthday": "生日",
+    "verified": "已驗證",
+    "notVerified": "未驗證",
+    "resendVerification": "重新傳送驗證郵件",
+    "verificationSent": "驗證郵件已傳送。",
+    "verificationDevSent": "未設定 SMTP。已產生開發環境驗證連結。",
+    "emailVerified": "電子郵件驗證成功。",
+    "verifyInvalid": "驗證連結無效或已過期。",
+    "emailChanged": "電子郵件已更新。驗證連結已傳送到新信箱。",
+    "emailChangedDev": "電子郵件已更新。未設定 SMTP，開發環境驗證連結顯示如下。",
+    "devVerifyTitle": "開發環境驗證連結"
+  },
+  "notifications": {
+    "title": "通知",
+    "subtitle": "系統公告和更新資訊。",
+    "loading": "正在載入通知...",
+    "empty": "暫無通知。",
+    "markAllRead": "全部標為已讀",
+    "markAllReadSuccess": "已將 {count} 則通知標記為已讀。",
+    "create": "建立通知",
+    "createTitle": "建立通知",
+    "created": "通知建立成功。",
+    "deleted": "通知刪除成功。",
+    "confirmDelete": "確定要刪除此通知嗎？",
+    "colTitle": "標題",
+    "colContent": "內容",
+    "colCreated": "建立時間",
+    "colStatus": "狀態",
+    "read": "已讀",
+    "unread": "未讀",
+    "fieldsTitle": "標題",
+    "fieldsContent": "內容",
+    "fieldsTitlePlaceholder": "通知標題",
+    "fieldsContentPlaceholder": "請輸入通知內容...",
+    "fieldsTargets": "目標使用者",
+    "targetsHint": "留空則傳送給所有使用者，否則請選擇指定使用者。",
+    "searchUsers": "搜尋使用者...",
+    "errors": {
+      "required": "標題和內容不能為空。",
+      "saveFailed": "建立通知失敗。",
+      "deleteFailed": "刪除通知失敗。",
+      "loadFailed": "載入通知失敗。"
+    }
+  },
+  "membership": {
+    "badge": "會員",
+    "title": "開通會員",
+    "subtitle": "選擇合適的方案，即可在有效期內享受全部會員權益。續費會在目前到期日基礎上延長。",
+    "activeTitle": "您已是會員",
+    "expiresOn": "有效期至 {date}",
+    "daysLeft": "剩餘 {days} 天",
+    "durationDays": "有效期 {days} 天",
+    "recommended": "推薦",
+    "subscribe": "立即開通",
+    "renew": "續費",
+    "subscribeFailed": "發起付款失敗，請稍後重試。",
+    "paymentNote": "付款由 Stripe、微信支付或支付寶安全處理，付款成功後會員立即生效。",
+    "payWithWechat": "微信支付",
+    "payWithAlipay": "支付寶付款",
+    "noPaymentMethod": "該方案以 {currency} 計價，而目前啟用的付款管道只支援人民幣。",
+    "noChannelTitle": "線上付款暫未開通",
+    "noChannelDesc": "請聯絡管理員在系統設定中開通支付寶 / 微信支付 / Stripe，或由管理員為你手動開通會員。",
+    "creditPerk": "會員每月還自動獲贈 {count} 積分",
+    "wechatTitle": "微信掃碼付款",
+    "wechatHint": "開啟手機微信掃一掃，掃描 QR 碼並完成付款。",
+    "wechatScanning": "正在等待付款結果…",
+    "wechatPaid": "付款成功，會員已開通。",
+    "wechatClosed": "訂單已關閉或已過期，請重新發起付款。",
+    "close": "關閉",
+    "disabled": "會員訂閱功能目前關閉。"
+  },
+  "messages": {
+    "title": "訊息",
+    "subtitle": "與其他使用者的私訊。",
+    "contacts": "聯絡人",
+    "noContacts": "暫無會話。",
+    "searchUsers": "搜尋使用者以開始聊天...",
+    "noResults": "未找到使用者。",
+    "typeMessage": "輸入訊息...",
+    "send": "傳送",
+    "online": "線上",
+    "offline": "離線",
+    "unread": "未讀",
+    "selectContact": "選擇聯絡人開始聊天",
+    "startChat": "開始聊天",
+    "noMessages": "暫無訊息。傳送第一則訊息吧！",
+    "loadMore": "載入更早的訊息",
+    "errors": {
+      "loadFailed": "載入訊息失敗。",
+      "sendFailed": "傳送訊息失敗。"
+    }
+  },
+  "avatar": {
+    "title": "頭像",
+    "upload": "上傳頭像",
+    "remove": "移除",
+    "hint": "支援 PNG、JPEG、WebP 或 BMP。",
+    "cropperTitle": "裁切頭像",
+    "confirm": "確認",
+    "updated": "頭像已更新。",
+    "removed": "頭像已移除。",
+    "confirmRemove": "確定要移除頭像嗎？",
+    "errors": {
+      "imageOnly": "請選擇圖片檔案。",
+      "noGif": "頭像不允許使用 GIF 圖片。",
+      "loadFailed": "圖片載入失敗。",
+      "cropFailed": "圖片裁切失敗。",
+      "uploadFailed": "頭像上傳失敗。",
+      "removeFailed": "頭像移除失敗。"
+    }
+  },
+  "oauthConsent": {
+    "title": "授權應用程式",
+    "subtitle": "一個應用程式請求存取你的帳號",
+    "signedInAs": "目前登入帳號",
+    "permissions": "該應用程式將能夠：",
+    "approve": "允許",
+    "deny": "拒絕",
+    "errorTitle": "授權請求失敗",
+    "errorHint": "請確認該應用程式的回呼網址已在後台登記，然後重試。",
+    "invalidRequest": "授權請求無效。",
+    "requestFailed": "無法完成授權請求。",
+    "footer": "你正在使用 {issuer} 帳號登入第三方應用程式。",
+    "scope": {
+      "openid": "驗證你的身分",
+      "profile": "讀取你的基本資料（暱稱、使用者名稱、頭像）",
+      "email": "讀取你的電子郵件地址及驗證狀態",
+      "roles": "讀取分配給你帳號的角色"
+    }
+  },
+  "credits": {
+    "balance": "積分餘額",
+    "balanceHint": "按次消耗積分；可在積分頁自助儲值，會員每月還有贈額。"
+  },
+  "footer": {
+    "builtWith": "基於 Nuxt UI 建置"
+  },
+  "html": {
+    "height": "高度",
+    "heightPlaceholder": "自動適應內容（留空）"
+  },
+  "pagination": {
+    "total": "共 {total} 項",
+    "range": "{from}-{to}",
+    "page": "頁"
+  }
+}

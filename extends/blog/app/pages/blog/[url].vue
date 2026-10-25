@@ -18,14 +18,15 @@ const url = computed(() => String(route.params.url ?? ''))
 const { data: post, pending, error, refresh } = useBlogPost(() => url.value)
 const readingTime = computed(() => blogReadingTime(post.value?.content))
 
-useSeoMeta(() => ({
-  title: () => post.value?.title ?? t('blog.title'),
+usePageMeta({
+  title: () => post.value?.title,
   description: () => post.value?.excerpt || undefined,
-  ogTitle: () => post.value?.title || undefined,
-  ogDescription: () => post.value?.excerpt || undefined,
-  ogImage: () => (post.value?.coverUrl ? resolveBlogCover(post.value.url, post.value.coverUrl, 1200, 630) : undefined),
-  ogType: () => 'article'
-}))
+  image: () => (post.value?.coverUrl ? resolveBlogCover(post.value.url, post.value.coverUrl, 1200, 630) : undefined),
+  type: 'article',
+  canonicalPath: () => `/blog/${url.value}`,
+  // Editors can preview unpublished posts; those previews must stay out.
+  indexable: () => post.value?.status === 'published'
+})
 
 const backTo: RouteLocationRaw = '/blog'
 

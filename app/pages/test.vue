@@ -34,6 +34,9 @@
 </template>
 
 <script setup lang="ts">
+// Internal component playground — never worth a search result.
+usePageMeta({ title: 'Editor playground', indexable: false })
+
 const textContent = ref('这是一段纯文本内容')
 
 const pdfUrl = 'https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf'

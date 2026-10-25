@@ -7,6 +7,7 @@ export default defineEventHandler(async () => {
     // security.captchaEnabled drives whether the frontend shows the captcha (not sensitive)
     if (
       row.key.startsWith('site.') ||
+      row.key.startsWith('seo.') ||
       row.key.startsWith('upload.') ||
       row.key.startsWith('analytics.') ||
       row.key === 'security.captchaEnabled'

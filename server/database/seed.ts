@@ -1,4 +1,4 @@
-import { count, eq, inArray } from 'drizzle-orm'
+import { and, count, eq, inArray } from 'drizzle-orm'
 import type { Database } from './index'
 import {
   users as usersTable,
@@ -56,9 +56,26 @@ function richDoc(text: string): Record<string, unknown> {
   return { type: 'doc', content: blocks }
 }
 
+const SITE_TITLE = 'OfficeBao'
+const SITE_TITLE_ZH = '办公宝'
+const SITE_TITLE_ZH_TW = '辦公寶'
+const SITE_DESCRIPTION = 'Browser-based PDF, image, video and everyday work tools for teachers and office work — merge PDFs, compress images, edit video and more. Your files never leave your device.'
+const SITE_DESCRIPTION_ZH = '浏览器里的 PDF、图片、视频与日常办公工具：合并拆分、压缩转换、去水印、座位表、计分板等，文件不上传服务器。'
+const SITE_DESCRIPTION_ZH_TW = '瀏覽器裡的 PDF、圖片、影片與日常辦公工具：合併拆分、壓縮轉換、去浮水印、座位表、計分板等，檔案不上傳伺服器。'
+
 const DEFAULT_CONFIGS = [
-  { key: 'site.title', value: 'Nuxt Admin', type: 'string', description: 'Site title' },
-  { key: 'site.description', value: 'A production-grade, metadata-driven admin framework built with Nuxt 4.', type: 'string', description: 'Site description' },
+  { key: 'site.title', value: SITE_TITLE, type: 'string', description: 'Site title (used in <title>, Open Graph and search results)' },
+  { key: 'site.titleZh', value: SITE_TITLE_ZH, type: 'string', description: 'Chinese site title (falls back to site.title when blank)' },
+  { key: 'site.titleZhTw', value: SITE_TITLE_ZH_TW, type: 'string', description: 'Traditional Chinese site title (falls back to site.titleZh when blank)' },
+  { key: 'site.description', value: SITE_DESCRIPTION, type: 'string', description: 'Default meta description for pages that do not set their own' },
+  { key: 'site.descriptionZh', value: SITE_DESCRIPTION_ZH, type: 'string', description: 'Chinese default meta description (falls back to site.description when blank)' },
+  { key: 'site.descriptionZhTw', value: SITE_DESCRIPTION_ZH_TW, type: 'string', description: 'Traditional Chinese default meta description (falls back to site.descriptionZh when blank)' },
+  { key: 'site.url', value: '', type: 'string', description: 'Canonical site URL, e.g. https://example.com (used by sitemap.xml and robots.txt; blank = request origin)' },
+  { key: 'site.ogImage', value: '', type: 'string', description: 'Absolute URL or /path of the default share image (1200x630 PNG/JPG, blank = no og:image)' },
+  // ---- Search-engine ownership proofs (blank = no tag) ----
+  { key: 'seo.googleSiteVerification', value: '', type: 'string', description: 'Google Search Console verification token (the content value of google-site-verification)' },
+  { key: 'seo.bingSiteVerification', value: '', type: 'string', description: 'Bing Webmaster Tools verification token (msvalidate.01)' },
+  { key: 'seo.baiduSiteVerification', value: '', type: 'string', description: 'Baidu 站点验证码 (baidu-site-verification, e.g. codeva-xxxx)' },
   { key: 'site.allowRegistration', value: 'true', type: 'boolean', description: 'Allow public registration' },
   { key: 'blog.enabled', value: 'true', type: 'boolean', description: 'Enable the blog module (registers its tables, API and sidebar menu)' },
   { key: 'mail.from', value: 'no-reply@example.com', type: 'string', description: 'From address for outgoing mail' },
@@ -164,6 +181,37 @@ export async function seed(db: Database): Promise<void> {
   await db.insert(configsTable)
     .values(DEFAULT_CONFIGS)
     .onConflictDoNothing({ target: configsTable.key })
+
+  // 0a. Replace the scaffolding-era site title/description. Only rows still
+  // holding an old default are touched, so an admin's own copy is preserved.
+  await db.update(configsTable)
+    .set({ value: SITE_TITLE, updatedAt: new Date() })
+    .where(and(
+      eq(configsTable.key, 'site.title'),
+      inArray(configsTable.value, ['Nuxt Admin', 'Lesson Desk'])
+    ))
+  await db.update(configsTable)
+    .set({ value: SITE_DESCRIPTION, updatedAt: new Date() })
+    .where(and(
+      eq(configsTable.key, 'site.description'),
+      inArray(configsTable.value, [
+        'A production-grade, metadata-driven admin framework built with Nuxt 4.',
+        'Free browser-based PDF, image, video and classroom tools for teachers: merge PDFs, compress images, build seating charts and more. Files never leave your device.'
+      ])
+    ))
+  // Chinese title/description added with the brand rename: fill them when unset.
+  await db.update(configsTable)
+    .set({ value: SITE_TITLE_ZH, updatedAt: new Date() })
+    .where(and(eq(configsTable.key, 'site.titleZh'), eq(configsTable.value, '')))
+  await db.update(configsTable)
+    .set({ value: SITE_DESCRIPTION_ZH, updatedAt: new Date() })
+    .where(and(eq(configsTable.key, 'site.descriptionZh'), eq(configsTable.value, '')))
+  await db.update(configsTable)
+    .set({ value: SITE_TITLE_ZH_TW, updatedAt: new Date() })
+    .where(and(eq(configsTable.key, 'site.titleZhTw'), eq(configsTable.value, '')))
+  await db.update(configsTable)
+    .set({ value: SITE_DESCRIPTION_ZH_TW, updatedAt: new Date() })
+    .where(and(eq(configsTable.key, 'site.descriptionZhTw'), eq(configsTable.value, '')))
 
   // 0b. Purge legacy auth tokens previously stored in the configs table.
   // Password-reset and email-verification tokens now live in the tokens table.

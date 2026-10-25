@@ -10,6 +10,11 @@
 const { t } = useI18n()
 const { isLoggedIn } = useAuth()
 
+usePageMeta({
+  title: () => t('home.hero.title'),
+  description: () => t('home.hero.subtitle')
+})
+
 const features = [
   { icon: 'i-lucide-table-2', key: 'crud' },
   { icon: 'i-lucide-shield-check', key: 'rbac' },

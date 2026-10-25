@@ -98,11 +98,13 @@ function onClearDate() {
 
 const canViewDrafts = computed(() => can('posts', 'read'))
 
-useSeoMeta(() => ({
+// Filters live in the query string; search/filter combinations canonicalise to
+// the clean list, while real pagination keeps its own self-referencing URL.
+usePageMeta({
   title: () => t('blog.title'),
-  ogTitle: () => t('blog.title'),
-  ogType: () => 'website'
-}))
+  description: () => t('blog.subtitle'),
+  canonicalPath: () => (page.value > 1 ? `/blog?page=${page.value}` : '/blog')
+})
 
 // --- Add form (reuses host dashboard post form) ---
 const editorOpen = ref(false)

@@ -14,6 +14,8 @@
  * Rule of thumb: base imports nothing from `modules/`; modules may import base.
  */
 
+import { ref } from 'vue'
+
 /** Catalog version discriminator used by the UI cards (`cn` / `global`). */
 export type ChatRegion = string
 
@@ -103,9 +105,21 @@ const seedHandlers = new Map<string, (payload: ChatCardSeedPayload) => void>()
 let billing: ChatToolBillingHandler | null = null
 let catalog: ChatCatalogProvider | null = null
 
+/**
+ * Bumped whenever a module registers something. Modules load after the first
+ * paint (see the tools chat plugin), so the widget watches this to refresh the
+ * catalog context it resolved before registration finished.
+ */
+export const chatExtensionsVersion = ref(0)
+
+function bump(): void {
+  chatExtensionsVersion.value += 1
+}
+
 /** Register (or replace) UI cards. Ids are the closed set the model may use. */
 export function registerChatUiCards(cards: Iterable<readonly [string, ChatUiCard]>): void {
   for (const [id, card] of cards) uiCards.set(id, card)
+  bump()
 }
 
 export function getChatUiCards(): Record<string, ChatUiCard> {
@@ -115,6 +129,7 @@ export function getChatUiCards(): Record<string, ChatUiCard> {
 /** Register (or replace) browser-side auto tools by name. */
 export function registerChatTools(entries: ChatToolEntry[]): void {
   for (const entry of entries) toolEntries.set(entry.name, entry)
+  bump()
 }
 
 export function getChatTools(): ChatToolEntry[] {
@@ -172,6 +187,7 @@ export async function refundChatTool(transactionId: number | null | undefined): 
 
 export function registerChatCatalogProvider(provider: ChatCatalogProvider): void {
   catalog = provider
+  bump()
 }
 
 export function getChatCatalogProvider(): ChatCatalogProvider | null {

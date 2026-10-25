@@ -1,0 +1,388 @@
+{
+  "site": {
+    "title": "OfficeBao",
+    "description": "أدوات PDF والصور والفيديو والعمل اليومي تعمل داخل المتصفح. ملفاتك لا تُرفع إلى أي خادم."
+  },
+  "nav": {
+    "home": "الرئيسية",
+    "files": "الملفات",
+    "users": "المستخدمون",
+    "settings": "الإعدادات",
+    "profile": "الملف الشخصي",
+    "notifications": "الإشعارات",
+    "messages": "الرسائل",
+    "language": "اللغة"
+  },
+  "home": {
+    "welcome": "Hello World",
+    "heroDescription": "إطار إدارة يعتمد على البيانات الوصفية، مع CRUD وRBAC وSSO والاتصال الفوري وLLM.",
+    "hero": {
+      "badge": "إطار إدارة يعتمد على البيانات الوصفية",
+      "title": "ابنِ أنظمة الإدارة الخلفية أسرع",
+      "subtitle": "نموذج إدارة بمستوى الإنتاج مبني على Nuxt 4 — الجداول والنماذج والصلاحيات والأمان وLLM تُدار ببيانات وصفية من قاعدة البيانات بدل كتابة الشيفرة يدويًا.",
+      "cta": "استكشف لوحة التحكم",
+      "ctaReturn": "افتح لوحة التحكم",
+      "ctaSecondary": "عرض الشيفرة"
+    },
+    "sectionFeatures": "القدرات الأساسية",
+    "sectionFeaturesHint": "كل ما يحتاجه نظام الإدارة الحديث، جاهزًا للاستخدام.",
+    "feature": {
+      "crud": {
+        "title": "CRUD عام",
+        "desc": "جداول ونماذج وتفاصيل تعتمد على البيانات الوصفية، مع البحث والتصفية والترتيب والاستيراد/التصدير والإجراءات الجماعية وسلة المحذوفات."
+      },
+      "rbac": {
+        "title": "الأدوار والصلاحيات",
+        "desc": "صلاحيات على مستوى الدور والقائمة والبيانات والزر لتحكم دقيق في الوصول."
+      },
+      "security": {
+        "title": "الأمان وSSO",
+        "desc": "CAPTCHA وقفل الحساب بعد محاولات فاشلة وتتبع آخر تسجيل دخول وتسجيل الدخول عبر GitHub OAuth2."
+      },
+      "metadata": {
+        "title": "الاكتشاف التلقائي للمخطط",
+        "desc": "أي جدول Drizzle يصبح صفحة CRUD كاملة فورًا؛ ويمكن عبر السجل تجاوز API أو الواجهة لكل جدول وإضافة تحويلات getter/setter لكل حقل."
+      },
+      "realtime": {
+        "title": "إشعارات فورية",
+        "desc": "إشعارات ورسائل غير مقروءة تُدفع عبر WebSocket."
+      },
+      "llm": {
+        "title": "تكامل LLM",
+        "desc": "أدر إعدادات المزود واختبر الاتصال بنقرة واحدة."
+      },
+      "i18n": {
+        "title": "دعم متعدد اللغات",
+        "desc": "عدة لغات مدمجة ويمكن تبديلها من الشريط العلوي في أي وقت."
+      },
+      "config": {
+        "title": "القائمة وإعدادات النظام",
+        "desc": "حرّر قائمة الشريط الجانبي مباشرة واضبط SMTP والأمان والرفع وLLM من لوحة واحدة."
+      }
+    },
+    "sectionTech": "مبني باستخدام",
+    "cta": {
+      "title": "جاهز لرؤيته عمليًا؟",
+      "desc": "ادخل إلى لوحة التحكم وجرّب كل مزايا النموذج."
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "تسجيل الدخول",
+      "subtitle": "مرحبًا بعودتك. سجّل الدخول للمتابعة.",
+      "submit": "تسجيل الدخول",
+      "noAccount": "إنشاء حساب",
+      "forgotPassword": "نسيت كلمة المرور؟",
+      "demoHint": "مشرف تجريبي:"
+    },
+    "register": {
+      "title": "إنشاء حساب",
+      "subtitle": "سجّل حسابًا جديدًا.",
+      "submit": "إنشاء",
+      "hasAccount": "لديك حساب بالفعل؟"
+    },
+    "forgotPassword": {
+      "title": "نسيت كلمة المرور",
+      "subtitle": "أدخل بريدك الإلكتروني لاستلام رابط إعادة التعيين.",
+      "submit": "إرسال الرابط",
+      "backToLogin": "العودة لتسجيل الدخول",
+      "success": "إذا كان البريد موجودًا، فقد تم إنشاء رابط إعادة التعيين.",
+      "sent": "تم إنشاء رابط إعادة التعيين",
+      "devTitle": "رابط إعادة تعيين للتطوير (بدون خادم بريد)"
+    },
+    "resetPassword": {
+      "title": "إعادة تعيين كلمة المرور",
+      "subtitle": "اختر كلمة مرور جديدة لحسابك.",
+      "submit": "إعادة التعيين",
+      "success": "تم تحديث كلمة المرور. جارٍ العودة للرئيسية...",
+      "successTitle": "تم",
+      "noToken": "رمز إعادة التعيين غير موجود في الرابط."
+    },
+    "logout": {
+      "title": "تسجيل الخروج"
+    },
+    "modal": {
+      "title": "الحساب"
+    },
+    "oauth": {
+      "divider": "أو المتابعة باستخدام",
+      "loginWith": "تسجيل الدخول بـ {name}",
+      "errorTitle": "فشل تسجيل الدخول الخارجي"
+    },
+    "fields": {
+      "identifier": "اسم المستخدم أو البريد",
+      "identifierPlaceholder": "admin",
+      "username": "اسم المستخدم",
+      "usernamePlaceholder": "your_username",
+      "email": "البريد الإلكتروني",
+      "emailPlaceholder": "you{'@'}example.com",
+      "password": "كلمة المرور",
+      "passwordPlaceholder": "••••••••",
+      "passwordConfirm": "تأكيد كلمة المرور",
+      "passwordConfirmPlaceholder": "••••••••",
+      "captcha": "رمز التحقق",
+      "captchaPlaceholder": "أدخل الرمز",
+      "captchaRefresh": "انقر للتحديث"
+    },
+    "errors": {
+      "title": "خطأ",
+      "requiredFields": "يرجى ملء جميع الحقول المطلوبة.",
+      "passwordMismatch": "كلمتا المرور غير متطابقتين.",
+      "passwordTooShort": "يجب أن تكون كلمة المرور 8 أحرف على الأقل.",
+      "emailRequired": "البريد الإلكتروني مطلوب.",
+      "captchaRequired": "يرجى إدخال رمز التحقق.",
+      "generic": "حدث خطأ ما. يرجى المحاولة مجددًا."
+    }
+  },
+  "common": {
+    "cancel": "إلغاء",
+    "confirm": "تأكيد",
+    "confirmAction": "هل أنت متأكد؟",
+    "confirmDelete": "حذف هذا العنصر؟",
+    "confirmPermanentDelete": "حذف هذا العنصر نهائيًا؟ لا يمكن التراجع.",
+    "save": "حفظ",
+    "close": "إغلاق",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "detail": "التفاصيل",
+    "restore": "استعادة",
+    "permanentDelete": "حذف نهائي",
+    "trash": "سلة المحذوفات",
+    "back": "رجوع",
+    "preview": "معاينة",
+    "download": "تنزيل",
+    "trashEmpty": "السلة فارغة",
+    "batchDelete": "حذف المحدد",
+    "batchRestore": "استعادة المحدد",
+    "batchPermanentDelete": "حذف نهائي",
+    "confirmBatchDelete": "نقل {count} عنصرًا محددًا إلى السلة؟",
+    "confirmBatchRestore": "استعادة {count} عنصرًا محددًا؟",
+    "confirmBatchPermanentDelete": "حذف {count} عنصرًا محددًا نهائيًا؟ لا يمكن التراجع.",
+    "restored": "تمت استعادة {count} عنصرًا.",
+    "permanentlyDeleted": "تم حذف {count} عنصرًا نهائيًا.",
+    "loading": "جارٍ التحميل...",
+    "refresh": "تحديث",
+    "refreshed": "تم التحديث",
+    "searchPlaceholder": "بحث...",
+    "filters": "التصفية",
+    "clearFilters": "مسح التصفية",
+    "all": "الكل",
+    "value": "القيمة",
+    "fullscreen": "ملء الشاشة",
+    "exitFullscreen": "الخروج من ملء الشاشة",
+    "upload": "رفع",
+    "uploadFailed": "فشل الرفع"
+  },
+  "chat": {
+    "title": "مساعد الذكاء الاصطناعي",
+    "subtitle": "ملفات ومهام الصف — فقط اسأل",
+    "open": "فتح مساعد الذكاء الاصطناعي",
+    "close": "إغلاق مساعد الذكاء الاصطناعي",
+    "clear": "محادثة جديدة",
+    "placeholder": "اكتب سؤالك...",
+    "hint": "Enter للإرسال · Shift+Enter لسطر جديد",
+    "welcomeTitle": "كيف يمكنني مساعدتك؟",
+    "welcomeHint": "اسأل أي شيء — الردود تصل فورًا.",
+    "loginHint": "سجّل الدخول للتحدث مع مساعد الذكاء الاصطناعي.",
+    "login": "تسجيل الدخول",
+    "error": "حدث خطأ ما. يرجى المحاولة مجددًا.",
+    "attach": "إرفاق ملفات",
+    "removeAttachment": "إزالة المرفق",
+    "onlyImages": "الصور فقط مدعومة",
+    "unsupportedFile": "نوع ملف غير مدعوم: {name}",
+    "tooManyFiles": "بحد أقصى {max} ملفات لكل رسالة",
+    "dropFiles": "أفلت الملفات لإرفاقها",
+    "fileTooLarge": "يتجاوز الملف الحد {max} ميغابايت",
+    "expand": "تكبير المحادثة",
+    "collapse": "الخروج من ملء الشاشة",
+    "loginIdentifier": "اسم المستخدم أو البريد",
+    "loginPassword": "كلمة المرور",
+    "loginSubmit": "تسجيل الدخول",
+    "loginSuccess": "تم تسجيل الدخول — يمكنك بدء المحادثة.",
+    "loginFailed": "فشل تسجيل الدخول. تحقق من بياناتك.",
+    "creditConfirmTitle": "هذا التشغيل يستهلك {cost} رصيدًا",
+    "creditConfirmDesc": "الرصيد {balance}. يُخصم الرصيد مرة واحدة ويُعاد تلقائيًا عند الفشل.",
+    "creditConfirmGo": "تشغيل مقابل {cost}",
+    "creditConfirmCancel": "إلغاء",
+    "creditSkip": "لا تسأل مرة أخرى",
+    "creditCancelled": "تم الإلغاء — لم يُستهلك أي رصيد.",
+    "creditInsufficient": "الرصيد غير كافٍ. اشحن من صفحة الرصيد.",
+    "papers": {
+      "example": "جرّب: نزّل امتحان 2024 AQA GCSE Chemistry",
+      "found": "تم العثور على {count} ملفًا لـ {course}:",
+      "choose": "اختر الملف المطلوب أدناه:",
+      "downloading": "بدء التنزيل: {title}",
+      "candidates": "عدة مقررات متطابقة — أضف جهة الامتحان أو المؤهل (مثل AQA / Edexcel):",
+      "noYear": "لا توجد امتحانات لعام {year} لـ {course}. السنوات المتاحة: {years}.",
+      "noCourse": "لا توجد امتحانات تطابق «{query}».",
+      "availableCourses": "المقررات التي تتوفر امتحاناتها:",
+      "openCourse": "فتح امتحانات المقرر",
+      "questionPaper": "ورقة الأسئلة",
+      "markScheme": "نموذج التصحيح"
+    }
+  },
+  "profile": {
+    "title": "الملف الشخصي",
+    "subtitle": "أدر معلومات حسابك وكلمة المرور.",
+    "name": "الاسم",
+    "telephone": "الهاتف",
+    "accountTitle": "معلومات الحساب",
+    "save": "حفظ الملف",
+    "saved": "تم تحديث الملف الشخصي.",
+    "passwordTitle": "تغيير كلمة المرور",
+    "currentPassword": "كلمة المرور الحالية",
+    "newPassword": "كلمة المرور الجديدة",
+    "changePassword": "تحديث كلمة المرور",
+    "passwordChanged": "تم تغيير كلمة المرور.",
+    "gender": "الجنس",
+    "genderPlaceholder": "اختر الجنس",
+    "genderMale": "ذكر",
+    "genderFemale": "أنثى",
+    "genderOther": "آخر",
+    "birthday": "تاريخ الميلاد",
+    "verified": "موثّق",
+    "notVerified": "غير موثّق",
+    "resendVerification": "إعادة إرسال التحقق",
+    "verificationSent": "تم إرسال بريد التحقق.",
+    "verificationDevSent": "SMTP غير مهيأ. تم إنشاء رابط تحقق للتطوير.",
+    "emailVerified": "تم التحقق من البريد بنجاح.",
+    "verifyInvalid": "رابط التحقق غير صالح أو منتهي.",
+    "emailChanged": "تم تحديث البريد. أُرسل رابط تحقق إلى العنوان الجديد.",
+    "emailChangedDev": "تم تحديث البريد. SMTP غير مهيأ؛ يظهر رابط التحقق أدناه.",
+    "devVerifyTitle": "رابط تحقق للتطوير"
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "subtitle": "إعلانات النظام والتحديثات.",
+    "loading": "جارٍ تحميل الإشعارات...",
+    "empty": "لا توجد إشعارات.",
+    "markAllRead": "تحديد الكل كمقروء",
+    "markAllReadSuccess": "تم تحديد {count} إشعارًا كمقروء.",
+    "create": "إنشاء إشعار",
+    "createTitle": "إنشاء إشعار",
+    "created": "تم إنشاء الإشعار.",
+    "deleted": "تم حذف الإشعار.",
+    "confirmDelete": "حذف هذا الإشعار؟",
+    "colTitle": "العنوان",
+    "colContent": "المحتوى",
+    "colCreated": "تاريخ الإنشاء",
+    "colStatus": "الحالة",
+    "read": "مقروء",
+    "unread": "غير مقروء",
+    "fieldsTitle": "العنوان",
+    "fieldsContent": "المحتوى",
+    "fieldsTitlePlaceholder": "عنوان الإشعار",
+    "fieldsContentPlaceholder": "اكتب محتوى الإشعار...",
+    "fieldsTargets": "المستخدمون المستهدفون",
+    "targetsHint": "اتركه فارغًا لإرساله للجميع، أو اختر مستخدمين محددين.",
+    "searchUsers": "بحث عن مستخدمين...",
+    "errors": {
+      "required": "العنوان والمحتوى مطلوبان.",
+      "saveFailed": "فشل إنشاء الإشعار.",
+      "deleteFailed": "فشل حذف الإشعار.",
+      "loadFailed": "فشل تحميل الإشعارات."
+    }
+  },
+  "membership": {
+    "badge": "العضوية",
+    "title": "كن عضوًا",
+    "subtitle": "اختر خطة واستمتع بكل المزايا خلال الفترة. التجديد يمدّ تاريخ الانتهاء الحالي.",
+    "activeTitle": "أنت عضو",
+    "expiresOn": "صالح حتى {date}",
+    "daysLeft": "بقي {days} يومًا",
+    "durationDays": "{days} يومًا من الوصول",
+    "recommended": "موصى به",
+    "subscribe": "اشترك",
+    "renew": "جدّد",
+    "subscribeFailed": "تعذّر بدء الدفع. يرجى المحاولة لاحقًا.",
+    "paymentNote": "تُعالج المدفوعات بأمان عبر Stripe أو WeChat Pay أو Alipay، وتُفعّل العضوية فور نجاح الدفع.",
+    "payWithWechat": "الدفع عبر WeChat",
+    "payWithAlipay": "الدفع عبر Alipay",
+    "noPaymentMethod": "هذه الخطة مسعّرة بـ {currency}، لكن القنوات المفعلة تسدد باليوان فقط.",
+    "noChannelTitle": "الدفع الإلكتروني غير مفعّل بعد",
+    "noChannelDesc": "اطلب من المشرف تفعيل Alipay أو WeChat Pay أو Stripe من إعدادات النظام، أو تفعيل عضويتك يدويًا.",
+    "creditPerk": "يحصل الأعضاء أيضًا على {count} رصيدًا شهريًا",
+    "wechatTitle": "الدفع عبر WeChat بمسح QR",
+    "wechatHint": "افتح WeChat على هاتفك، امسح رمز QR وأكد الدفع.",
+    "wechatScanning": "بانتظار تأكيد الدفع…",
+    "wechatPaid": "تم الدفع — عضويتك مفعّلة.",
+    "wechatClosed": "أُغلق الطلب أو انتهت صلاحيته. ابدأ دفعة جديدة.",
+    "close": "إغلاق",
+    "disabled": "الاشتراكات معطّلة حاليًا."
+  },
+  "messages": {
+    "title": "الرسائل",
+    "subtitle": "رسائل خاصة مع مستخدمين آخرين.",
+    "contacts": "جهات الاتصال",
+    "noContacts": "لا توجد محادثات بعد.",
+    "searchUsers": "ابحث عن مستخدمين لبدء محادثة...",
+    "noResults": "لم يتم العثور على مستخدمين.",
+    "typeMessage": "اكتب رسالة...",
+    "send": "إرسال",
+    "online": "متصل",
+    "offline": "غير متصل",
+    "unread": "غير مقروء",
+    "selectContact": "اختر جهة اتصال لبدء المحادثة",
+    "startChat": "بدء المحادثة",
+    "noMessages": "لا توجد رسائل. أرسل أول رسالة!",
+    "loadMore": "تحميل رسائل أقدم",
+    "errors": {
+      "loadFailed": "فشل تحميل الرسائل.",
+      "sendFailed": "فشل إرسال الرسالة."
+    }
+  },
+  "avatar": {
+    "title": "الصورة الرمزية",
+    "upload": "رفع الصورة",
+    "remove": "إزالة",
+    "hint": "PNG أو JPEG أو WebP أو BMP.",
+    "cropperTitle": "قص الصورة",
+    "confirm": "تأكيد",
+    "updated": "تم تحديث الصورة.",
+    "removed": "تمت إزالة الصورة.",
+    "confirmRemove": "إزالة صورتك الرمزية؟",
+    "errors": {
+      "imageOnly": "يرجى اختيار ملف صورة.",
+      "noGif": "لا يُسمح بصور GIF كصورة رمزية.",
+      "loadFailed": "فشل تحميل الصورة.",
+      "cropFailed": "فشل قص الصورة.",
+      "uploadFailed": "فشل رفع الصورة.",
+      "removeFailed": "فشل إزالة الصورة."
+    }
+  },
+  "oauthConsent": {
+    "title": "تفويض التطبيق",
+    "subtitle": "يريد تطبيق الوصول إلى حسابك",
+    "signedInAs": "مسجّل الدخول باسم",
+    "permissions": "سيتمكن هذا التطبيق من:",
+    "approve": "السماح",
+    "deny": "رفض",
+    "errorTitle": "فشل طلب التفويض",
+    "errorHint": "تأكد من أن عنوان إعادة التوجيه للتطبيق مسجّل في لوحة التحكم ثم أعد المحاولة.",
+    "invalidRequest": "طلب التفويض غير صالح.",
+    "requestFailed": "تعذّر إكمال طلب التفويض.",
+    "footer": "أنت تسجّل الدخول إلى تطبيق خارجي بحساب {issuer}.",
+    "scope": {
+      "openid": "التحقق من هويتك",
+      "profile": "قراءة ملفك الأساسي (الاسم، اسم المستخدم، الصورة)",
+      "email": "قراءة بريدك الإلكتروني وحالة التحقق",
+      "roles": "قراءة الأدوار المخصصة لحسابك"
+    }
+  },
+  "credits": {
+    "balance": "رصيد النقاط",
+    "balanceHint": "تستهلك الميزات المدفوعة بالنقاط. اشحن من صفحة النقاط؛ ويحصل الأعضاء على مخصص شهري أيضًا."
+  },
+  "footer": {
+    "builtWith": "مبني باستخدام Nuxt UI"
+  },
+  "html": {
+    "height": "الارتفاع",
+    "heightPlaceholder": "ملاءمة المحتوى تلقائيًا (اتركه فارغًا)"
+  },
+  "pagination": {
+    "total": "{total} عنصرًا",
+    "range": "{from}-{to}",
+    "page": "صفحة"
+  }
+}

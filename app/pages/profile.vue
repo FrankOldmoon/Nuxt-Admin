@@ -9,7 +9,7 @@ const route = useRoute()
 definePageMeta({
   middleware: 'auth'
 })
-useSeoMeta({ title: () => t('profile.title') })
+usePageMeta({ title: () => t('profile.title'), indexable: false })
 
 // Profile form
 const profileForm = reactive({ username: '', name: '', email: '', telephone: '', gender: '' as string, birthday: '' as string })

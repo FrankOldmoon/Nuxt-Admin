@@ -1,7 +1,7 @@
 {
   "site": {
-    "title": "Nuxt Admin",
-    "description": "A production-grade, metadata-driven admin framework built with Nuxt 4."
+    "title": "OfficeBao",
+    "description": "Browser-based PDF, image, video and everyday work tools for teachers and office work."
   },
   "home": {
     "welcome": "Hello World",

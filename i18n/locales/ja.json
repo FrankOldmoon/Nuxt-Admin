@@ -1,0 +1,388 @@
+{
+  "site": {
+    "title": "OfficeBao",
+    "description": "ブラウザで動く PDF・画像・動画・日常業務ツール。ファイルはアップロードされません。"
+  },
+  "nav": {
+    "home": "ホーム",
+    "files": "ファイル",
+    "users": "ユーザー",
+    "settings": "設定",
+    "profile": "プロフィール",
+    "notifications": "通知",
+    "messages": "メッセージ",
+    "language": "言語"
+  },
+  "home": {
+    "welcome": "Hello World",
+    "heroDescription": "CRUD・RBAC・SSO・リアルタイム通信・LLM を備えたメタデータ駆動の管理システム。",
+    "hero": {
+      "badge": "メタデータ駆動の管理画面フレームワーク",
+      "title": "企業向けバックオフィスを、もっと速く",
+      "subtitle": "Nuxt 4 で作られた実運用レベルの管理画面デモ。テーブル・フォーム・RBAC・セキュリティ・LLM を、手書きコードではなくデータベースのメタデータで動かします。",
+      "cta": "管理画面を見る",
+      "ctaReturn": "管理画面を開く",
+      "ctaSecondary": "ソースを見る"
+    },
+    "sectionFeatures": "主な機能",
+    "sectionFeaturesHint": "現代の管理システムに必要なものを、すぐに使えます。",
+    "feature": {
+      "crud": {
+        "title": "汎用 CRUD",
+        "desc": "メタデータ駆動のテーブル・フォーム・詳細画面。検索、絞り込み、並べ替え、入出力、一括操作、ゴミ箱を標準装備。"
+      },
+      "rbac": {
+        "title": "RBAC と権限",
+        "desc": "ロール・メニュー・データ・ボタンの4段階で、きめ細かくアクセス制御。"
+      },
+      "security": {
+        "title": "セキュリティと SSO",
+        "desc": "CAPTCHA、ログイン失敗時のロック、最終ログイン記録、GitHub OAuth2 による外部ログイン。"
+      },
+      "metadata": {
+        "title": "スキーマ自動検出",
+        "desc": "Drizzle のテーブルがそのまま CRUD 画面に。レジストリで API/UI を上書きでき、項目ごとの getter/setter 変換も可能。"
+      },
+      "realtime": {
+        "title": "リアルタイム通知",
+        "desc": "WebSocket で未読通知とメッセージを即時配信。"
+      },
+      "llm": {
+        "title": "LLM 連携",
+        "desc": "プロバイダー設定を管理し、ワンクリックで接続テスト。"
+      },
+      "i18n": {
+        "title": "多言語対応",
+        "desc": "多言語を標準搭載。ヘッダーからいつでも切り替えられます。"
+      },
+      "config": {
+        "title": "メニューとシステム設定",
+        "desc": "サイドバーメニューをその場で編集し、SMTP・セキュリティ・アップロード・LLM を1つの画面で調整。"
+      }
+    },
+    "sectionTech": "使用技術",
+    "cta": {
+      "title": "実際に試してみませんか？",
+      "desc": "管理画面に入って、デモの機能をひととおり体験してください。"
+    }
+  },
+  "auth": {
+    "login": {
+      "title": "ログイン",
+      "subtitle": "おかえりなさい。ログインして続行してください。",
+      "submit": "ログイン",
+      "noAccount": "アカウントを作成",
+      "forgotPassword": "パスワードをお忘れですか？",
+      "demoHint": "デモ管理者："
+    },
+    "register": {
+      "title": "アカウント作成",
+      "subtitle": "新しいアカウントを登録します。",
+      "submit": "登録",
+      "hasAccount": "すでにアカウントをお持ちですか？"
+    },
+    "forgotPassword": {
+      "title": "パスワード再設定",
+      "subtitle": "メールアドレスを入力すると再設定リンクが届きます。",
+      "submit": "再設定リンクを送信",
+      "backToLogin": "ログインに戻る",
+      "success": "メールアドレスが存在する場合、再設定リンクが生成されます。",
+      "sent": "再設定リンクを生成しました",
+      "devTitle": "開発用再設定リンク（メールサーバー未設定）"
+    },
+    "resetPassword": {
+      "title": "パスワード再設定",
+      "subtitle": "アカウントの新しいパスワードを設定します。",
+      "submit": "パスワードを再設定",
+      "success": "パスワードを更新しました。ホームへ戻ります...",
+      "successTitle": "完了",
+      "noToken": "URL に再設定トークンがありません。"
+    },
+    "logout": {
+      "title": "ログアウト"
+    },
+    "modal": {
+      "title": "アカウント"
+    },
+    "oauth": {
+      "divider": "または次で続行",
+      "loginWith": "{name} でログイン",
+      "errorTitle": "外部ログインに失敗しました"
+    },
+    "fields": {
+      "identifier": "ユーザー名またはメールアドレス",
+      "identifierPlaceholder": "admin",
+      "username": "ユーザー名",
+      "usernamePlaceholder": "your_username",
+      "email": "メールアドレス",
+      "emailPlaceholder": "you{'@'}example.com",
+      "password": "パスワード",
+      "passwordPlaceholder": "••••••••",
+      "passwordConfirm": "パスワード（確認）",
+      "passwordConfirmPlaceholder": "••••••••",
+      "captcha": "認証コード",
+      "captchaPlaceholder": "コードを入力",
+      "captchaRefresh": "クリックで更新"
+    },
+    "errors": {
+      "title": "エラー",
+      "requiredFields": "必須項目をすべて入力してください。",
+      "passwordMismatch": "パスワードが一致しません。",
+      "passwordTooShort": "パスワードは8文字以上にしてください。",
+      "emailRequired": "メールアドレスは必須です。",
+      "captchaRequired": "認証コードを入力してください。",
+      "generic": "問題が発生しました。もう一度お試しください。"
+    }
+  },
+  "common": {
+    "cancel": "キャンセル",
+    "confirm": "確認",
+    "confirmAction": "本当に実行しますか？",
+    "confirmDelete": "この項目を削除しますか？",
+    "confirmPermanentDelete": "この項目を完全に削除しますか？元に戻せません。",
+    "save": "保存",
+    "close": "閉じる",
+    "delete": "削除",
+    "edit": "編集",
+    "detail": "詳細",
+    "restore": "復元",
+    "permanentDelete": "完全削除",
+    "trash": "ゴミ箱",
+    "back": "戻る",
+    "preview": "プレビュー",
+    "download": "ダウンロード",
+    "trashEmpty": "ゴミ箱は空です",
+    "batchDelete": "選択項目を削除",
+    "batchRestore": "選択項目を復元",
+    "batchPermanentDelete": "完全削除",
+    "confirmBatchDelete": "選択した {count} 件をゴミ箱に移動しますか？",
+    "confirmBatchRestore": "選択した {count} 件を復元しますか？",
+    "confirmBatchPermanentDelete": "選択した {count} 件を完全に削除しますか？元に戻せません。",
+    "restored": "{count} 件を復元しました。",
+    "permanentlyDeleted": "{count} 件を完全に削除しました。",
+    "loading": "読み込み中...",
+    "refresh": "更新",
+    "refreshed": "更新しました",
+    "searchPlaceholder": "検索...",
+    "filters": "絞り込み",
+    "clearFilters": "絞り込みを解除",
+    "all": "すべて",
+    "value": "値",
+    "fullscreen": "全画面",
+    "exitFullscreen": "全画面を終了",
+    "upload": "アップロード",
+    "uploadFailed": "アップロードに失敗しました"
+  },
+  "chat": {
+    "title": "AI アシスタント",
+    "subtitle": "ファイル作業も授業の雑務も、聞くだけ",
+    "open": "AI アシスタントを開く",
+    "close": "AI アシスタントを閉じる",
+    "clear": "新しいチャット",
+    "placeholder": "質問を入力...",
+    "hint": "Enter で送信 · Shift+Enter で改行",
+    "welcomeTitle": "何をお手伝いしましょう？",
+    "welcomeHint": "何でも聞いてください。回答はリアルタイムで届きます。",
+    "loginHint": "ログインすると AI アシスタントと会話できます。",
+    "login": "ログイン",
+    "error": "問題が発生しました。もう一度お試しください。",
+    "attach": "ファイルを添付",
+    "removeAttachment": "添付を削除",
+    "onlyImages": "画像ファイルのみ対応しています",
+    "unsupportedFile": "未対応のファイル形式：{name}",
+    "tooManyFiles": "1メッセージにつき最大 {max} ファイル",
+    "dropFiles": "ドロップして添付",
+    "fileTooLarge": "ファイルが {max} MB を超えています",
+    "expand": "チャットを全画面表示",
+    "collapse": "全画面を終了",
+    "loginIdentifier": "ユーザー名またはメールアドレス",
+    "loginPassword": "パスワード",
+    "loginSubmit": "ログイン",
+    "loginSuccess": "ログインしました。チャットを開始できます。",
+    "loginFailed": "ログインに失敗しました。認証情報を確認してください。",
+    "creditConfirmTitle": "この処理には {cost} クレジットが必要です",
+    "creditConfirmDesc": "残高 {balance}。確認時に1回だけ差し引かれ、失敗すると自動で返金されます。",
+    "creditConfirmGo": "{cost} クレジットで実行",
+    "creditConfirmCancel": "キャンセル",
+    "creditSkip": "次回から確認しない",
+    "creditCancelled": "キャンセルしました。クレジットは消費されていません。",
+    "creditInsufficient": "クレジットが不足しています。クレジットページでチャージしてください。",
+    "papers": {
+      "example": "例：2024 年 AQA GCSE Chemistry の過去問をダウンロード",
+      "found": "{course} で {count} 件見つかりました：",
+      "choose": "ダウンロードするファイルを選んでください：",
+      "downloading": "ダウンロードを開始：{title}",
+      "candidates": "複数のコースが一致しました。試験局や資格（AQA / Edexcel など）を追加してください：",
+      "noYear": "{course} の {year} 年の過去問はありません。利用可能な年：{years}。",
+      "noCourse": "「{query}」に一致する過去問はありませんでした。",
+      "availableCourses": "過去問をダウンロードできるコース：",
+      "openCourse": "コースの過去問を開く",
+      "questionPaper": "問題用紙",
+      "markScheme": "採点基準"
+    }
+  },
+  "profile": {
+    "title": "プロフィール",
+    "subtitle": "アカウント情報とパスワードを管理します。",
+    "name": "氏名",
+    "telephone": "電話番号",
+    "accountTitle": "アカウント情報",
+    "save": "プロフィールを保存",
+    "saved": "プロフィールを更新しました。",
+    "passwordTitle": "パスワード変更",
+    "currentPassword": "現在のパスワード",
+    "newPassword": "新しいパスワード",
+    "changePassword": "パスワードを更新",
+    "passwordChanged": "パスワードを変更しました。",
+    "gender": "性別",
+    "genderPlaceholder": "性別を選択",
+    "genderMale": "男性",
+    "genderFemale": "女性",
+    "genderOther": "その他",
+    "birthday": "生年月日",
+    "verified": "確認済み",
+    "notVerified": "未確認",
+    "resendVerification": "確認メールを再送",
+    "verificationSent": "確認メールを送信しました。",
+    "verificationDevSent": "SMTP が未設定です。開発用の確認リンクを生成しました。",
+    "emailVerified": "メールアドレスの確認が完了しました。",
+    "verifyInvalid": "確認リンクが無効か期限切れです。",
+    "emailChanged": "メールアドレスを更新しました。新しいアドレスに確認リンクを送信しました。",
+    "emailChangedDev": "メールアドレスを更新しました。SMTP 未設定のため、開発用の確認リンクを表示します。",
+    "devVerifyTitle": "開発用確認リンク"
+  },
+  "notifications": {
+    "title": "通知",
+    "subtitle": "システムのお知らせと更新情報。",
+    "loading": "通知を読み込み中...",
+    "empty": "通知はありません。",
+    "markAllRead": "すべて既読にする",
+    "markAllReadSuccess": "{count} 件の通知を既読にしました。",
+    "create": "通知を作成",
+    "createTitle": "通知を作成",
+    "created": "通知を作成しました。",
+    "deleted": "通知を削除しました。",
+    "confirmDelete": "この通知を削除しますか？",
+    "colTitle": "タイトル",
+    "colContent": "内容",
+    "colCreated": "作成日時",
+    "colStatus": "状態",
+    "read": "既読",
+    "unread": "未読",
+    "fieldsTitle": "タイトル",
+    "fieldsContent": "内容",
+    "fieldsTitlePlaceholder": "通知のタイトル",
+    "fieldsContentPlaceholder": "通知の内容を入力...",
+    "fieldsTargets": "対象ユーザー",
+    "targetsHint": "空欄なら全ユーザーに送信します。特定のユーザーを選ぶこともできます。",
+    "searchUsers": "ユーザーを検索...",
+    "errors": {
+      "required": "タイトルと内容は必須です。",
+      "saveFailed": "通知の作成に失敗しました。",
+      "deleteFailed": "通知の削除に失敗しました。",
+      "loadFailed": "通知の読み込みに失敗しました。"
+    }
+  },
+  "membership": {
+    "badge": "メンバーシップ",
+    "title": "メンバーになる",
+    "subtitle": "プランを選ぶと、期間中すべての特典を利用できます。更新すると現在の有効期限が延長されます。",
+    "activeTitle": "メンバーです",
+    "expiresOn": "{date} まで有効",
+    "daysLeft": "残り {days} 日",
+    "durationDays": "{days} 日間利用可能",
+    "recommended": "おすすめ",
+    "subscribe": "申し込む",
+    "renew": "更新",
+    "subscribeFailed": "決済を開始できませんでした。しばらくしてからお試しください。",
+    "paymentNote": "決済は Stripe・WeChat Pay・Alipay で安全に処理され、成功するとすぐにメンバーが有効になります。",
+    "payWithWechat": "WeChat Pay で支払う",
+    "payWithAlipay": "Alipay で支払う",
+    "noPaymentMethod": "このプランは {currency} 建てですが、有効な決済手段は人民元のみに対応しています。",
+    "noChannelTitle": "オンライン決済はまだ有効になっていません",
+    "noChannelDesc": "管理者にシステム設定で Alipay・WeChat Pay・Stripe を有効にするか、手動でメンバーを有効化してもらってください。",
+    "creditPerk": "メンバーは毎月 {count} クレジットも受け取れます",
+    "wechatTitle": "WeChat で QR 決済",
+    "wechatHint": "スマートフォンの WeChat で QR コードを読み取り、支払いを確定してください。",
+    "wechatScanning": "支払いの確認を待っています…",
+    "wechatPaid": "支払いが完了しました。メンバーが有効になりました。",
+    "wechatClosed": "注文は閉じられたか期限切れです。もう一度決済を開始してください。",
+    "close": "閉じる",
+    "disabled": "メンバーシップの申し込みは現在無効です。"
+  },
+  "messages": {
+    "title": "メッセージ",
+    "subtitle": "他のユーザーとのプライベートメッセージ。",
+    "contacts": "連絡先",
+    "noContacts": "まだ会話がありません。",
+    "searchUsers": "ユーザーを検索してチャットを開始...",
+    "noResults": "ユーザーが見つかりません。",
+    "typeMessage": "メッセージを入力...",
+    "send": "送信",
+    "online": "オンライン",
+    "offline": "オフライン",
+    "unread": "未読",
+    "selectContact": "連絡先を選んでチャットを開始",
+    "startChat": "チャットを開始",
+    "noMessages": "メッセージはまだありません。最初のメッセージを送りましょう！",
+    "loadMore": "以前のメッセージを読み込む",
+    "errors": {
+      "loadFailed": "メッセージの読み込みに失敗しました。",
+      "sendFailed": "メッセージの送信に失敗しました。"
+    }
+  },
+  "avatar": {
+    "title": "アバター",
+    "upload": "アバターをアップロード",
+    "remove": "削除",
+    "hint": "PNG、JPEG、WebP、BMP に対応。",
+    "cropperTitle": "アバターを切り抜く",
+    "confirm": "確認",
+    "updated": "アバターを更新しました。",
+    "removed": "アバターを削除しました。",
+    "confirmRemove": "アバターを削除しますか？",
+    "errors": {
+      "imageOnly": "画像ファイルを選択してください。",
+      "noGif": "アバターに GIF は使用できません。",
+      "loadFailed": "画像の読み込みに失敗しました。",
+      "cropFailed": "画像の切り抜きに失敗しました。",
+      "uploadFailed": "アバターのアップロードに失敗しました。",
+      "removeFailed": "アバターの削除に失敗しました。"
+    }
+  },
+  "oauthConsent": {
+    "title": "アプリを承認",
+    "subtitle": "アプリがあなたのアカウントへのアクセスを求めています",
+    "signedInAs": "ログイン中のアカウント",
+    "permissions": "このアプリに許可されること：",
+    "approve": "許可",
+    "deny": "拒否",
+    "errorTitle": "承認リクエストに失敗しました",
+    "errorHint": "アプリのリダイレクト URI が管理画面に登録されているか確認し、再度お試しください。",
+    "invalidRequest": "承認リクエストが無効です。",
+    "requestFailed": "承認リクエストを完了できませんでした。",
+    "footer": "{issuer} アカウントで外部アプリにログインしようとしています。",
+    "scope": {
+      "openid": "本人確認",
+      "profile": "基本プロフィール（名前、ユーザー名、アバター）の読み取り",
+      "email": "メールアドレスと確認状態の読み取り",
+      "roles": "アカウントに割り当てられたロールの読み取り"
+    }
+  },
+  "credits": {
+    "balance": "クレジット残高",
+    "balanceHint": "従量制の機能はクレジットを消費します。クレジットページでチャージでき、メンバーには毎月の付与もあります。"
+  },
+  "footer": {
+    "builtWith": "Nuxt UI で構築"
+  },
+  "html": {
+    "height": "高さ",
+    "heightPlaceholder": "内容に自動調整（空欄可）"
+  },
+  "pagination": {
+    "total": "全 {total} 件",
+    "range": "{from}-{to}",
+    "page": "ページ"
+  }
+}

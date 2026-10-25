@@ -179,7 +179,7 @@ function formatTime(value: string): string {
   return date.toLocaleString(isZh.value ? 'zh-CN' : 'en-GB', { dateStyle: 'short', timeStyle: 'short' })
 }
 
-useSeoMeta({ title: 'Credits', robots: 'noindex, nofollow, noarchive' })
+usePageMeta({ title: () => copy.value.title, indexable: false })
 </script>
 
 <template>

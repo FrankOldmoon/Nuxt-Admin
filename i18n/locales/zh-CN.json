@@ -1,7 +1,7 @@
 {
   "site": {
-    "title": "Nuxt Admin",
-    "description": "基于 Nuxt 4 的生产级、元数据驱动的管理系统框架。"
+    "title": "办公宝",
+    "description": "浏览器里的 PDF、图片、视频与日常办公工具，文件不上传服务器。"
   },
   "home": {
     "welcome": "你好，世界",
