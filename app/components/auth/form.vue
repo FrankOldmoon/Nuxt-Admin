@@ -39,21 +39,15 @@ const form = reactive({
 })
 
 // Dev-only convenience flag. `import.meta.dev` is a compile-time constant, so in
-// a production build this is `false` and the branch below is dead code — the
+// a production build this is `false` and the branches below are dead code — the
 // auto-fill never ships.
 const isDev = import.meta.dev
 
 /**
- * Read the challenge characters out of the captcha SVG.
- *
- * The captcha is stateless — an HMAC-signed SVG whose characters are drawn
- * straight into the markup (see `server/utils/captcha.ts`) — so in development
- * the form can type it for the developer instead of making them squint at a
- * wavy image. Never used outside `isDev`.
+ * In development the API returns the challenge text alongside the image, so the
+ * form can type it for the developer instead of making them squint at a wavy
+ * picture. Production responses never contain it.
  */
-function captchaTextFromSvg(svg: string): string {
-  return [...svg.matchAll(/<text[^>]*>([^<])<\/text>/g)].map(match => match[1]).join('')
-}
 
 // --- Image captcha (login mode only) ---
 const captcha = ref<{ id: string, svg: string } | null>(null)
@@ -63,11 +57,11 @@ const captchaLoading = ref(false)
 async function refreshCaptcha() {
   captchaLoading.value = true
   try {
-    const challenge = await $fetch<{ id: string, svg: string }>('/api/auth/captcha')
+    const challenge = await $fetch<{ id: string, svg: string, devText?: string }>('/api/auth/captcha')
     captcha.value = challenge
     // Dev-only self-fill. Guarded on the client so SSR never carries a value that
     // the browser would then have to reconcile during hydration.
-    captchaText.value = isDev && import.meta.client ? captchaTextFromSvg(challenge.svg) : ''
+    captchaText.value = isDev && import.meta.client ? (challenge.devText ?? '') : ''
   } catch {
     captcha.value = null
     captchaText.value = ''

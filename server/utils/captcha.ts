@@ -1,5 +1,9 @@
 // Stateless captcha: HMAC signature + expiry timestamp, no server-side storage needed.
 // id format: `base36(issue timestamp).first 32 of hmac`; on verify we recompute the HMAC and check freshness.
+//
+// Characters are rendered as vector paths from a tiny 5×7 bitmap font, never as
+// `<text>` nodes: a text node puts the answer in the DOM, where any script can
+// read it, which would make the challenge worthless against bots.
 import { createHmac, timingSafeEqual } from 'node:crypto'
 import { getConfigValue } from './configs'
 
@@ -11,9 +15,47 @@ const CHARSET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789'
 const WIDTH = 120
 const HEIGHT = 40
 
+/** 5×7 dot-matrix glyphs for every character the challenge can contain. */
+const GLYPHS: Record<string, string[]> = {
+  A: ['.###.', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
+  B: ['####.', '#...#', '#...#', '####.', '#...#', '#...#', '####.'],
+  C: ['.####', '#....', '#....', '#....', '#....', '#....', '.####'],
+  D: ['####.', '#...#', '#...#', '#...#', '#...#', '#...#', '####.'],
+  E: ['#####', '#....', '#....', '####.', '#....', '#....', '#####'],
+  F: ['#####', '#....', '#....', '####.', '#....', '#....', '#....'],
+  G: ['.###.', '#...#', '#....', '#.###', '#...#', '#...#', '.###.'],
+  H: ['#...#', '#...#', '#...#', '#####', '#...#', '#...#', '#...#'],
+  J: ['...##', '....#', '....#', '....#', '....#', '#...#', '.###.'],
+  K: ['#...#', '#..#.', '#.#..', '##...', '#.#..', '#..#.', '#...#'],
+  L: ['#....', '#....', '#....', '#....', '#....', '#....', '#####'],
+  M: ['#...#', '##.##', '#.#.#', '#.#.#', '#...#', '#...#', '#...#'],
+  N: ['#...#', '##..#', '#.#.#', '#..##', '#...#', '#...#', '#...#'],
+  P: ['####.', '#...#', '#...#', '####.', '#....', '#....', '#....'],
+  Q: ['.###.', '#...#', '#...#', '#...#', '#.#.#', '#..#.', '.##.#'],
+  R: ['####.', '#...#', '#...#', '####.', '#.#..', '#..#.', '#...#'],
+  S: ['.####', '#....', '#....', '.###.', '....#', '....#', '####.'],
+  T: ['#####', '..#..', '..#..', '..#..', '..#..', '..#..', '..#..'],
+  U: ['#...#', '#...#', '#...#', '#...#', '#...#', '#...#', '.###.'],
+  V: ['#...#', '#...#', '#...#', '#...#', '#...#', '.#.#.', '..#..'],
+  W: ['#...#', '#...#', '#...#', '#.#.#', '#.#.#', '##.##', '#...#'],
+  X: ['#...#', '#...#', '.#.#.', '..#..', '.#.#.', '#...#', '#...#'],
+  Y: ['#...#', '#...#', '.#.#.', '..#..', '..#..', '..#..', '..#..'],
+  Z: ['#####', '....#', '...#.', '..#..', '.#...', '#....', '#####'],
+  2: ['.###.', '#...#', '....#', '...#.', '..#..', '.#...', '#####'],
+  3: ['#####', '...#.', '..#..', '...#.', '....#', '#...#', '.###.'],
+  4: ['...#.', '..##.', '.#.#.', '#..#.', '#####', '...#.', '...#.'],
+  5: ['#####', '#....', '####.', '....#', '....#', '#...#', '.###.'],
+  6: ['..##.', '.#...', '#....', '####.', '#...#', '#...#', '.###.'],
+  7: ['#####', '....#', '...#.', '..#..', '.#...', '.#...', '.#...'],
+  8: ['.###.', '#...#', '#...#', '.###.', '#...#', '#...#', '.###.'],
+  9: ['.###.', '#...#', '#...#', '.####', '....#', '...#.', '.##..']
+}
+
 export interface CaptchaChallenge {
   id: string
   svg: string
+  /** Dev only: lets the login form type the challenge for the developer. */
+  devText?: string
 }
 
 async function getCaptchaSecret(): Promise<string> {
@@ -25,19 +67,36 @@ function hmac(secret: string, data: string): string {
   return createHmac('sha256', secret).update(data).digest('hex')
 }
 
-function escapeXml(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+/** One glyph as a single path of tiny squares (5×7 cells). */
+function glyphPath(char: string, originX: number, originY: number, cell: number): string {
+  const rows = GLYPHS[char] ?? GLYPHS['?'] ?? []
+  const segments: string[] = []
+  rows.forEach((row, y) => {
+    [...row].forEach((pixel, x) => {
+      if (pixel !== '#') return
+      const px = originX + x * cell
+      const py = originY + y * cell
+      // A tiny inset keeps the dots visually separate without extra shapes.
+      segments.push(`M${px.toFixed(1)} ${py.toFixed(1)}h${(cell - 0.35).toFixed(2)}v${(cell - 0.35).toFixed(2)}h-${(cell - 0.35).toFixed(2)}z`)
+    })
+  })
+  return segments.join('')
 }
 
 function renderCaptchaSvg(text: string): string {
-  const chars = [...text]
+  const chars = [...text.toUpperCase()]
   const parts = chars
     .map((ch, i) => {
-      const x = 12 + i * 26 + Math.round(Math.random() * 6)
-      const y = 22 + Math.round(Math.random() * 10)
-      const rot = Math.round((Math.random() * 40 - 20) * 10) / 10
-      const color = `hsl(${Math.floor(Math.random() * 360)}, 60%, 38%)`
-      return `<text x="${x}" y="${y}" transform="rotate(${rot} ${x} ${y})" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="${color}">${escapeXml(ch)}</text>`
+      const cell = 3 + Math.random() * 0.5
+      const glyphWidth = 5 * cell
+      const glyphHeight = 7 * cell
+      const x = 10 + i * 27 + Math.round(Math.random() * 5)
+      const y = 6 + Math.round(Math.random() * 8)
+      const rot = Math.round((Math.random() * 30 - 15) * 10) / 10
+      const pivotX = (x + glyphWidth / 2).toFixed(1)
+      const pivotY = (y + glyphHeight / 2).toFixed(1)
+      const color = `hsl(${Math.floor(Math.random() * 360)}, 62%, 34%)`
+      return `<g transform="rotate(${rot} ${pivotX} ${pivotY})"><path fill="${color}" d="${glyphPath(ch, x, y, cell)}"/></g>`
     })
     .join('')
   const noise = Array.from({ length: 4 }, () => {
@@ -52,7 +111,7 @@ function renderCaptchaSvg(text: string): string {
     const y = Math.floor(Math.random() * HEIGHT)
     return `<circle cx="${x}" cy="${y}" r="1" fill="rgba(120,120,120,0.5)"/>`
   }).join('')
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}"><rect width="${WIDTH}" height="${HEIGHT}" fill="#f3f4f6" rx="4"/>${noise}${dots}${parts}</svg>`
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT}" viewBox="0 0 ${WIDTH} ${HEIGHT}" role="img" aria-label="captcha"><rect width="${WIDTH}" height="${HEIGHT}" fill="#f3f4f6" rx="4"/>${noise}${dots}${parts}</svg>`
 }
 
 export async function generateCaptcha(): Promise<CaptchaChallenge> {
@@ -62,7 +121,10 @@ export async function generateCaptcha(): Promise<CaptchaChallenge> {
   const text = Array.from({ length: 4 }, () => CHARSET[Math.floor(Math.random() * CHARSET.length)]!).join('').toLowerCase()
   const ts = Date.now()
   const id = `${ts.toString(36)}.${hmac(secret, `${ts}:${text}`).slice(0, 32)}`
-  return { id, svg: renderCaptchaSvg(text) }
+  const svg = renderCaptchaSvg(text)
+  // The answer may only travel to the client in development, where it saves the
+  // developer from squinting at the image. Compiled out of production builds.
+  return import.meta.dev ? { id, svg, devText: text } : { id, svg }
 }
 
 export async function verifyCaptcha(id: string | undefined, text: string | undefined): Promise<boolean> {
