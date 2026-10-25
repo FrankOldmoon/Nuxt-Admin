@@ -595,7 +595,7 @@
   },
   "credits": {
     "balance": "积分余额",
-    "balanceHint": "按次消耗积分。需要充值请联系管理员。"
+    "balanceHint": "按次消耗积分；可在积分页自助充值，会员每月还有赠额。"
   },
   "chat": {
     "title": "AI 助手",
@@ -624,6 +624,13 @@
     "loginSubmit": "登录",
     "loginSuccess": "登录成功，可以开始对话了。",
     "loginFailed": "登录失败，请检查账号和密码。",
+    "creditConfirmTitle": "本次处理需要 {cost} 积分",
+    "creditConfirmDesc": "当前余额 {balance}。确认后扣一次积分；处理失败会自动退回。",
+    "creditConfirmGo": "消耗 {cost} 积分并处理",
+    "creditConfirmCancel": "取消",
+    "creditSkip": "以后不再提醒",
+    "creditCancelled": "已取消，未扣积分。",
+    "creditInsufficient": "积分不足，请先到积分页充值。",
     "papers": {
       "example": "试试：帮我下载 2024 年 AQA GCSE Chemistry 真题",
       "found": "在 {course} 找到 {count} 份文件：",

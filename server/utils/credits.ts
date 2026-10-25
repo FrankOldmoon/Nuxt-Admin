@@ -3,6 +3,8 @@ import { createError } from 'h3'
 import type { PoolClient } from 'pg'
 import { db, pool } from './db'
 import { creditTransactions } from '../database/schema'
+import { getConfigValue } from './configs'
+import { userIsMember } from './membership'
 
 /**
  * Credit ledger helpers, shared by every module that meters usage.
@@ -157,5 +159,162 @@ export async function grantCredits(input: {
       [input.userId, amount, kind, (input.note ?? '').slice(0, 255), input.operatorId ?? null]
     )
     return { balance: balance + amount, transactionId: rows[0]!.id }
+  })
+}
+
+/* ------------------------------------------------------------ self-service */
+
+export interface CreditPackage {
+  /** Stable numeric id; stored on the payment order as `bizRefId`. */
+  id: number
+  credits: number
+  /** Price in cents/fen. */
+  priceCents: number
+  title: { en: string, zh: string }
+  note: { en: string, zh: string }
+}
+
+/**
+ * Default self-serve top-up packs. Override with the `credits.packages` config
+ * (JSON array of the same shape) — the dashboard can edit it without a deploy.
+ */
+export const DEFAULT_CREDIT_PACKAGES: CreditPackage[] = [
+  {
+    id: 1,
+    credits: 100,
+    priceCents: 1000,
+    title: { en: 'Starter · 100 credits', zh: '体验装 · 100 积分' },
+    note: { en: 'About 30 PDF or image runs', zh: '约可处理 30 次 PDF / 图片' }
+  },
+  {
+    id: 2,
+    credits: 500,
+    priceCents: 4500,
+    title: { en: 'Standard · 500 credits', zh: '标准装 · 500 积分' },
+    note: { en: 'About 160 runs — 10% cheaper', zh: '约可处理 160 次，单次更便宜' }
+  },
+  {
+    id: 3,
+    credits: 1200,
+    priceCents: 9900,
+    title: { en: 'Term · 1200 credits', zh: '学期装 · 1200 积分' },
+    note: { en: 'A whole term of preparation', zh: '够用一个学期，适合重度使用' }
+  }
+]
+
+function isPackage(value: unknown): value is CreditPackage {
+  if (!value || typeof value !== 'object') return false
+  const item = value as Record<string, unknown>
+  const title = item.title as Record<string, unknown> | undefined
+  const note = item.note as Record<string, unknown> | undefined
+  return Number.isInteger(item.id) && Number(item.id) > 0
+    && Number.isInteger(item.credits) && Number(item.credits) > 0
+    && Number.isInteger(item.priceCents) && Number(item.priceCents) > 0
+    && typeof title?.en === 'string' && typeof title?.zh === 'string'
+    && typeof note?.en === 'string' && typeof note?.zh === 'string'
+}
+
+/** Packs offered on `/credits`; falls back to the defaults when unset/invalid. */
+export async function getCreditPackages(): Promise<CreditPackage[]> {
+  const raw = await getConfigValue<string>('credits.packages', '')
+  if (!raw) return DEFAULT_CREDIT_PACKAGES
+  try {
+    const parsed: unknown = JSON.parse(raw)
+    const list = Array.isArray(parsed) ? parsed.filter(isPackage) : []
+    return list.length ? list.sort((a, b) => a.priceCents - b.priceCents) : DEFAULT_CREDIT_PACKAGES
+  } catch {
+    return DEFAULT_CREDIT_PACKAGES
+  }
+}
+
+export async function findCreditPackage(packageId: number): Promise<CreditPackage | null> {
+  const packages = await getCreditPackages()
+  return packages.find(item => item.id === packageId) ?? null
+}
+
+/**
+ * Credit a self-serve purchase exactly once.
+ *
+ * Alipay can deliver the same notification twice and the return page polls in
+ * parallel, so the order number itself is the idempotency key: the ledger row
+ * carries it in `note`, and the check runs inside the per-user lock.
+ */
+export async function fulfilCreditPurchase(input: {
+  userId: number
+  outTradeNo: string
+  credits: number
+}): Promise<{ granted: boolean, balance: number }> {
+  const credits = assertAmount(input.credits, 'credits')
+  return withUserLock(input.userId, async (client, balance) => {
+    const already = await client.query(
+      'SELECT 1 FROM credit_transactions WHERE user_id = $1 AND kind = $2 AND note = $3 LIMIT 1',
+      [input.userId, 'purchase', input.outTradeNo]
+    )
+    if ((already.rowCount ?? 0) > 0) return { granted: false, balance }
+    await client.query(
+      `INSERT INTO credit_transactions (user_id, amount, kind, feature, note)
+       VALUES ($1, $2, 'purchase', 'credits', $3)`,
+      [input.userId, credits, input.outTradeNo.slice(0, 255)]
+    )
+    return { granted: true, balance: balance + credits }
+  })
+}
+
+/**
+ * Fulfil a paid Alipay order that bought credits.
+ * Returns null when the order is not a credit purchase.
+ */
+export async function fulfilCreditOrder(order: {
+  bizType?: string | null
+  bizRefId?: number | null
+  userId?: number | null
+  outTradeNo?: string | null
+}): Promise<{ granted: boolean, balance: number } | null> {
+  if (order.bizType !== 'credits') return null
+  if (!order.userId || !order.outTradeNo) {
+    console.error('[credits] credit order without payer | order:', order.outTradeNo)
+    return null
+  }
+  const pkg = order.bizRefId ? await findCreditPackage(order.bizRefId) : null
+  if (!pkg) {
+    console.error('[credits] credit package no longer exists | order:', order.outTradeNo, '| package:', order.bizRefId)
+    return null
+  }
+  try {
+    return await fulfilCreditPurchase({
+      userId: order.userId,
+      outTradeNo: order.outTradeNo,
+      credits: pkg.credits
+    })
+  } catch (e) {
+    console.error('[credits] credit fulfilment failed | order:', order.outTradeNo, e)
+    return null
+  }
+}
+
+/**
+ * Members receive a monthly allowance, granted lazily the first time they show
+ * up in a calendar month. `ref_id` (userId + YYYYMM) makes it idempotent, so no
+ * cron job is needed.
+ */
+export async function grantMonthlyMemberCredits(userId: number): Promise<number> {
+  const monthly = Math.max(0, Math.floor(Number(await getConfigValue<number>('credits.memberMonthly', 30)) || 0))
+  if (monthly <= 0) return 0
+  if (!(await userIsMember({ userId }))) return 0
+
+  const now = new Date()
+  const monthKey = now.getFullYear() * 100 + (now.getMonth() + 1)
+  const marker = userId * 1_000_000 + monthKey
+
+  return withUserLock(userId, async (client, balance) => {
+    const already = await client.query('SELECT 1 FROM credit_transactions WHERE ref_id = $1 LIMIT 1', [marker])
+    if ((already.rowCount ?? 0) > 0) return 0
+    await client.query(
+      `INSERT INTO credit_transactions (user_id, amount, kind, feature, note, ref_id)
+       VALUES ($1, $2, 'grant', 'membership.monthly', $3, $4)`,
+      [userId, monthly, `monthly member allowance ${monthKey}`, marker]
+    )
+    console.log('[credits] monthly member allowance granted | user:', userId, '| credits:', monthly, '| balance:', balance + monthly)
+    return monthly
   })
 }

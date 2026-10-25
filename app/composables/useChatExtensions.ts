@@ -68,11 +68,19 @@ export interface ChatToolChargeResult {
   transactionId?: number | null
 }
 
+/** Price shown before a metered chat tool runs. */
+export interface ChatToolQuote {
+  cost: number
+  balance: number
+}
+
 /**
  * Optional metering hook. A module that charges per use registers one; the base
- * calls it right before an auto tool runs and refunds when the run fails.
+ * calls `quote` before running an auto tool (so it can ask the user first),
+ * `charge` right before execution, and `refund` when the run fails.
  */
 export interface ChatToolBillingHandler {
+  quote?: (entry: ChatToolEntry) => Promise<ChatToolQuote | null>
   charge: (entry: ChatToolEntry) => Promise<ChatToolChargeResult>
   refund?: (transactionId: number) => Promise<void>
 }
@@ -140,6 +148,16 @@ export async function chargeChatTool(entry: ChatToolEntry): Promise<ChatToolChar
     return await billing.charge(entry)
   } catch {
     return { ok: true }
+  }
+}
+
+/** Ask the module what this run would cost; null = free or unknown. */
+export async function quoteChatTool(entry: ChatToolEntry): Promise<ChatToolQuote | null> {
+  if (!billing?.quote) return null
+  try {
+    return await billing.quote(entry)
+  } catch {
+    return null
   }
 }
 

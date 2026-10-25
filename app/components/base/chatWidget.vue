@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import type { LlmChatMessage } from '~/composables/useLlmChat'
-import type { ChatAttachment, ToolCallOutput } from '~/composables/useChatTools'
+import type { ChatAttachment, ToolCallOutput, ToolCallRequest } from '~/composables/useChatTools'
 import { buildAttachmentNote, buildChatSystemPrompt, executeToolCall, parseToolReply } from '~/composables/useChatTools'
 import type { ChatUiInstance } from '~/composables/useChatUi'
 import { chatUiRegistry, buildUiSystemPrompt, parseUiReply } from '~/composables/useChatUi'
-import { applyChatCardSeed, getChatCatalogProvider } from '~/composables/useChatExtensions'
+import { applyChatCardSeed, findChatTool, getChatCatalogProvider, quoteChatTool } from '~/composables/useChatExtensions'
 
 /**
  * Floating AI chat widget (bottom-right).
@@ -105,6 +105,48 @@ function useSuggestion(text: string) {
 
 const busy = computed(() => status.value === 'submitted' || status.value === 'streaming')
 
+/** Chat may run at most three tool rounds per turn. */
+const MAX_TOOL_ROUNDS = 3
+/** "Don't ask before charging" preference (per browser). */
+const SKIP_CONFIRM_KEY = 'chat.skipCreditConfirm'
+const skipConfirm = ref(false)
+
+/**
+ * A metered run the model asked for but the teacher has not confirmed yet.
+ * Nothing is deducted until `confirmProceed`; the loop resumes from `next`.
+ */
+interface ToolLoopContext {
+  systemMsg: LlmChatMessage
+  baseHistory: LlmChatMessage[]
+  assistant: ChatUiMessage
+  controller: AbortController
+  attachments: ChatAttachment[]
+}
+
+const confirmState = ref<null | {
+  cost: number
+  balance: number
+  call: ToolCallRequest
+  next: number
+  ctx: ToolLoopContext
+}>(null)
+
+onMounted(() => {
+  try {
+    skipConfirm.value = localStorage.getItem(SKIP_CONFIRM_KEY) === '1'
+  } catch {
+    skipConfirm.value = false
+  }
+})
+
+watch(skipConfirm, (value) => {
+  try {
+    localStorage.setItem(SKIP_CONFIRM_KEY, value ? '1' : '0')
+  } catch {
+    // Private mode: the preference simply does not survive a reload.
+  }
+})
+
 /**
  * Region / permission filtering comes from whichever module registered a
  * catalog provider (see useChatExtensions). Without one (e.g. a bare base
@@ -154,6 +196,7 @@ function revokeOutputUrls() {
 function reset() {
   abortController.value?.abort()
   abortController.value = null
+  confirmState.value = null
   revokeOutputUrls()
   messages.value = []
   input.value = ''
@@ -211,56 +254,113 @@ async function run(prompt: string, appendUser = true, attachments: ChatAttachmen
   const controller = new AbortController()
   abortController.value = controller
 
+  const ctx: ToolLoopContext = { systemMsg, baseHistory, assistant, controller, attachments }
+
   try {
     await streamInto(systemMsg, baseHistory, assistant, controller)
     applyUiBlock(assistant)
-
-    // Tool loop: the model may request up to 3 sequential tool executions.
-    for (let i = 0; i < 3; i++) {
-      const parsed = parseToolReply(assistant.parts[0]!.text)
-      if (!parsed) break
-
-      // Strip the block from the visible text, then run the tool in the browser
-      assistant.parts[0]!.text = parsed.cleanedText
-      status.value = 'submitted'
-      const result = await executeToolCall(parsed.call, attachments)
-      const outputs = result.outputs ?? []
-
-      if (outputs.length) assistant.files = [...(assistant.files ?? []), ...outputs]
-      // Always offer the matching tool card, preloaded with the same files, so
-      // the user can tweak the parameters and re-run without uploading again.
-      showToolCard(assistant, result.uiId, attachments, parsed.call.args)
-
-      const produced = outputs.map(item => `"${item.name}" (${formatBytes(item.size)})`).join(', ')
-      const resultText = result.ok
-        ? `[tool result] ${parsed.call.tool}: success, produced ${produced || 'no files'}${result.note ? ` — ${result.note}` : ''}. Briefly confirm the outcome and mention that the tool card below is preloaded for adjustments.`
-        : `[tool result] ${parsed.call.tool}: failed — ${result.error}. Briefly apologize and tell the user the tool card below is preloaded so they can adjust it there.`
-
-      await streamInto(systemMsg, [
-        ...baseHistory,
-        { role: 'assistant', content: assistant.parts[0]!.text },
-        { role: 'user', content: resultText }
-      ], assistant, controller)
-      applyUiBlock(assistant)
-    }
-
-    status.value = 'ready'
+    await runToolLoop(ctx, 0)
   } catch (e: unknown) {
-    if (controller.signal.aborted) {
-      status.value = 'ready'
-      return
-    }
-    status.value = 'error'
-    assistant.parts[0]!.text = extractErrorMessage(e, t('chat.error'))
+    handleRunError(e, controller, assistant)
   } finally {
     if (abortController.value === controller) abortController.value = null
   }
 }
 
+function handleRunError(e: unknown, controller: AbortController, assistant: ChatUiMessage) {
+  if (controller.signal.aborted) {
+    status.value = 'ready'
+    return
+  }
+  status.value = 'error'
+  assistant.parts[0]!.text = extractErrorMessage(e, t('chat.error'))
+}
+
+/**
+ * Tool loop: the model may request up to three sequential runs. A metered tool
+ * pauses here until the teacher confirms the price (see `confirmState`).
+ */
+async function runToolLoop(ctx: ToolLoopContext, start: number) {
+  for (let i = start; i < MAX_TOOL_ROUNDS; i++) {
+    const parsed = parseToolReply(ctx.assistant.parts[0]!.text)
+    if (!parsed) break
+
+    // Strip the block from the visible text before anything else runs
+    ctx.assistant.parts[0]!.text = parsed.cleanedText
+
+    const entry = findChatTool(parsed.call.tool)
+    const quote = entry ? await quoteChatTool(entry) : null
+    if (quote && quote.cost > 0 && !skipConfirm.value) {
+      confirmState.value = {
+        cost: quote.cost,
+        balance: quote.balance,
+        call: parsed.call,
+        next: i + 1,
+        ctx
+      }
+      status.value = 'ready'
+      return
+    }
+
+    await executeAndContinue(ctx, parsed.call, i + 1)
+    if (confirmState.value) return
+  }
+  if (!confirmState.value) status.value = 'ready'
+}
+
+/** Run one tool call, show its output card, then let the model summarise it. */
+async function executeAndContinue(ctx: ToolLoopContext, call: ToolCallRequest, next: number) {
+  status.value = 'submitted'
+  const result = await executeToolCall(call, ctx.attachments)
+  const outputs = result.outputs ?? []
+
+  if (outputs.length) ctx.assistant.files = [...(ctx.assistant.files ?? []), ...outputs]
+  // Always offer the matching tool card, preloaded with the same files, so
+  // the user can tweak the parameters and re-run without uploading again.
+  showToolCard(ctx.assistant, result.uiId, ctx.attachments, call.args)
+
+  const produced = outputs.map(item => `"${item.name}" (${formatBytes(item.size)})`).join(', ')
+  const resultText = result.ok
+    ? `[tool result] ${call.tool}: success, produced ${produced || 'no files'}${result.note ? ` — ${result.note}` : ''}. Briefly confirm the outcome and mention that the tool card below is preloaded for adjustments.`
+    : `[tool result] ${call.tool}: failed — ${result.error}. Briefly apologize and tell the user the tool card below is preloaded so they can adjust it there.`
+
+  await streamInto(ctx.systemMsg, [
+    ...ctx.baseHistory,
+    { role: 'assistant', content: ctx.assistant.parts[0]!.text },
+    { role: 'user', content: resultText }
+  ], ctx.assistant, ctx.controller)
+  applyUiBlock(ctx.assistant)
+  status.value = 'ready'
+  await runToolLoop(ctx, next)
+}
+
+/** The teacher accepted the price: charge through the normal run path. */
+async function confirmProceed() {
+  const state = confirmState.value
+  if (!state) return
+  confirmState.value = null
+  try {
+    await executeAndContinue(state.ctx, state.call, state.next)
+  } catch (e: unknown) {
+    handleRunError(e, state.ctx.controller, state.ctx.assistant)
+  }
+}
+
+/** The teacher declined: nothing is charged and the turn ends. */
+function confirmCancel() {
+  const state = confirmState.value
+  if (!state) return
+  confirmState.value = null
+  const current = state.ctx.assistant.parts[0]!.text
+  state.ctx.assistant.parts[0]!.text = `${current}${current ? '\n\n' : ''}${t('chat.creditCancelled')}`.trim()
+  status.value = 'ready'
+}
+
 function onSubmit() {
   const prompt = input.value.trim()
   if (!prompt || !isLoggedIn.value) return
-  if (busy.value) return
+  // A pending charge confirmation owns the turn: answer it first.
+  if (busy.value || confirmState.value) return
   input.value = ''
 
   const attachments = takePendingAttachments()
@@ -637,6 +737,52 @@ function onReload() {
               </div>
             </template>
           </UChatMessages>
+        </div>
+
+        <!-- Metered run: show the price before anything is deducted -->
+        <div
+          v-if="confirmState"
+          class="space-y-2 border-t border-default bg-warning/5 p-3"
+        >
+          <p class="text-xs font-semibold text-highlighted">
+            {{ t('chat.creditConfirmTitle', { cost: confirmState.cost }) }}
+          </p>
+          <p class="text-[11px] leading-5 text-muted">
+            {{ t('chat.creditConfirmDesc', { cost: confirmState.cost, balance: confirmState.balance }) }}
+          </p>
+          <div class="flex flex-wrap items-center gap-2">
+            <UButton
+              size="xs"
+              color="primary"
+              icon="i-lucide-coins"
+              @click="confirmProceed"
+            >
+              {{ t('chat.creditConfirmGo', { cost: confirmState.cost }) }}
+            </UButton>
+            <UButton
+              size="xs"
+              color="neutral"
+              variant="ghost"
+              @click="confirmCancel"
+            >
+              {{ t('chat.creditConfirmCancel') }}
+            </UButton>
+            <label class="ml-auto inline-flex items-center gap-1.5 text-[11px] text-muted">
+              <input
+                v-model="skipConfirm"
+                type="checkbox"
+                class="accent-primary"
+              >
+              {{ t('chat.creditSkip') }}
+            </label>
+          </div>
+          <NuxtLink
+            v-if="confirmState.balance < confirmState.cost"
+            to="/credits"
+            class="inline-block text-[11px] font-medium text-primary hover:underline"
+          >
+            {{ t('chat.creditInsufficient') }}
+          </NuxtLink>
         </div>
 
         <!-- Composer -->

@@ -595,7 +595,7 @@
   },
   "credits": {
     "balance": "Credit balance",
-    "balanceHint": "Credits are consumed by metered features. Ask an administrator to top up."
+    "balanceHint": "Metered features use credits. Top up on the credits page; members also get a monthly allowance."
   },
   "chat": {
     "title": "AI Assistant",
@@ -624,6 +624,13 @@
     "loginSubmit": "Sign in",
     "loginSuccess": "Signed in — you can start chatting now.",
     "loginFailed": "Sign in failed. Please check your credentials.",
+    "creditConfirmTitle": "This run costs {cost} credits",
+    "creditConfirmDesc": "Balance {balance}. Credits are deducted once and refunded automatically if the run fails.",
+    "creditConfirmGo": "Run and pay {cost}",
+    "creditConfirmCancel": "Cancel",
+    "creditSkip": "Don't ask again",
+    "creditCancelled": "Cancelled — no credits were spent.",
+    "creditInsufficient": "Not enough credits for this run. Top up on the credits page.",
     "papers": {
       "example": "Try: download 2024 AQA GCSE Chemistry past paper",
       "found": "Found {count} file(s) for {course}:",

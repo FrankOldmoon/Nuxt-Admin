@@ -3,6 +3,7 @@ import { db } from '~~/server/database'
 import { alipayOrders } from '~~/server/database/schema'
 import { getAlipayConfig, parseAlipayNotifyBody, verifyAlipaySignature, fenToYuan } from '~~/server/utils/alipay'
 import { fulfilMembershipOrder } from '~~/server/utils/membership'
+import { fulfilCreditOrder } from '~~/server/utils/credits'
 
 // POST /api/alipay/pay/notify — Alipay asynchronous notify callback.
 //
@@ -76,6 +77,14 @@ export default defineEventHandler(async (event) => {
     outTradeNo: order.outTradeNo,
     amount: order.amount,
     source: 'alipay'
+  })
+
+  // Credit top-ups use the same order table with bizType='credits'.
+  await fulfilCreditOrder({
+    bizType: order.bizType,
+    bizRefId: order.bizRefId,
+    userId: order.userId,
+    outTradeNo: order.outTradeNo
   })
 
   return 'success'
