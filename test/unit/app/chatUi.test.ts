@@ -1,5 +1,21 @@
 import { describe, it, expect } from 'vitest'
-import { parseUiReply, buildUiSystemPrompt, CHAT_UI_REGISTRY, chatUiRegistry } from '../../../app/composables/useChatUi'
+import { parseUiReply, buildUiSystemPrompt, chatUiRegistry } from '../../../app/composables/useChatUi'
+import { registerChatUiCards } from '../../../app/composables/useChatExtensions'
+import { toolChatCards } from '../../../modules/tools/shared/tools.manifest'
+
+// The base app no longer imports the tools module; a deployment wires the cards
+// in from an app plugin. Tests do the same registration explicitly.
+registerChatUiCards(toolChatCards().map(card => [card.id, {
+  kind: 'component' as const,
+  target: card.target,
+  toolId: card.toolId,
+  href: card.toolId ? `/tools/${card.toolId}` : undefined,
+  title: card.title,
+  note: card.note,
+  regions: card.regions
+}] as const))
+
+const ALL_CARDS = chatUiRegistry()
 
 describe('parseUiReply', () => {
   it('returns null for a plain reply without a ui block', () => {
@@ -33,14 +49,14 @@ describe('parseUiReply', () => {
 
   it('server-backed downloaders render through the same runner', () => {
     for (const id of ['tools.bili', 'tools.xhs', 'tools.music']) {
-      const descriptor = CHAT_UI_REGISTRY[id]
+      const descriptor = ALL_CARDS[id]
       expect(descriptor?.kind).toBe('component')
       expect(descriptor?.target).toBe('ToolsRunnerCard')
     }
   })
 
   it('client tools render as components, never as arbitrary markup', () => {
-    for (const d of Object.values(CHAT_UI_REGISTRY)) {
+    for (const d of Object.values(ALL_CARDS)) {
       if (d.toolId) {
         expect(d.kind).toBe('component')
         expect(d.target).toBe('ToolsRunnerCard')
@@ -65,6 +81,15 @@ describe('region filtering', () => {
     expect(chatUiRegistry('global')['tools.readability']).toBeDefined()
     expect(chatUiRegistry('cn')['tools.youtube']).toBeUndefined()
     expect(chatUiRegistry('cn')['tools.citation']).toBeUndefined()
+  })
+
+  it('drops cards the viewer may not open', () => {
+    const allowed = new Set(['pdf-organize'])
+    const cards = chatUiRegistry('global', allowed)
+    expect(cards['tools.pdf-organize']).toBeDefined()
+    expect(cards['tools.citation']).toBeUndefined()
+    expect(cards['auth.login']).toBeDefined()
+    expect(parseUiReply('```ui\n{"ui": "tools.citation"}\n```', 'global', allowed)).toBeNull()
   })
 
   it('keeps every card in the mainland-China registry', () => {

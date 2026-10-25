@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { PDFDocument } from 'pdf-lib'
 import { parseToolReply, buildChatSystemPrompt, buildAttachmentNote, executeToolCall } from '../../../app/composables/useChatTools'
+import { registerChatTools } from '../../../app/composables/useChatExtensions'
+import { chatToolEntries } from '../../../modules/tools/app/chat/tools'
+
+// The base app no longer owns tool implementations; the tools module registers
+// them from an app plugin. Tests register the same set explicitly.
+registerChatTools(chatToolEntries)
 
 async function makePdfFile(name: string, pages: number): Promise<File> {
   const doc = await PDFDocument.create()

@@ -4,9 +4,9 @@ import type { ChatUiDescriptor } from '~/composables/useChatUi'
 /**
  * Renders one registered chat UI card (see useChatUi.ts).
  *
- * Every card is an audited Vue component: tool cards resolve to the globally
- * registered `<ToolsRunnerCard>` (the same runner as `/tools/:slug`), other
- * component cards are listed below.
+ * Every card is an audited Vue component. The base app owns `ChatLoginCard`;
+ * modules register their own globally (e.g. the tools runner), so the base can
+ * render any card without importing the module that provides it.
  */
 const props = defineProps<{ ui: { id: string, descriptor: ChatUiDescriptor } }>()
 
@@ -14,7 +14,19 @@ const { locale } = useI18n()
 const isZh = computed(() => String(locale.value).toLowerCase().startsWith('zh'))
 const title = computed(() => (isZh.value ? props.ui.descriptor.title.zh : props.ui.descriptor.title.en))
 const note = computed(() => (isZh.value ? props.ui.descriptor.note.zh : props.ui.descriptor.note.en))
-const openHref = computed(() => (props.ui.descriptor.toolId ? `/tools/${props.ui.descriptor.toolId}` : ''))
+const openHref = computed(() => props.ui.descriptor.href ?? '')
+
+/**
+ * Cards from modules are registered as global components (`addComponentsDir
+ * { global: true }`), so they resolve by tag at runtime. Vue's auto-import of
+ * base components is compile-time only, hence the explicit login branch.
+ */
+const registered = computed(() => {
+  const target = props.ui.descriptor.target
+  if (!target) return null
+  const resolved = resolveComponent(target)
+  return typeof resolved === 'string' ? null : resolved
+})
 </script>
 
 <template>
@@ -43,13 +55,14 @@ const openHref = computed(() => (props.ui.descriptor.toolId ? `/tools/${props.ui
       </a>
     </div>
 
-    <ToolsRunnerCard
-      v-if="ui.descriptor.toolId"
-      :tool-id="ui.descriptor.toolId"
+    <ChatLoginCard
+      v-if="ui.descriptor.target === 'ChatLoginCard'"
     />
 
-    <ChatLoginCard
-      v-else-if="ui.descriptor.target === 'ChatLoginCard'"
+    <component
+      :is="registered"
+      v-else-if="registered"
+      :tool-id="ui.descriptor.toolId"
     />
 
     <!-- Unknown component kinds should never reach here (registry validates), but fail closed -->

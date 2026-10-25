@@ -4,7 +4,7 @@ import type { ChatAttachment, ToolCallOutput } from '~/composables/useChatTools'
 import { buildAttachmentNote, buildChatSystemPrompt, executeToolCall, parseToolReply } from '~/composables/useChatTools'
 import type { ChatUiInstance } from '~/composables/useChatUi'
 import { chatUiRegistry, buildUiSystemPrompt, parseUiReply } from '~/composables/useChatUi'
-import { seedTool } from '../../../modules/tools/app/composables/useToolSeed'
+import { applyChatCardSeed, getChatCatalogProvider } from '~/composables/useChatExtensions'
 
 /**
  * Floating AI chat widget (bottom-right).
@@ -79,7 +79,7 @@ const MAX_ATTACH_FILES = 5
 const ATTACH_ACCEPT = 'image/*,application/pdf,.pdf,.csv,.xlsx,.xls,.zip'
 const ATTACH_EXT = /\.(pdf|csv|xlsx|xls|zip)$/i
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { isLoggedIn } = useAuth()
 const { streamLlmChat } = useLlmChat()
 
@@ -92,26 +92,46 @@ const abortController = ref<AbortController | null>(null)
 const pendingFiles = ref<File[]>([])
 const attachError = ref('')
 const fileInput = ref<HTMLInputElement | null>(null)
+const dragging = ref(false)
+
+/** Starter prompts: most teachers do not know the bot can touch files. */
+const suggestions = computed(() => String(locale.value).toLowerCase().startsWith('zh')
+  ? ['删掉这个 PDF 的第 2 页', '把图片压缩到 1 MB 以内', '这个表格按班级拆成多个文件', '把这几个文件打包成 ZIP']
+  : ['Delete page 2 of this PDF', 'Compress these photos under 1 MB', 'Split this sheet by class', 'Zip these files together'])
+
+function useSuggestion(text: string) {
+  input.value = text
+}
 
 const busy = computed(() => status.value === 'submitted' || status.value === 'streaming')
 
 /**
- * Catalog version of this deployment (`cn` / `global`). Used to hide cards the
- * active version does not serve. Falls back to "no filtering" when the tools
- * module (and therefore the endpoint) is not mounted.
+ * Region / permission filtering comes from whichever module registered a
+ * catalog provider (see useChatExtensions). Without one (e.g. a bare base
+ * deployment) nothing is filtered and all registered cards are offered.
  */
-const { data: regionData } = await useAsyncData<{ region: 'cn' | 'global' } | null>(
-  'tools:region',
+interface ChatCatalogContext {
+  region?: string
+  allowedToolIds?: Set<string>
+}
+
+const { data: chatContext } = await useAsyncData<ChatCatalogContext>(
+  'chat:catalog-context',
   async () => {
-    try {
-      return await $fetch<{ region: 'cn' | 'global' }>('/api/tools/region')
-    } catch {
-      return null
-    }
+    const provider = getChatCatalogProvider()
+    if (!provider) return {}
+    const region = provider.region
+      ? await provider.region().catch(() => undefined)
+      : undefined
+    const allowedToolIds = provider.allowedToolIds
+      ? await provider.allowedToolIds().catch(() => undefined)
+      : undefined
+    return { region, allowedToolIds }
   },
-  { default: () => null }
+  { default: () => ({}), server: false }
 )
-const region = computed(() => regionData.value?.region)
+const region = computed(() => chatContext.value?.region)
+const allowedToolIds = computed(() => chatContext.value?.allowedToolIds)
 
 let messageSeq = 0
 
@@ -166,7 +186,7 @@ async function streamInto(
 
 /** Strip the (last) ```ui block from the reply text and attach the card. */
 function applyUiBlock(assistant: ChatUiMessage) {
-  const parsedUi = parseUiReply(assistant.parts[0]!.text, region.value)
+  const parsedUi = parseUiReply(assistant.parts[0]!.text, region.value, allowedToolIds.value)
   if (parsedUi) {
     assistant.parts[0]!.text = parsedUi.cleanedText
     assistant.ui = parsedUi.ui
@@ -184,7 +204,7 @@ async function run(prompt: string, appendUser = true, attachments: ChatAttachmen
     .map(m => ({ role: m.role, content: messageText(m) + buildAttachmentNote(m.attachments ?? []) }))
   const systemMsg: LlmChatMessage = {
     role: 'system',
-    content: `${buildChatSystemPrompt()}\n\n${buildUiSystemPrompt(isLoggedIn.value, region.value)}`
+    content: `${buildChatSystemPrompt()}\n\n${buildUiSystemPrompt(isLoggedIn.value, region.value, allowedToolIds.value)}`
   }
 
   status.value = 'submitted'
@@ -264,6 +284,11 @@ function onFileChange(e: Event) {
   const inputEl = e.target as HTMLInputElement
   const picked = [...(inputEl.files ?? [])]
   inputEl.value = ''
+  if (picked.length) addFiles(picked)
+}
+
+/** Shared validation for the picker, drag-and-drop and future paste input. */
+function addFiles(picked: File[]) {
   if (!picked.length) return
 
   const accepted: File[] = []
@@ -288,6 +313,14 @@ function onFileChange(e: Event) {
   pendingFiles.value = merged
 }
 
+/** Drop files straight onto the panel — no need to find the paperclip. */
+function onDropFiles(e: DragEvent) {
+  dragging.value = false
+  const picked = [...(e.dataTransfer?.files ?? [])]
+  if (!picked.length) return
+  addFiles(picked)
+}
+
 function removePendingFile(index: number) {
   pendingFiles.value = pendingFiles.value.filter((_, position) => position !== index)
   attachError.value = ''
@@ -296,9 +329,14 @@ function removePendingFile(index: number) {
 /** Chat runs the tool, then hands the same files (and args) to the tool card. */
 function showToolCard(assistant: ChatUiMessage, uiId: string | undefined, attachments: ChatAttachment[], args: Record<string, unknown>) {
   if (!uiId) return
-  const descriptor = chatUiRegistry(region.value)[uiId]
+  const descriptor = chatUiRegistry(region.value, allowedToolIds.value)[uiId]
   if (!descriptor) return
-  if (descriptor.toolId) seedTool(descriptor.toolId, attachments.map(item => item.file), args)
+  applyChatCardSeed(descriptor.target, {
+    cardId: uiId,
+    toolId: descriptor.toolId,
+    files: attachments.map(item => item.file),
+    args
+  })
   assistant.ui = { id: uiId, descriptor }
 }
 
@@ -422,11 +460,26 @@ function onReload() {
         v-if="open"
         role="dialog"
         :aria-label="t('chat.title')"
-        class="flex flex-col overflow-hidden rounded-2xl border border-default bg-default shadow-xl"
+        class="relative flex flex-col overflow-hidden rounded-2xl border border-default bg-default shadow-xl"
         :class="expanded
           ? 'fixed inset-2 z-50 h-auto w-auto sm:inset-6'
           : 'h-[min(32rem,calc(100dvh-8rem))] w-[min(24rem,calc(100vw-3rem))]'"
+        @dragover.prevent="dragging = true"
+        @dragleave.prevent="dragging = false"
+        @drop.prevent="onDropFiles"
       >
+        <div
+          v-if="dragging"
+          class="pointer-events-none absolute inset-0 z-20 grid place-items-center rounded-2xl border-2 border-dashed border-primary bg-primary/10"
+        >
+          <p class="flex items-center gap-2 text-sm font-medium text-primary">
+            <UIcon
+              name="i-lucide-file-up"
+              class="size-5"
+            />
+            {{ t('chat.dropFiles') }}
+          </p>
+        </div>
         <!-- Header -->
         <div class="flex items-center gap-2 border-b border-default px-4 py-3">
           <UIcon
@@ -484,6 +537,20 @@ function onReload() {
             <p class="text-xs text-muted">
               {{ t('chat.welcomeHint') }}
             </p>
+            <div
+              v-if="isLoggedIn"
+              class="mt-2 flex flex-wrap justify-center gap-1.5"
+            >
+              <button
+                v-for="suggestion in suggestions"
+                :key="suggestion"
+                type="button"
+                class="rounded-full border border-default px-2.5 py-1 text-[11px] text-muted transition hover:border-primary/40 hover:text-highlighted"
+                @click="useSuggestion(suggestion)"
+              >
+                {{ suggestion }}
+              </button>
+            </div>
             <p class="text-[11px] text-dimmed">
               {{ t('chat.papers.example') }}
             </p>

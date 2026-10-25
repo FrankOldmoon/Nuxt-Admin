@@ -10,62 +10,18 @@
  *   ```
  *
  * Cards are rendered by audited Vue components — the model can never inject
- * markup, scripts or arbitrary URLs, only reference ids from this registry:
- *  - tool cards come from modules/tools/shared/tools.manifest.ts and render as
- *    the same Vue runner used by `/tools/:slug`
- *  - "component" cards beyond tools (e.g. the inline login card) are declared
- *    below in CHAT_UI_REGISTRY and rendered by ChatUiBlock.
+ * markup, scripts or arbitrary URLs, only reference ids from the registry.
  *
- * Adding a tool card = add a tool to the manifest. Adding another card = add an
- * entry below + render it in app/components/chat/ChatUiBlock.vue.
+ * The base app ships the login card below; every other card comes from a
+ * module through `registerChatUiCards` (see useChatExtensions.ts). The base
+ * never imports a module.
  */
 
-import { toolChatCards } from '../../modules/tools/shared/tools.manifest'
-import type { ToolChatCard, ToolRegion } from '../../modules/tools/shared/tools.manifest'
+import type { ChatRegion, ChatUiCard } from './useChatExtensions'
+import { getChatUiCards } from './useChatExtensions'
 
-export interface ChatUiDescriptor {
-  kind: 'component'
-  /** Component tag rendered by `<ChatUiBlock>`. */
-  target: string
-  /** Tool id rendered by the globally registered `<ToolsRunnerCard>`. */
-  toolId?: string
-  title: { en: string, zh: string }
-  note: { en: string, zh: string }
-  /** Regions where the card may be offered; absent = everywhere. */
-  regions?: ToolRegion[]
-}
-
-const LOGIN_CARD: ChatUiDescriptor = {
-  kind: 'component',
-  target: 'ChatLoginCard',
-  title: { en: 'Sign in', zh: '登录' },
-  note: { en: 'Credentials go to the server only, never to the AI', zh: '密码直连服务端，不经过 AI' }
-}
-
-/**
- * Tool cards come from the manifest, so adding a tool never means editing the
- * host chat widget. The model still only sees ids from this closed registry.
- * Pass a region to leave out cards that the active catalog version does not
- * serve (for example the China-only downloaders in the international edition).
- */
-export function chatUiRegistry(region?: ToolRegion): Record<string, ChatUiDescriptor> {
-  const cards = toolChatCards(region).map((card: ToolChatCard) => [
-    card.id,
-    {
-      kind: card.kind,
-      target: card.target,
-      toolId: card.toolId,
-      title: card.title,
-      note: card.note,
-      regions: card.regions
-    } satisfies ChatUiDescriptor
-  ] as const)
-
-  return { ...Object.fromEntries(cards), 'auth.login': LOGIN_CARD }
-}
-
-/** Every card, regardless of region (default registry). */
-export const CHAT_UI_REGISTRY: Record<string, ChatUiDescriptor> = chatUiRegistry()
+/** Shape rendered by `<ChatUiBlock>`. */
+export type ChatUiDescriptor = ChatUiCard
 
 export interface ChatUiInstance {
   id: string
@@ -77,6 +33,32 @@ export interface ParsedUiReply {
   ui: ChatUiInstance
 }
 
+/** Platform card owned by the base app (credentials never reach the model). */
+const LOGIN_CARD: ChatUiDescriptor = {
+  kind: 'component',
+  target: 'ChatLoginCard',
+  title: { en: 'Sign in', zh: '登录' },
+  note: { en: 'Credentials go to the server only, never to the AI', zh: '密码直连服务端，不经过 AI' }
+}
+
+/**
+ * All cards that may be offered right now.
+ *
+ * - `region` leaves out cards the active deployment does not serve.
+ * - `allowedToolIds` leaves out cards the viewer may not open (login / member
+ *   only), using the slugs returned by the catalog API.
+ */
+export function chatUiRegistry(region?: ChatRegion, allowedToolIds?: Set<string>): Record<string, ChatUiDescriptor> {
+  const outgoing: Record<string, ChatUiDescriptor> = {}
+  for (const [id, card] of Object.entries(getChatUiCards())) {
+    if (card.regions?.length && region && !card.regions.includes(region)) continue
+    if (card.toolId && allowedToolIds && !allowedToolIds.has(card.toolId)) continue
+    outgoing[id] = card
+  }
+  outgoing['auth.login'] = LOGIN_CARD
+  return outgoing
+}
+
 const UI_BLOCK_RE = /```ui\s*([\s\S]*?)```/i
 
 /**
@@ -85,8 +67,8 @@ const UI_BLOCK_RE = /```ui\s*([\s\S]*?)```/i
  * are rejected so the model cannot render arbitrary components, and cards
  * unavailable in the active region are rejected as well.
  */
-export function parseUiReply(text: string, region?: ToolRegion): ParsedUiReply | null {
-  const registry = region ? chatUiRegistry(region) : CHAT_UI_REGISTRY
+export function parseUiReply(text: string, region?: ChatRegion, allowedToolIds?: Set<string>): ParsedUiReply | null {
+  const registry = chatUiRegistry(region, allowedToolIds)
   const matches = [...text.matchAll(new RegExp(UI_BLOCK_RE.source, 'gi'))]
   const last = matches[matches.length - 1]
   if (!last) return null
@@ -115,8 +97,9 @@ export function parseUiReply(text: string, region?: ToolRegion): ParsedUiReply |
  * System prompt section for the UI-card protocol (appended to the tool
  * protocol section client-side).
  */
-export function buildUiSystemPrompt(loggedIn: boolean, region?: ToolRegion): string {
-  const list = Object.entries(region ? chatUiRegistry(region) : CHAT_UI_REGISTRY)
+export function buildUiSystemPrompt(loggedIn: boolean, region?: ChatRegion, allowedToolIds?: Set<string>): string {
+  const registry = chatUiRegistry(region, allowedToolIds)
+  const list = Object.entries(registry)
     .map(([id, d]) => `- ${id} — ${d.title.en} / ${d.title.zh} (${d.note.en} / ${d.note.zh})`)
     .join('\n')
   return [
