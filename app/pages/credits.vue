@@ -138,6 +138,7 @@ const copy = computed(() => (isZh.value
       empty: '还没有积分记录。',
       signIn: '登录后查看积分',
       how: '积分可自助充值，也可以联系管理员发放。',
+      howOff: '在线充值暂未开通，请联系管理员发放积分。',
       topup: '充值积分',
       topupHint: '支付成功后积分自动到账，可用于所有按次计费的工具。',
       unavailable: '在线充值暂未开通，请联系管理员发放积分。',
@@ -156,6 +157,7 @@ const copy = computed(() => (isZh.value
       empty: 'No credit activity yet.',
       signIn: 'Sign in to see your credits',
       how: 'Top up instantly below, or ask an administrator for a grant.',
+      howOff: 'Online top-up is not enabled yet — ask an administrator for credits.',
       topup: 'Top up credits',
       topupHint: 'Credits arrive automatically after payment and work in every metered tool.',
       unavailable: 'Online top-up is not enabled yet — ask an administrator for credits.',
@@ -219,7 +221,7 @@ useSeoMeta({ title: 'Credits', robots: 'noindex, nofollow, noarchive' })
           {{ balance ?? '—' }}
         </p>
         <p class="mt-2 text-xs text-muted">
-          {{ copy.how }}
+          {{ shop.alipayEnabled ? copy.how : copy.howOff }}
         </p>
         <NuxtLink
           v-if="shop.memberMonthly > 0"
