@@ -593,6 +593,10 @@
       "loadFailed": "Failed to load notifications."
     }
   },
+  "credits": {
+    "balance": "Credit balance",
+    "balanceHint": "Credits are consumed by metered features. Ask an administrator to top up."
+  },
   "chat": {
     "title": "AI Assistant",
     "subtitle": "Ask about this project",
@@ -611,6 +615,7 @@
     "onlyImages": "Only image files are supported",
     "unsupportedFile": "Unsupported file type: {name}",
     "tooManyFiles": "Up to {max} files per message",
+    "dropFiles": "Drop files to attach",
     "fileTooLarge": "File exceeds the {max} MB limit",
     "expand": "Expand chat",
     "collapse": "Exit fullscreen",

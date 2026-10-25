@@ -16,6 +16,7 @@ interface HeaderNavItem {
   label: string
   url: string
   icon?: string
+  description?: string
   order?: number
   hidden?: boolean
   parentId?: string | null
@@ -45,7 +46,7 @@ const menuItems = computed<NavigationMenuItem[]>(() => {
     label: item.label,
     icon: item.icon,
     to: item.url,
-    description: (item as any).description,
+    description: item.description
   })
 
   for (const item of visible) {
@@ -62,7 +63,7 @@ const menuItems = computed<NavigationMenuItem[]>(() => {
   // Attach children to parents (skip cycles by limiting depth)
   const attach = (node: NavigationMenuItem, depth: number) => {
     if (depth > 10) return
-    const children = childrenOf.get(node.label)
+    const children = node.label ? childrenOf.get(node.label) : undefined
     if (children?.length) {
       node.children = children
       // A parent (category) only expands its dropdown — it is not a link.
@@ -144,7 +145,11 @@ function openAuth(mode: AuthMode = 'login') {
 
         <!-- Compact: still shows avatar + name, but wraps its own width
              instead of stretching across the header -->
-        <AppUserMenu align="end" fit />
+        <BaseCreditsBadge />
+        <AppUserMenu
+          align="end"
+          fit
+        />
       </template>
 
       <template v-else>
@@ -174,7 +179,7 @@ function openAuth(mode: AuthMode = 'login') {
       content-orientation="vertical"
       :ui="{
         content: 'w-72',
-        viewport: 'w-72',
+        viewport: 'w-72'
       }"
       class="hidden lg:flex"
     />
@@ -188,8 +193,14 @@ function openAuth(mode: AuthMode = 'login') {
           :to="item.url"
           class="px-3 py-2 rounded-md text-sm font-medium text-muted hover:text-primary hover:bg-muted/50 transition-colors"
         >
-          <span v-if="item.icon" class="inline-flex items-center gap-1.5">
-            <UIcon :name="item.icon" class="size-4 shrink-0" />
+          <span
+            v-if="item.icon"
+            class="inline-flex items-center gap-1.5"
+          >
+            <UIcon
+              :name="item.icon"
+              class="size-4 shrink-0"
+            />
             {{ item.label }}
           </span>
           <template v-else>{{ item.label }}</template>

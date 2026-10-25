@@ -593,6 +593,10 @@
       "loadFailed": "加载通知失败。"
     }
   },
+  "credits": {
+    "balance": "积分余额",
+    "balanceHint": "按次消耗积分。需要充值请联系管理员。"
+  },
   "chat": {
     "title": "AI 助手",
     "subtitle": "关于本项目的任何问题",
@@ -611,6 +615,7 @@
     "onlyImages": "仅支持图片文件",
     "unsupportedFile": "不支持的文件类型：{name}",
     "tooManyFiles": "每条消息最多 {max} 个文件",
+    "dropFiles": "松手即可添加文件",
     "fileTooLarge": "文件不能超过 {max} MB",
     "expand": "全屏聊天",
     "collapse": "退出全屏",

@@ -166,6 +166,48 @@ export const membershipSubscriptions = pgTable(
 export type MembershipSubscription = typeof membershipSubscriptions.$inferSelect
 export type NewMembershipSubscription = typeof membershipSubscriptions.$inferInsert
 
+/**
+ * Generic credit ledger, shared by every feature that needs metered usage.
+ *
+ * The balance is always `SUM(amount)` for one user, so there is no second table
+ * that can drift. Negative rows are consumption, positive rows are grants,
+ * purchases or refunds. `feature` is defined by the consuming module
+ * (`tool:pdf-compress`, `ai:chat`, …); `refId` links a refund to its spend.
+ */
+export const creditTransactions = pgTable(
+  'credit_transactions',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id').notNull(),
+    /** Signed credit change: positive adds, negative consumes. */
+    amount: integer('amount').notNull(),
+    // grant | purchase | spend | refund | adjust
+    kind: varchar('kind', { length: 20 }).default('grant').notNull(),
+    /** Consumer-defined key, e.g. `tool:pdf-compress`; empty for manual grants. */
+    feature: varchar('feature', { length: 80 }).default('').notNull(),
+    note: varchar('note', { length: 255 }).default('').notNull(),
+    /** Refund rows point at the spend they reverse (unique per refund). */
+    refId: integer('ref_id'),
+    /** Admin who granted or adjusted the row. */
+    operatorId: integer('operator_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    userCreatedIdx: index('credit_transactions_user_created_idx').on(table.userId, table.createdAt),
+    featureIdx: index('credit_transactions_feature_idx').on(table.feature),
+    refIdx: uniqueIndex('credit_transactions_ref_idx').on(table.refId),
+    userFk: foreignKey({ columns: [table.userId], foreignColumns: [users.id] })
+      .onDelete('cascade')
+      .onUpdate('cascade'),
+    operatorFk: foreignKey({ columns: [table.operatorId], foreignColumns: [users.id] })
+      .onDelete('set null')
+      .onUpdate('cascade')
+  })
+)
+
+export type CreditTransaction = typeof creditTransactions.$inferSelect
+export type NewCreditTransaction = typeof creditTransactions.$inferInsert
+
 export const configs = pgTable(
   'configs',
   {

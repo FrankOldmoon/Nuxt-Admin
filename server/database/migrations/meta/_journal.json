@@ -57,6 +57,13 @@
       "when": 1792761433847,
       "tag": "0007_jittery_earthquake",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1792884944094,
+      "tag": "0008_curious_gabe_jones",
+      "breakpoints": true
     }
   ]
 }

@@ -484,6 +484,60 @@ const membershipPlansFields: FieldMeta[] = [
   }
 ]
 
+const creditTransactionsFields: FieldMeta[] = [
+  {
+    key: 'id', label: 'ID', type: 'number', nullable: false,
+    showInForm: false, showInTable: true, showInDetail: true, editable: false,
+    widthClass: 'w-16'
+  },
+  {
+    key: 'userId', label: 'User', type: 'relation', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true,
+    relation: { table: 'users', labelKey: 'username', valueKey: 'id' }
+  },
+  {
+    key: 'amount', label: 'Amount', type: 'number', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true,
+    helpText: '正数=增加积分，负数=扣减/消耗。'
+  },
+  {
+    key: 'kind', label: 'Kind', type: 'select', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true,
+    options: [
+      { label: 'Grant', value: 'grant' },
+      { label: 'Purchase', value: 'purchase' },
+      { label: 'Spend', value: 'spend' },
+      { label: 'Refund', value: 'refund' },
+      { label: 'Adjust', value: 'adjust' }
+    ],
+    helpText: '管理员手动加积分请用 Grant（amount 为正数）。'
+  },
+  {
+    key: 'feature', label: 'Feature', type: 'text', nullable: false,
+    showInForm: true, showInTable: true, showInDetail: true, editable: true,
+    validation: { maxLength: 80 },
+    helpText: '调用方定义的标识，如 tool:pdf-compress；手动发放可留空。'
+  },
+  {
+    key: 'note', label: 'Note', type: 'text', nullable: false,
+    showInForm: true, showInTable: false, showInDetail: true, editable: true,
+    validation: { maxLength: 255 }
+  },
+  {
+    key: 'refId', label: 'Refund of #', type: 'number', nullable: true,
+    showInForm: true, showInTable: false, showInDetail: true, editable: true,
+    helpText: '退款行指向被退回的消费记录 id。'
+  },
+  {
+    key: 'operatorId', label: 'Operator', type: 'number', nullable: true,
+    showInForm: false, showInTable: false, showInDetail: true, editable: false
+  },
+  {
+    key: 'createdAt', label: 'Created at', type: 'datetime', nullable: false,
+    showInForm: false, showInTable: true, showInDetail: true, editable: false
+  }
+]
+
 const membershipSubscriptionsFields: FieldMeta[] = [
   {
     key: 'id', label: 'ID', type: 'number', nullable: false,
@@ -755,6 +809,21 @@ const TABLES: RegisteredTable[] = [
   },
   {
     meta: {
+      table: 'creditTransactions',
+      label: 'Credit Ledger',
+      icon: 'i-lucide-coins',
+      fields: creditTransactionsFields,
+      features: {
+        softDelete: false,
+        search: ['feature', 'note'],
+        defaultSort: { field: 'id', order: 'desc' }
+      },
+      custom: false
+    },
+    getTable: s => s.creditTransactions
+  },
+  {
+    meta: {
       table: 'oauthClients',
       label: 'OAuth Clients',
       icon: 'i-lucide-key-round',
@@ -846,7 +915,10 @@ export function registerDashboardTable(
 // Default menu order — a user-defined `dashboard.menu` config can override
 // the label/icon/order/hidden state at runtime (see meta API).
 export const DEFAULT_MENU: Array<{
-  table: string; label: string; icon: string; order: number
+  table: string
+  label: string
+  icon: string
+  order: number
 }> = [
   { table: 'roles', label: 'Roles', icon: 'i-lucide-shield', order: 10 },
   { table: 'users', label: 'Users', icon: 'i-lucide-users', order: 20 },
@@ -854,6 +926,7 @@ export const DEFAULT_MENU: Array<{
   { table: 'notifications', label: 'Notifications', icon: 'i-lucide-bell-ring', order: 40 },
   { table: 'membershipPlans', label: 'Membership Plans', icon: 'i-lucide-badge-check', order: 45 },
   { table: 'membershipSubscriptions', label: 'Membership Subscriptions', icon: 'i-lucide-calendar-check', order: 46 },
+  { table: 'creditTransactions', label: 'Credits', icon: 'i-lucide-coins', order: 48 },
   { table: 'oauthClients', label: 'OAuth Clients', icon: 'i-lucide-key-round', order: 47 },
   { table: 'templates', label: 'Templates', icon: 'i-lucide-file-text', order: 50 },
   { table: 'configs', label: 'System Config', icon: 'i-lucide-settings-2', order: 60 }
@@ -904,6 +977,7 @@ function refreshManualTableM2MFields(): void {
 }
 
 /** Internal-only Drizzle symbols / helpers — inferred types */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyPgTable = PgTableWithColumns<any>
 function getTableNameSymbol(tbl: AnyPgTable): string | undefined {
   // Drizzle attaches the SQL table name via Symbol.for('drizzle:Name')
@@ -1306,7 +1380,8 @@ export function autoDiscoverTable(name: string): RegisteredTable | null {
   }
   meta = attachManyToManyVirtualFields(meta)
   const captured = found.table
-  return { meta, getTable(_schema: Record<string, unknown>) { return captured } }
+  const getTable = () => captured
+  return { meta, getTable }
 }
 
 // ---------------- lookup overrides ----------------
