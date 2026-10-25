@@ -10,6 +10,7 @@
 import type { RouteLocationRaw } from 'vue-router'
 
 const { t } = useI18n()
+const localePath = useLocalePath()
 const route = useRoute()
 const toast = useToast()
 const { can } = usePermission()
@@ -28,7 +29,7 @@ usePageMeta({
   indexable: () => post.value?.status === 'published'
 })
 
-const backTo: RouteLocationRaw = '/blog'
+const backTo = computed<RouteLocationRaw>(() => localePath('/blog'))
 
 const canEdit = computed(() => can('posts', 'update'))
 const canDelete = computed(() => can('posts', 'delete'))
@@ -67,7 +68,7 @@ async function softDelete() {
       ids: [post.value.id]
     })
     toast.add({ title: t('dashboard.crud.deleted'), color: 'primary' })
-    await navigateTo('/blog')
+    await navigateTo(localePath('/blog'))
   } catch (e) {
     toast.add({ title: (e as any)?.data?.message || t('dashboard.crud.deleteFailed'), color: 'error' })
   } finally {
@@ -153,7 +154,7 @@ async function softDelete() {
         <nav v-if="post.prev || post.next" class="mt-12 grid gap-4 border-t border-default pt-6 sm:grid-cols-2">
           <UButton
             v-if="post.prev"
-            :to="`/blog/${post.prev.url}`"
+            :to="localePath(`/blog/${post.prev.url}`)"
             color="neutral"
             variant="ghost"
             class="justify-start"
@@ -169,7 +170,7 @@ async function softDelete() {
           </UButton>
           <UButton
             v-if="post.next"
-            :to="`/blog/${post.next.url}`"
+            :to="localePath(`/blog/${post.next.url}`)"
             color="neutral"
             variant="ghost"
             class="justify-end"

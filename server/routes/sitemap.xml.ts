@@ -1,20 +1,21 @@
 import { setHeader } from 'h3'
 import { pool } from '../database'
 import { getConfigValue } from '../utils/configs'
-import { collectSitemapEntries, resolveSiteOrigin, type SitemapEntry } from '../utils/sitemap'
+import {
+  collectSitemapEntries,
+  localizedSitemapPath,
+  resolveSiteOrigin,
+  SEO_LOCALES,
+  type SitemapEntry
+} from '../utils/sitemap'
 
 /**
- * GET /sitemap.xml — every public, canonical page in one document.
+ * GET /sitemap.xml — every public, canonical page in every language.
  *
  * Private areas (auth, credits, messages, dashboard) are deliberately absent:
  * they are `noindex` and listed as `Disallow` in robots.txt. Duplicate routes
  * (`/tools` renders the same catalog as `/`) are omitted too.
  */
-const CORE_ENTRIES: SitemapEntry[] = [
-  { loc: '/', changefreq: 'weekly', priority: 1 },
-  { loc: '/membership', changefreq: 'monthly', priority: 0.8 }
-]
-
 function escapeXml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -35,7 +36,7 @@ function lastmod(value: string | Date | undefined): string | undefined {
 }
 
 /** Published posts, read with raw SQL so the host stays independent of the blog layer. */
-async function blogEntries(): Promise<SitemapEntry[]> {
+async function publishedPosts(): Promise<Array<{ url: string, updated_at: Date | null }>> {
   try {
     const { rows } = await pool.query<{ url: string, updated_at: Date | null }>(
       `select url, coalesce(updated_at, published_at) as updated_at
@@ -44,13 +45,7 @@ async function blogEntries(): Promise<SitemapEntry[]> {
         order by coalesce(published_at, created_at) desc
         limit 1000`
     )
-    return rows.map(row => ({
-      // Post URLs are editor-entered and may contain spaces or CJK characters.
-      loc: `/blog/${encodeURIComponent(row.url)}`,
-      lastmod: row.updated_at ?? undefined,
-      changefreq: 'monthly' as const,
-      priority: 0.5
-    }))
+    return rows
   } catch (error) {
     console.warn('[sitemap] blog posts unavailable (ignored):', error)
     return []
@@ -59,12 +54,28 @@ async function blogEntries(): Promise<SitemapEntry[]> {
 
 export default defineEventHandler(async (event) => {
   const origin = await resolveSiteOrigin(event)
-  const entries: SitemapEntry[] = [...CORE_ENTRIES]
+  const entries: SitemapEntry[] = []
+
+  for (const locale of SEO_LOCALES) {
+    entries.push({ loc: localizedSitemapPath('/', locale.prefix), changefreq: 'weekly', priority: 1 })
+    entries.push({ loc: localizedSitemapPath('/membership', locale.prefix), changefreq: 'monthly', priority: 0.8 })
+  }
 
   const blogEnabled = await getConfigValue('blog.enabled', true).catch(() => true)
   if (blogEnabled) {
-    entries.push({ loc: '/blog', changefreq: 'weekly', priority: 0.6 })
-    entries.push(...await blogEntries())
+    const posts = await publishedPosts()
+    for (const locale of SEO_LOCALES) {
+      entries.push({ loc: localizedSitemapPath('/blog', locale.prefix), changefreq: 'weekly', priority: 0.6 })
+      for (const post of posts) {
+        entries.push({
+          // Post URLs are editor-entered and may contain spaces or CJK characters.
+          loc: localizedSitemapPath(`/blog/${encodeURIComponent(post.url)}`, locale.prefix),
+          lastmod: post.updated_at ?? undefined,
+          changefreq: 'monthly',
+          priority: 0.5
+        })
+      }
+    }
   }
 
   entries.push(...await collectSitemapEntries())

@@ -5,8 +5,9 @@
  * preserves state together with page keepalive.
  */
 const route = useRoute()
+const localePath = useLocalePath()
 const { t } = useI18n()
-const { tabs, track, close, isActive } = useDashboardTabs()
+const { tabs, track, close, isActive, rootPath } = useDashboardTabs()
 
 // Automatically add the current page to the tabs when the route changes
 watch(() => route.fullPath, () => track(route), { immediate: true })
@@ -31,7 +32,7 @@ const tableLabel = computed(() => {
 
 function closeTab(tab: { path: string }) {
   close(tab.path)
-  if (isActive(tab.path, route)) navigateTo('/dashboard')
+  if (isActive(tab.path, route)) navigateTo(localePath('/dashboard'))
 }
 </script>
 
@@ -54,7 +55,7 @@ function closeTab(tab: { path: string }) {
         <UIcon v-if="tab.icon" :name="tab.icon" class="h-3.5 w-3.5 shrink-0" />
         <span class="whitespace-nowrap">{{ tab.label }}</span>
         <UIcon
-          v-if="tab.path !== '/dashboard'"
+          v-if="tab.path !== rootPath"
           name="i-lucide-x"
           class="h-3.5 w-3.5 text-muted hover:text-error"
           @click.stop="closeTab(tab)"
@@ -64,7 +65,7 @@ function closeTab(tab: { path: string }) {
 
     <!-- Breadcrumb -->
     <nav class="tabsbar-breadcrumb flex items-center gap-1 px-4 py-1.5 text-sm text-muted">
-      <NuxtLink to="/dashboard" class="hover:text-primary">
+      <NuxtLink :to="localePath('/dashboard')" class="hover:text-primary">
         {{ t('dashboard.menu.overview') }}
       </NuxtLink>
       <template v-if="tableLabel">

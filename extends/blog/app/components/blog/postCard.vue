@@ -21,6 +21,7 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const localePath = useLocalePath()
 </script>
 
 <template>
@@ -28,7 +29,7 @@ const { t } = useI18n()
     as="article"
     :ui="{ body: { padding: '' } }"
     class="flex cursor-pointer flex-col overflow-hidden transition hover:shadow-lg"
-    @click="navigateTo(`/blog/${post.url}`)"
+    @click="navigateTo(localePath(`/blog/${post.url}`))"
   >
     <div class="relative aspect-[16/9] w-full overflow-hidden bg-muted">
       <img

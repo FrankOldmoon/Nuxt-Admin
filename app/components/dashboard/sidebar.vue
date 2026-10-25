@@ -20,6 +20,7 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
+const localePath = useLocalePath()
 const { menuLabel } = useDashboardLabels()
 
 const mobileOpen = ref(false)
@@ -76,6 +77,15 @@ const menuItems = computed<NavigationMenuItem[]>(() => {
     }
   }
   walk(roots, 0)
+  // Menu URLs are logical (`/dashboard/users`); add the locale prefix only for
+  // rendering, so the parent/child matching above keeps working.
+  const localize = (nodes: NavigationMenuItem[]) => {
+    for (const node of nodes) {
+      if (typeof node.to === 'string' && node.to.startsWith('/')) node.to = localePath(node.to)
+      if (node.children) localize(node.children)
+    }
+  }
+  localize(roots)
   return roots
 })
 </script>
@@ -91,7 +101,7 @@ const menuItems = computed<NavigationMenuItem[]>(() => {
         <AppHomeButton class="ml-auto" />
       </div>
     </div>
-    <router-link to="/dashboard" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-muted transition-colors mb-3" active-class="bg-primary/10">
+    <router-link :to="localePath('/dashboard')" class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-muted transition-colors mb-3" active-class="bg-primary/10">
       <UIcon name="i-lucide-layout-dashboard" class="h-5 w-5" />
       <span class="font-medium">{{ t('dashboard.menu.overview') }}</span>
     </router-link>
@@ -130,7 +140,7 @@ const menuItems = computed<NavigationMenuItem[]>(() => {
           </div>
         </div>
         <router-link
-          to="/dashboard"
+          :to="localePath('/dashboard')"
           class="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-muted transition-colors mb-2"
           active-class="bg-primary/10"
           @click="mobileOpen = false"

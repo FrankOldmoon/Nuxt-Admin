@@ -30,6 +30,7 @@ const { t, locale } = useI18n()
 const { isLoggedIn } = useAuth()
 const { balance, setBalance } = useCredits()
 const route = useRoute()
+const localePath = useLocalePath()
 
 const isZh = computed(() => String(locale.value).toLowerCase().startsWith('zh'))
 
@@ -225,7 +226,7 @@ usePageMeta({ title: () => copy.value.title, indexable: false })
         </p>
         <NuxtLink
           v-if="shop.memberMonthly > 0"
-          to="/membership"
+          :to="localePath('/membership')"
           class="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
         >
           <UIcon

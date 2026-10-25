@@ -4,6 +4,7 @@
  * spent (tool charges, AI calls, …) and call `refreshCredits()` afterwards.
  */
 const { t } = useI18n()
+const localePath = useLocalePath()
 const { isLoggedIn } = useAuth()
 const { balance, refresh, reset } = useCredits()
 
@@ -21,7 +22,7 @@ const label = computed(() => (balance.value === null ? '—' : String(balance.va
     :text="t('credits.balanceHint')"
   >
     <NuxtLink
-      to="/credits"
+      :to="localePath('/credits')"
       class="inline-flex items-center gap-1 rounded-full border border-default px-2.5 py-1 text-xs font-medium text-highlighted transition hover:border-primary/40"
       :aria-label="t('credits.balance')"
     >

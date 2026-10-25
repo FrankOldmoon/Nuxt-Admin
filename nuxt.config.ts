@@ -70,7 +70,9 @@ export default defineNuxtConfig({
 
   i18n: {
     defaultLocale: 'en',
-    strategy: 'no_prefix',
+    // English keeps unprefixed URLs (`/`, `/edu`); every other locale gets a
+    // prefix (`/ja/edu`) so search engines can index each language separately.
+    strategy: 'prefix_except_default',
     langDir: 'locales',
     locales: [
       { code: 'en', name: 'English', file: 'en.json' },

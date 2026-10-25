@@ -41,7 +41,9 @@ const OG_LOCALES: Record<string, string> = {
 }
 
 export function usePageMeta(options: PageMetaOptions = {}) {
-  const { locale } = useI18n()
+  const { locale, locales } = useI18n()
+  const localePath = useLocalePath()
+  const switchLocalePath = useSwitchLocalePath()
   const { data: publicConfig } = usePublicConfig()
   const route = useRoute()
   const requestURL = useRequestURL()
@@ -78,10 +80,29 @@ export function usePageMeta(options: PageMetaOptions = {}) {
   })
   const description = computed(() => toValue(options.description) || siteDescription.value || undefined)
 
+  const canonicalPath = computed(() => toValue(options.canonicalPath))
   const canonical = computed(() => {
-    const path = toValue(options.canonicalPath) ?? route.path
+    // An explicit path (e.g. `/edu`) is localised for the active language;
+    // otherwise `route.path` already carries the locale prefix.
+    const path = canonicalPath.value ? localePath(canonicalPath.value) : route.path
     if (/^https?:\/\//i.test(path)) return path
     return absolute(origin.value, path === '/' ? '/' : path.replace(/\/+$/, ''))
+  })
+
+  /** hreflang alternates for every UI language, plus x-default. */
+  const alternates = computed(() => {
+    type LocaleCode = NonNullable<Parameters<typeof localePath>[1]>
+    const links: Array<{ rel: 'alternate', hreflang: string, href: string }> = []
+    const explicit = canonicalPath.value
+    for (const item of locales.value) {
+      const code = String(item.code)
+      const localeCode = code as LocaleCode
+      const path = explicit ? localePath(explicit, localeCode) : switchLocalePath(localeCode)
+      if (path) links.push({ rel: 'alternate', hreflang: code, href: absolute(origin.value, path) })
+    }
+    const xDefault = explicit ? localePath(explicit, 'en') : switchLocalePath('en')
+    if (xDefault) links.push({ rel: 'alternate', hreflang: 'x-default', href: absolute(origin.value, xDefault) })
+    return links
   })
 
   const image = computed(() => {
@@ -111,7 +132,10 @@ export function usePageMeta(options: PageMetaOptions = {}) {
   })
 
   useHead(() => ({
-    link: [{ rel: 'canonical', href: canonical.value }]
+    link: [
+      { rel: 'canonical', href: canonical.value },
+      ...alternates.value
+    ]
   }))
 
   return { title, description, canonical, image, siteTitle, origin }

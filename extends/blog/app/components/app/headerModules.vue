@@ -6,11 +6,12 @@
  * `AppHeaderModules`, injecting the Blog link without host code changes.
  */
 const { t } = useI18n()
+const localePath = useLocalePath()
 </script>
 
 <template>
   <ULink
-    to="/blog"
+    :to="localePath('/blog')"
     class="text-sm font-medium text-muted hover:text-primary transition-colors"
   >
     {{ t('blog.title') }}

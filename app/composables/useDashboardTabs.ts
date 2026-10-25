@@ -16,7 +16,10 @@ export interface DashboardTab {
 const MAX_TABS = 12
 
 export function useDashboardTabs() {
-  const tabs = useState<DashboardTab[]>('dashboard:tabs', () => [{ path: '/dashboard', label: 'Overview' }])
+  const localePath = useLocalePath()
+  // The overview tab is locale-aware: `/dashboard` for English, `/ja/dashboard` elsewhere.
+  const rootPath = computed(() => localePath('/dashboard'))
+  const tabs = useState<DashboardTab[]>('dashboard:tabs', () => [{ path: rootPath.value, label: 'Overview' }])
 
   const { data: metaData } = useDashboardMeta()
   const { menuLabel } = useDashboardLabels()
@@ -48,19 +51,19 @@ export function useDashboardTabs() {
     if (tabs.value.some(t => t.path === tab.path)) return
     const next = [...tabs.value, tab]
     if (next.length > MAX_TABS) {
-      const idx = next.findIndex(t => t.path !== '/dashboard')
+      const idx = next.findIndex(t => t.path !== rootPath.value)
       if (idx !== -1) next.splice(idx, 1)
     }
     tabs.value = next
   }
 
   function close(path: string) {
-    tabs.value = tabs.value.filter(t => t.path !== path || path === '/dashboard')
+    tabs.value = tabs.value.filter(t => t.path !== path || path === rootPath.value)
   }
 
   function isActive(path: string, route: RouteLocationNormalizedLoaded) {
     return route.path === path
   }
 
-  return { tabs, track, close, isActive, resolveTab }
+  return { tabs, track, close, isActive, resolveTab, rootPath }
 }

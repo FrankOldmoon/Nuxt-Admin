@@ -3,6 +3,7 @@ import type { NavigationMenuItem } from '@nuxt/ui'
 import type { AuthMode } from '~/components/auth/form.vue'
 
 const { t, locale } = useI18n()
+const localePath = useLocalePath()
 const { isLoggedIn } = useAuth()
 const { unreadNotifications, unreadMessages } = useWebSocket()
 
@@ -28,6 +29,11 @@ interface HeaderNavItem {
   hidden?: boolean
   parentId?: string | null
 }
+
+/** Internal menu entries keep the active language; external ones stay absolute. */
+function navTo(url: string): string {
+  return /^https?:\/\//i.test(url) ? url : localePath(url)
+}
 const navItems = computed<HeaderNavItem[]>(() => {
   const raw = publicConfig.value?.configs?.['site.navigation']
   if (!raw) return []
@@ -52,7 +58,7 @@ const menuItems = computed<NavigationMenuItem[]>(() => {
   const nodeOf = (item: HeaderNavItem): NavigationMenuItem => ({
     label: item.label,
     icon: item.icon,
-    to: item.url,
+    to: navTo(item.url),
     description: item.description
   })
 
@@ -100,7 +106,7 @@ function openAuth(mode: AuthMode = 'login') {
   <UHeader>
     <template #left>
       <NuxtLink
-        to="/"
+        :to="localePath('/')"
         class="flex items-center gap-2"
       >
         <AppLogo class="h-6 w-auto" />
@@ -115,7 +121,7 @@ function openAuth(mode: AuthMode = 'login') {
 
       <template v-if="isLoggedIn">
         <UButton
-          to="/notifications"
+          :to="localePath('/notifications')"
           icon="i-lucide-bell"
           color="neutral"
           variant="ghost"
@@ -133,7 +139,7 @@ function openAuth(mode: AuthMode = 'login') {
         </UButton>
 
         <UButton
-          to="/messages"
+          :to="localePath('/messages')"
           icon="i-lucide-message-circle"
           color="neutral"
           variant="ghost"
@@ -197,7 +203,7 @@ function openAuth(mode: AuthMode = 'login') {
         <ULink
           v-for="item in navItems.filter(i => !i.hidden)"
           :key="item.label + item.url"
-          :to="item.url"
+          :to="navTo(item.url)"
           class="px-3 py-2 rounded-md text-sm font-medium text-muted hover:text-primary hover:bg-muted/50 transition-colors"
         >
           <span

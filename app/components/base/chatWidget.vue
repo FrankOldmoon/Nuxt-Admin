@@ -80,6 +80,7 @@ const ATTACH_ACCEPT = 'image/*,application/pdf,.pdf,.csv,.xlsx,.xls,.zip'
 const ATTACH_EXT = /\.(pdf|csv|xlsx|xls|zip)$/i
 
 const { t, locale } = useI18n()
+const localePath = useLocalePath()
 const { isLoggedIn } = useAuth()
 const { streamLlmChat } = useLlmChat()
 
@@ -786,7 +787,7 @@ function onReload() {
           </div>
           <NuxtLink
             v-if="confirmState.balance < confirmState.cost"
-            to="/credits"
+            :to="localePath('/credits')"
             class="inline-block text-[11px] font-medium text-primary hover:underline"
           >
             {{ t('chat.creditInsufficient') }}
