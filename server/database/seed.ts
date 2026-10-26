@@ -63,6 +63,17 @@ const SITE_DESCRIPTION = 'Browser-based PDF, image, video and everyday work tool
 const SITE_DESCRIPTION_ZH = '浏览器里的 PDF、图片、视频与日常办公工具：合并拆分、压缩转换、去水印、座位表、计分板等，文件不上传服务器。'
 const SITE_DESCRIPTION_ZH_TW = '瀏覽器裡的 PDF、圖片、影片與日常辦公工具：合併拆分、壓縮轉換、去浮水印、座位表、計分板等，檔案不上傳伺服器。'
 
+// The catalog is the landing page, so the header only carries the membership
+// entry; Blog and Dashboard live behind the module and the signed-in menu.
+const SITE_NAVIGATION = JSON.stringify([
+  { label: 'Membership', url: '/membership', order: 15 }
+])
+const LEGACY_SITE_NAVIGATION = JSON.stringify([
+  { label: 'Blog', url: '/blog', order: 10 },
+  { label: 'Membership', url: '/membership', order: 15 },
+  { label: 'Dashboard', url: '/dashboard', order: 20 }
+])
+
 const DEFAULT_CONFIGS = [
   { key: 'site.title', value: SITE_TITLE, type: 'string', description: 'Site title (used in <title>, Open Graph and search results)' },
   { key: 'site.titleZh', value: SITE_TITLE_ZH, type: 'string', description: 'Chinese site title (falls back to site.title when blank)' },
@@ -159,11 +170,7 @@ const DEFAULT_CONFIGS = [
   },
   {
     key: 'site.navigation',
-    value: JSON.stringify([
-      { label: 'Blog', url: '/blog', order: 10 },
-      { label: 'Membership', url: '/membership', order: 15 },
-      { label: 'Dashboard', url: '/dashboard', order: 20 }
-    ]),
+    value: SITE_NAVIGATION,
     type: 'json',
     description: 'Home page header navigation links (JSON array, each item contains label/url/order/hidden)'
   },
@@ -212,6 +219,14 @@ export async function seed(db: Database): Promise<void> {
   await db.update(configsTable)
     .set({ value: SITE_DESCRIPTION_ZH_TW, updatedAt: new Date() })
     .where(and(eq(configsTable.key, 'site.descriptionZhTw'), eq(configsTable.value, '')))
+  // Header links shipped with Blog/Dashboard earlier: drop them only while the
+  // row still holds that exact default, so an admin's own menu is preserved.
+  await db.update(configsTable)
+    .set({ value: SITE_NAVIGATION, updatedAt: new Date() })
+    .where(and(
+      eq(configsTable.key, 'site.navigation'),
+      eq(configsTable.value, LEGACY_SITE_NAVIGATION)
+    ))
 
   // 0b. Purge legacy auth tokens previously stored in the configs table.
   // Password-reset and email-verification tokens now live in the tokens table.
