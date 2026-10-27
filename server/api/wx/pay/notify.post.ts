@@ -6,7 +6,7 @@ import { verifyWxPayNotifySignature, decryptWxPayResource } from '~~/server/util
 import { fulfilMembershipOrder } from '~~/server/utils/membership'
 
 // POST /api/wx/pay/notify — WeChat Pay v3 async notification (called by WeChat servers, no local auth)
-// Flow: verify signature (platform cert) → decrypt resource → validate amount → update order → return {"code":"SUCCESS"}
+// Flow: verify signature (WeChat Pay public key or platform cert) → decrypt resource → validate amount → update order → return {"code":"SUCCESS"}
 // Docs: https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_5_5.shtml
 export default defineEventHandler(async (event) => {
   const rawBody = (await readRawBody(event)) ?? ''

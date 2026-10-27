@@ -89,7 +89,7 @@ A single same-origin connection at `/api/ws` supports: notification push, direct
 Upload (configurable size / MIME whitelist), local storage, download/serve, per-user records, soft delete.
 
 ### Payments
-- **WeChat Pay v3 (JSAPI)** for the mini-program side: unified order, signed `wx.requestPayment` params, platform-certificate callback verification + AES-GCM resource decryption, order-query reconciliation (`wx_pay_orders` table).
+- **WeChat Pay v3 (JSAPI/Native)**: unified order, signed `wx.requestPayment` params, callback verification using either the WeChat Pay public key (`wx.pay.publicKeyId` + `wx.pay.publicKey`, recommended for new merchants) or platform certificates (legacy), AES-GCM resource decryption, and order-query reconciliation (`wx_pay_orders` table).
 - **Stripe Checkout** for the web: hosted checkout session, webhook signature verification (`checkout.session.completed`) with amount validation, session-retrieve reconciliation (`stripe_orders` table).
 - Both are gated by dashboard switches (`wx.pay.enabled` / `stripe.enabled`) with credentials in System Config → Payments.
 - API: `POST /api/wx/pay/order` + `POST /api/wx/pay/notify`; `POST /api/stripe/pay/order` + `GET /api/stripe/pay/order` + `POST /api/stripe/pay/notify`.

@@ -1,16 +1,24 @@
-import { createSign, createVerify, createDecipheriv, randomBytes } from 'node:crypto'
+import { createDecipheriv, randomBytes } from 'node:crypto'
 import { createError } from 'h3'
 import { getConfigValue } from './configs'
+import { signWxPayMessage, verifyWxPayMessage } from './wxPaySignature'
 
 // WeChat Pay v3 (JSAPI) utility layer:
 // - Signs requests with the merchant private key (WECHATPAY2-SHA256-RSA2048)
 // - Platform cert download/cache + callback signature verification
+// - WeChat Pay public-key callback verification
 // - Callback resource decryption (AES-256-GCM, APIv3 key)
 // Config (dashboard configs): wx.pay.enabled / wx.pay.mchid / wx.pay.serialNo /
 // wx.pay.privateKey (full merchant API private key PEM) / wx.pay.apiv3Key / wx.pay.notifyUrl
+// wx.pay.publicKeyId / wx.pay.publicKey (optional; recommended for new merchants)
 // Docs: https://pay.weixin.qq.com/wiki/doc/apiv3/apis/chapter3_5_1.shtml
 
 const WX_PAY_API = 'https://api.mch.weixin.qq.com'
+
+async function fetchWxPay<T>(url: string, options: Record<string, unknown>): Promise<T> {
+  const fetcher = $fetch as unknown as (request: string, requestOptions: Record<string, unknown>) => Promise<unknown>
+  return await fetcher(url, options) as T
+}
 
 export interface WxPayConfig {
   appid: string
@@ -19,6 +27,8 @@ export interface WxPayConfig {
   privateKey: string
   apiv3Key: string
   notifyUrl: string
+  publicKeyId: string
+  publicKey: string
 }
 
 export async function getWxPayConfig(): Promise<WxPayConfig> {
@@ -36,6 +46,8 @@ export async function getWxPayConfig(): Promise<WxPayConfig> {
   const privateKey = await getConfigValue<string>('wx.pay.privateKey', '')
   const apiv3Key = await getConfigValue<string>('wx.pay.apiv3Key', '')
   const notifyUrl = await getConfigValue<string>('wx.pay.notifyUrl', '')
+  const publicKeyId = await getConfigValue<string>('wx.pay.publicKeyId', '')
+  const publicKey = await getConfigValue<string>('wx.pay.publicKey', '')
   if (!appid || !mchid || !serialNo || !privateKey || !apiv3Key || !notifyUrl) {
     throw createError({
       statusCode: 500,
@@ -50,14 +62,10 @@ export async function getWxPayConfig(): Promise<WxPayConfig> {
       message: 'wx.pay.privateKey must be the full merchant API private key PEM (with BEGIN/END lines)'
     })
   }
-  return { appid, mchid, serialNo, privateKey, apiv3Key, notifyUrl }
+  return { appid, mchid, serialNo, privateKey, apiv3Key, notifyUrl, publicKeyId, publicKey }
 }
 
 // --- merchant signature ---
-
-function signWithMerchantKey(message: string, privateKey: string): string {
-  return createSign('RSA-SHA256').update(message).sign(privateKey, 'base64')
-}
 
 async function wxPayRequest<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
   const cfg = await getWxPayConfig()
@@ -65,16 +73,17 @@ async function wxPayRequest<T>(method: 'GET' | 'POST', path: string, body?: unkn
   const nonce = randomBytes(16).toString('hex')
   const bodyStr = body ? JSON.stringify(body) : ''
   const message = `${method}\n${path}\n${timestamp}\n${nonce}\n${bodyStr}\n`
-  const signature = signWithMerchantKey(message, cfg.privateKey)
+  const signature = signWxPayMessage(message, cfg.privateKey)
   const authorization = `WECHATPAY2-SHA256-RSA2048 mchid="${cfg.mchid}",nonce_str="${nonce}",signature="${signature}",timestamp="${timestamp}",serial_no="${cfg.serialNo}"`
-  return await $fetch<T>(`${WX_PAY_API}${path}`, {
+  return await fetchWxPay<T>(`${WX_PAY_API}${path}`, {
     method,
     ...(body ? { body } : {}),
     headers: {
       'Authorization': authorization,
       'Accept': 'application/json',
       'Content-Type': 'application/json',
-      'User-Agent': 'nuxt-admin'
+      'User-Agent': 'nuxt-admin',
+      ...(cfg.publicKeyId ? { 'Wechatpay-Serial': cfg.publicKeyId } : {})
     }
   })
 }
@@ -143,13 +152,24 @@ export interface WxPayNotifyHeaders {
 /** Verify the Wechatpay-* signature headers against the raw request body. */
 export async function verifyWxPayNotifySignature(headers: WxPayNotifyHeaders, rawBody: string): Promise<boolean> {
   const message = `${headers.timestamp}\n${headers.nonce}\n${rawBody}\n`
+  const cfg = await getWxPayConfig()
+
+  if (cfg.publicKeyId && cfg.publicKey && headers.serial === cfg.publicKeyId) {
+    return verifyWxPayMessage(message, headers.signature, cfg.publicKey)
+  }
+
+  if (headers.serial.startsWith('PUB_KEY_ID_')) {
+    console.error('[wxpay] notify signature: public key ID is not configured or does not match', headers.serial)
+    return false
+  }
+
   const certs = await getPlatformCertificates()
   const cert = certs.find(c => c.serial === headers.serial)
   if (!cert) {
     console.error('[wxpay] notify signature: unknown serial', headers.serial, '| known:', certs.map(c => c.serial))
     return false
   }
-  return createVerify('RSA-SHA256').update(message).verify(cert.cert, headers.signature, 'base64')
+  return verifyWxPayMessage(message, headers.signature, cert.cert)
 }
 
 /** Decrypt the notify `resource` field (AES-256-GCM with the APIv3 key). */
@@ -207,7 +227,7 @@ export async function createJsapiOrder(params: {
   const timeStamp = String(Math.floor(Date.now() / 1000))
   const nonceStr = randomBytes(16).toString('hex')
   const pkg = `prepay_id=${res.prepay_id}`
-  const paySign = signWithMerchantKey(`${cfg.appid}\n${timeStamp}\n${nonceStr}\n${pkg}\n`, cfg.privateKey)
+  const paySign = signWxPayMessage(`${cfg.appid}\n${timeStamp}\n${nonceStr}\n${pkg}\n`, cfg.privateKey)
   return { prepayId: res.prepay_id, payment: { timeStamp, nonceStr, package: pkg, signType: 'RSA', paySign } }
 }
 

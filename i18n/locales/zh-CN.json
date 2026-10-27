@@ -320,6 +320,8 @@
         "serialNo": "商户 API 证书序列号",
         "privateKey": "商户 API 私钥（完整 PEM，含 BEGIN/END 行）",
         "apiv3Key": "微信支付 APIv3 密钥（32 位）",
+        "publicKeyId": "微信支付公钥 ID（PUB_KEY_ID_...）",
+        "publicKey": "微信支付公钥 PEM（用于验证应答和回调通知）",
         "notifyUrl": "支付结果回调地址",
         "nativeAppId": "网页扫码支付使用的公众号 AppID（留空则用小程序 AppID）"
       },

@@ -159,6 +159,8 @@ const DEFAULT_CONFIGS = [
   { key: 'wx.pay.serialNo', value: '', type: 'string', description: 'Merchant API certificate serial number' },
   { key: 'wx.pay.privateKey', value: '', type: 'string', description: 'Merchant API private key (full PEM text with BEGIN/END lines)' },
   { key: 'wx.pay.apiv3Key', value: '', type: 'string', description: 'WeChat Pay APIv3 key (32 chars)' },
+  { key: 'wx.pay.publicKeyId', value: '', type: 'string', description: 'WeChat Pay public key ID (PUB_KEY_ID_...; leave empty when using platform certificates)' },
+  { key: 'wx.pay.publicKey', value: '', type: 'string', description: 'WeChat Pay public key PEM used to verify API responses and notifications (leave empty when using platform certificates)' },
   { key: 'wx.pay.notifyUrl', value: '', type: 'string', description: 'Payment notify callback URL (e.g. https://your.host/api/wx/pay/notify)' },
   { key: 'wx.pay.nativeAppId', value: '', type: 'string', description: 'Official-account AppID used for Native/QR web payments; falls back to wx.appid when empty' },
   // ---- Stripe payment configs ----

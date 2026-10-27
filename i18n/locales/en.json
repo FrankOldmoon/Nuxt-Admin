@@ -320,6 +320,8 @@
         "serialNo": "Merchant API certificate serial number",
         "privateKey": "Merchant API private key (full PEM, with BEGIN/END lines)",
         "apiv3Key": "WeChat Pay APIv3 key (32 chars)",
+        "publicKeyId": "WeChat Pay public key ID (PUB_KEY_ID_...)",
+        "publicKey": "WeChat Pay public key PEM for response and notification verification",
         "notifyUrl": "Payment notify callback URL",
         "nativeAppId": "Official-account AppID for web QR payments (blank = wx.appid)"
       },
