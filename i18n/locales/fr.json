@@ -131,7 +131,12 @@
       "passwordTooShort": "Le mot de passe doit contenir au moins 8 caractères.",
       "emailRequired": "L'e-mail est obligatoire.",
       "captchaRequired": "Veuillez saisir le code de vérification.",
-      "generic": "Une erreur est survenue. Veuillez réessayer."
+      "generic": "Une erreur est survenue. Veuillez réessayer.",
+      "invalidCredentials": "Identifiant ou mot de passe incorrect.",
+      "accountDisabled": "Ce compte est désactivé.",
+      "accountLocked": "Trop d’échecs de connexion : le compte est temporairement verrouillé. Réessayez plus tard.",
+      "tooManyAttempts": "Trop de tentatives. Patientez quelques minutes avant de réessayer.",
+      "captchaInvalid": "Le code de vérification est incorrect ou a expiré."
     }
   },
   "common": {

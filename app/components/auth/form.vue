@@ -115,6 +115,35 @@ const titles = computed(() => ({
   forgot: { title: t('auth.forgotPassword.title'), subtitle: t('auth.forgotPassword.subtitle') }
 }[mode.value]))
 
+/**
+ * Errors coming from `$fetch` carry ofetch's wrapper text ("[POST] /api/...: 401
+ * Unauthorized"). That reads like a stack trace to visitors, so the login path
+ * maps the status code to a translated sentence and every other path only falls
+ * back to a server-provided message.
+ */
+function loginErrorMessage(e: unknown): string {
+  const err = e as { statusCode?: number, data?: { message?: string } }
+  const status = Number(err?.statusCode ?? 0)
+  const serverMessage = String(err?.data?.message ?? '')
+  if (status === 400 && /captcha/i.test(serverMessage)) return t('auth.errors.captchaInvalid')
+  if (status === 400 || status === 401) return t('auth.errors.invalidCredentials')
+  if (status === 403) return t('auth.errors.accountDisabled')
+  if (status === 423) return t('auth.errors.accountLocked')
+  if (status === 429) return t('auth.errors.tooManyAttempts')
+  return t('auth.errors.generic')
+}
+
+const FETCH_WRAPPER = /^\[(GET|POST|PUT|PATCH|DELETE)\b/
+
+/** Server text when available, never the request-path wrapper or a raw HTTP line. */
+function plainErrorMessage(e: unknown, fallback: string): string {
+  const err = e as { data?: { message?: string, statusMessage?: string }, message?: string }
+  for (const candidate of [err?.data?.message, err?.data?.statusMessage, err?.message]) {
+    if (typeof candidate === 'string' && candidate && !FETCH_WRAPPER.test(candidate)) return candidate
+  }
+  return fallback
+}
+
 function switchMode(next: AuthMode) {
   mode.value = next
   errorMsg.value = ''
@@ -173,7 +202,9 @@ async function submit() {
       emit('success', null)
     }
   } catch (e: unknown) {
-    errorMsg.value = isAuthError(e) ? e.message : t('auth.errors.generic')
+    errorMsg.value = mode.value === 'login'
+      ? loginErrorMessage(e)
+      : plainErrorMessage(e, t('auth.errors.generic'))
     // Captcha already consumed/expired: after a failure, refresh with a brand-new captcha
     if (mode.value === 'login' && captchaEnabled.value) refreshCaptcha()
   } finally {

@@ -131,7 +131,12 @@
       "passwordTooShort": "La contraseña debe tener al menos 8 caracteres.",
       "emailRequired": "El correo es obligatorio.",
       "captchaRequired": "Introduce el código de verificación.",
-      "generic": "Algo salió mal. Inténtalo de nuevo."
+      "generic": "Algo salió mal. Inténtalo de nuevo.",
+      "invalidCredentials": "Cuenta o contraseña incorrectos.",
+      "accountDisabled": "Esta cuenta está deshabilitada.",
+      "accountLocked": "Demasiados intentos fallidos: la cuenta está bloqueada temporalmente. Inténtalo más tarde.",
+      "tooManyAttempts": "Demasiados intentos. Espera unos minutos y vuelve a intentarlo.",
+      "captchaInvalid": "El código de verificación es incorrecto o ha caducado."
     }
   },
   "common": {

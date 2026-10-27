@@ -63,16 +63,45 @@ const SITE_DESCRIPTION = 'Browser-based PDF, image, video and everyday work tool
 const SITE_DESCRIPTION_ZH = '浏览器里的 PDF、图片、视频与日常办公工具：合并拆分、压缩转换、去水印、座位表、计分板等，文件不上传服务器。'
 const SITE_DESCRIPTION_ZH_TW = '瀏覽器裡的 PDF、圖片、影片與日常辦公工具：合併拆分、壓縮轉換、去浮水印、座位表、計分板等，檔案不上傳伺服器。'
 
-// The catalog is the landing page, so the header only carries the membership
-// entry; Blog and Dashboard live behind the module and the signed-in menu.
+// The header carries the three public entries only: the education catalogue,
+// pricing and the about page. Blog and Dashboard stay behind the modules and
+// the signed-in menu.
 const SITE_NAVIGATION = JSON.stringify([
-  { label: 'Membership', url: '/membership', order: 15 }
+  { label: '教育宝', url: '/edu', order: 10 },
+  { label: '价格', url: '/membership', order: 20 },
+  { label: '关于', url: '/about', order: 30 }
 ])
-const LEGACY_SITE_NAVIGATION = JSON.stringify([
-  { label: 'Blog', url: '/blog', order: 10 },
-  { label: 'Membership', url: '/membership', order: 15 },
-  { label: 'Dashboard', url: '/dashboard', order: 20 }
-])
+
+/**
+ * Header menus shipped by earlier versions (Blog/Dashboard, membership-only and
+ * the single "School home" entry). A stored menu is upgraded to SITE_NAVIGATION
+ * only while it still matches one of these, so later admin edits survive
+ * restarts. Compared as label+url pairs so JSON formatting does not matter.
+ */
+const LEGACY_NAVIGATIONS: Array<Array<{ label: string, url: string }>> = [
+  [
+    { label: 'Blog', url: '/blog' },
+    { label: 'Membership', url: '/membership' },
+    { label: 'Dashboard', url: '/dashboard' }
+  ],
+  [{ label: 'Membership', url: '/membership' }],
+  [{ label: 'School home', url: '/' }]
+]
+
+function isLegacyNavigation(raw: string): boolean {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return false
+  }
+  if (!Array.isArray(parsed)) return false
+  const entries = parsed.filter(item => item && typeof item === 'object') as Array<{ label?: string, url?: string }>
+  const keyOf = (item: { label?: string, url?: string }) => `${item.label}\u0000${item.url}`
+  const stored = new Set(entries.map(keyOf))
+  return LEGACY_NAVIGATIONS.some(shape => shape.length === entries.length
+    && shape.every(item => stored.has(keyOf(item))))
+}
 
 const DEFAULT_CONFIGS = [
   { key: 'site.title', value: SITE_TITLE, type: 'string', description: 'Site title (used in <title>, Open Graph and search results)' },
@@ -219,14 +248,19 @@ export async function seed(db: Database): Promise<void> {
   await db.update(configsTable)
     .set({ value: SITE_DESCRIPTION_ZH_TW, updatedAt: new Date() })
     .where(and(eq(configsTable.key, 'site.descriptionZhTw'), eq(configsTable.value, '')))
-  // Header links shipped with Blog/Dashboard earlier: drop them only while the
-  // row still holds that exact default, so an admin's own menu is preserved.
-  await db.update(configsTable)
-    .set({ value: SITE_NAVIGATION, updatedAt: new Date() })
-    .where(and(
-      eq(configsTable.key, 'site.navigation'),
-      eq(configsTable.value, LEGACY_SITE_NAVIGATION)
-    ))
+  // Header links shipped earlier (Blog/Dashboard, then Membership-only): replace
+  // them only while the row still holds one of those exact defaults, so an
+  // admin's own menu is preserved.
+  const [navRow] = await db
+    .select({ value: configsTable.value })
+    .from(configsTable)
+    .where(eq(configsTable.key, 'site.navigation'))
+    .limit(1)
+  if (navRow && isLegacyNavigation(navRow.value)) {
+    await db.update(configsTable)
+      .set({ value: SITE_NAVIGATION, updatedAt: new Date() })
+      .where(eq(configsTable.key, 'site.navigation'))
+  }
 
   // 0b. Purge legacy auth tokens previously stored in the configs table.
   // Password-reset and email-verification tokens now live in the tokens table.

@@ -131,7 +131,12 @@
       "passwordTooShort": "パスワードは8文字以上にしてください。",
       "emailRequired": "メールアドレスは必須です。",
       "captchaRequired": "認証コードを入力してください。",
-      "generic": "問題が発生しました。もう一度お試しください。"
+      "generic": "問題が発生しました。もう一度お試しください。",
+      "invalidCredentials": "アカウントまたはパスワードが正しくありません。",
+      "accountDisabled": "このアカウントは無効化されています。",
+      "accountLocked": "ログインの失敗が続いたため、アカウントは一時的にロックされています。しばらくしてからお試しください。",
+      "tooManyAttempts": "試行回数が多すぎます。数分後に再度お試しください。",
+      "captchaInvalid": "認証コードが正しくないか、有効期限が切れています。"
     }
   },
   "common": {

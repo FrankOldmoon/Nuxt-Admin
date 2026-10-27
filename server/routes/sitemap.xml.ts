@@ -58,6 +58,7 @@ export default defineEventHandler(async (event) => {
 
   for (const locale of SEO_LOCALES) {
     entries.push({ loc: localizedSitemapPath('/', locale.prefix), changefreq: 'weekly', priority: 1 })
+    entries.push({ loc: localizedSitemapPath('/about', locale.prefix), changefreq: 'monthly', priority: 0.6 })
     entries.push({ loc: localizedSitemapPath('/membership', locale.prefix), changefreq: 'monthly', priority: 0.8 })
   }
 

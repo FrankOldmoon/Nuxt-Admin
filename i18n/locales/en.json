@@ -248,7 +248,12 @@
       "passwordTooShort": "Password must be at least 8 characters.",
       "emailRequired": "Email is required.",
       "captchaRequired": "Please enter the captcha code.",
-      "generic": "Something went wrong. Please try again."
+      "generic": "Something went wrong. Please try again.",
+      "invalidCredentials": "Incorrect account or password.",
+      "accountDisabled": "This account is disabled.",
+      "accountLocked": "Too many failed sign-ins, so the account is temporarily locked. Please try again later.",
+      "tooManyAttempts": "Too many attempts. Please wait a few minutes and try again.",
+      "captchaInvalid": "The verification code is incorrect or has expired."
     }
   },
   "settings": {

@@ -131,7 +131,12 @@
       "passwordTooShort": "密碼長度至少為 8 個字元。",
       "emailRequired": "電子郵件不能為空。",
       "captchaRequired": "請輸入驗證碼。",
-      "generic": "發生了一些問題，請重試。"
+      "generic": "發生了一些問題，請重試。",
+      "invalidCredentials": "帳號或密碼錯誤。",
+      "accountDisabled": "此帳號已被停用。",
+      "accountLocked": "登入失敗次數過多，帳號已被暫時鎖定，請稍後再試。",
+      "tooManyAttempts": "操作過於頻繁，請稍等幾分鐘再試。",
+      "captchaInvalid": "驗證碼錯誤或已過期。"
     }
   },
   "common": {
