@@ -158,6 +158,23 @@ export async function revokeMembership(identity: MemberIdentity, grantedBy?: num
   return rows.length
 }
 
+/** Revoke the active membership created by one payment order (refund reconciliation). */
+export async function revokeMembershipForOrder(outTradeNo: string, note?: string | null): Promise<number> {
+  const rows = await db.update(membershipSubscriptions)
+    .set({
+      status: 'refunded',
+      note: note?.trim()?.slice(0, 255) || null,
+      updatedAt: new Date()
+    })
+    .where(and(
+      eq(membershipSubscriptions.outTradeNo, outTradeNo),
+      eq(membershipSubscriptions.status, 'active')
+    ))
+    .returning({ id: membershipSubscriptions.id })
+  console.log('[membership] refunded | order:', outTradeNo, '| subscriptions:', rows.length)
+  return rows.length
+}
+
 /** True when the subscriber is currently within a paid membership period. */
 export async function userIsMember(identity: MemberIdentity): Promise<boolean> {
   return (await getActiveMembership(identity)) !== null

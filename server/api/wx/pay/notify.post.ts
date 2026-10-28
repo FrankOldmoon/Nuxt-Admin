@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db } from '~~/server/database'
 import { wxPayOrders } from '~~/server/database/schema'
 import { verifyWxPayNotifySignature, decryptWxPayResource } from '~~/server/utils/wxPay'
-import { fulfilMembershipOrder } from '~~/server/utils/membership'
+import { fulfilMembershipOrder, revokeMembershipForOrder } from '~~/server/utils/membership'
 
 // POST /api/wx/pay/notify — WeChat Pay v3 async notification (called by WeChat servers, no local auth)
 // Flow: verify signature (WeChat Pay public key or platform cert) → decrypt resource → validate amount → update order → return {"code":"SUCCESS"}
@@ -39,7 +39,10 @@ export default defineEventHandler(async (event) => {
     out_trade_no?: string
     transaction_id?: string
     trade_state?: string
-    amount?: { total?: number, payer_total?: number }
+    out_refund_no?: string
+    refund_id?: string
+    refund_status?: string
+    amount?: { total?: number, refund?: number, payer_total?: number, payer_refund?: number }
   }
 
   const outTradeNo = data.out_trade_no || ''
@@ -89,6 +92,27 @@ export default defineEventHandler(async (event) => {
       callbackPayload: body as unknown as Record<string, unknown>,
       updatedAt: new Date()
     }).where(eq(wxPayOrders.id, order.id))
+  } else if (body.event_type === 'REFUND.SUCCESS' && data.refund_status === 'SUCCESS') {
+    if (order.status === 'refunded') {
+      console.log('[wxpay] duplicate refund notify ignored for:', outTradeNo)
+    } else if (data.amount?.refund !== order.amount) {
+      await db.update(wxPayOrders).set({
+        status: 'partially_refunded',
+        callbackPayload: body as unknown as Record<string, unknown>,
+        updatedAt: new Date()
+      }).where(eq(wxPayOrders.id, order.id))
+      console.log('[wxpay] partial refund recorded without revoking membership:', outTradeNo, '| refund:', data.amount?.refund, '| order:', order.amount)
+    } else {
+      await db.update(wxPayOrders).set({
+        status: 'refunded',
+        callbackPayload: body as unknown as Record<string, unknown>,
+        updatedAt: new Date()
+      }).where(eq(wxPayOrders.id, order.id))
+      const revoked = await revokeMembershipForOrder(outTradeNo, `微信退款 ${data.out_refund_no ?? ''}`.trim())
+      console.log('[wxpay] order refunded:', outTradeNo, '| refund:', data.refund_id, '| subscriptions revoked:', revoked)
+    }
+  } else if (['REFUND.ABNORMAL', 'REFUND.CLOSED'].includes(body.event_type || '')) {
+    console.error('[wxpay] refund not completed:', body.event_type, '| outTradeNo:', outTradeNo, '| refundStatus:', data.refund_status)
   }
 
   // 4. Acknowledge success per the spec
