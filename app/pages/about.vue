@@ -16,7 +16,7 @@ usePageMeta({
   title: () => (isZh.value ? '关于我们' : 'About us'),
   description: () => (isZh.value
     ? '办公宝是一套免费、免安装的在线办公与教学工具：PDF、图片、视频和表格处理都在浏览器里完成，文件不会上传到服务器。'
-    : 'OfficeBao is a free, install-free set of online office and classroom tools. PDF, image, video and spreadsheet work runs in your browser, so files are never uploaded.')
+    : 'WorkBao is a free, install-free set of online office and classroom tools. PDF, image, video and spreadsheet work runs in your browser, so files are never uploaded.')
 })
 
 const points = computed(() => (isZh.value
@@ -73,7 +73,7 @@ const points = computed(() => (isZh.value
     <p class="mt-3 max-w-2xl text-base leading-7 text-muted">
       {{ isZh
         ? '办公宝把日常办公和课堂里最琐碎的文件处理集中到一个页面：打开就能用，处理完直接下载，文件不必经过我们的服务器。'
-        : 'OfficeBao gathers the fiddly file chores of an ordinary workday or lesson into one page: open a tool, finish the job, download the result — without handing your files to a server.' }}
+        : 'WorkBao gathers the fiddly file chores of an ordinary workday or lesson into one page: open a tool, finish the job, download the result — without handing your files to a server.' }}
     </p>
 
     <div class="mt-10 grid gap-4 sm:grid-cols-3">

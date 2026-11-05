@@ -55,7 +55,7 @@ export function usePageMeta(options: PageMetaOptions = {}) {
     const localized = isZhTw.value
       ? (configs.value['site.titleZhTw'] || configs.value['site.titleZh'])
       : isZh.value ? configs.value['site.titleZh'] : ''
-    return localized || configs.value['site.title'] || (isZh.value ? '办公宝' : 'OfficeBao')
+    return localized || configs.value['site.title'] || (isZh.value ? '办公宝' : 'WorkBao')
   })
   const siteDescription = computed(() => {
     const localized = isZhTw.value
@@ -73,8 +73,8 @@ export function usePageMeta(options: PageMetaOptions = {}) {
   const title = computed(() => {
     const page = pageTitle.value.trim()
     if (!page) return siteTitle.value
-    // Already carries the brand (e.g. "OfficeBao — everyday work tools");
-    // appending it again would read "… · OfficeBao · OfficeBao".
+    // Already carries the brand (e.g. "WorkBao — everyday work tools");
+    // appending it again would read "… · WorkBao · WorkBao".
     if (page.includes(siteTitle.value)) return page
     return `${page} · ${siteTitle.value}`
   })

@@ -56,7 +56,7 @@ function richDoc(text: string): Record<string, unknown> {
   return { type: 'doc', content: blocks }
 }
 
-const SITE_TITLE = 'OfficeBao'
+const SITE_TITLE = 'WorkBao'
 const SITE_TITLE_ZH = '办公宝'
 const SITE_TITLE_ZH_TW = '辦公寶'
 const SITE_DESCRIPTION = 'Browser-based PDF, image, video and everyday work tools for teachers and office work — merge PDFs, compress images, edit video and more. Your files never leave your device.'
@@ -226,7 +226,7 @@ export async function seed(db: Database): Promise<void> {
     .set({ value: SITE_TITLE, updatedAt: new Date() })
     .where(and(
       eq(configsTable.key, 'site.title'),
-      inArray(configsTable.value, ['Nuxt Admin', 'Lesson Desk'])
+      inArray(configsTable.value, ['Nuxt Admin', 'Lesson Desk', 'OfficeBao'])
     ))
   await db.update(configsTable)
     .set({ value: SITE_DESCRIPTION, updatedAt: new Date() })
