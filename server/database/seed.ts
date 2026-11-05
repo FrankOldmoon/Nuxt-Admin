@@ -110,7 +110,7 @@ const DEFAULT_CONFIGS = [
   { key: 'site.description', value: SITE_DESCRIPTION, type: 'string', description: 'Default meta description for pages that do not set their own' },
   { key: 'site.descriptionZh', value: SITE_DESCRIPTION_ZH, type: 'string', description: 'Chinese default meta description (falls back to site.description when blank)' },
   { key: 'site.descriptionZhTw', value: SITE_DESCRIPTION_ZH_TW, type: 'string', description: 'Traditional Chinese default meta description (falls back to site.descriptionZh when blank)' },
-  { key: 'site.url', value: '', type: 'string', description: 'Canonical site URL, e.g. https://example.com (used by sitemap.xml and robots.txt; blank = request origin)' },
+  { key: 'site.url', value: '', type: 'string', description: 'Canonical site URL, e.g. https://example.com (used by sitemap.xml, robots.txt and payment callbacks; blank = request origin)' },
   { key: 'site.ogImage', value: '', type: 'string', description: 'Absolute URL or /path of the default share image (1200x630 PNG/JPG, blank = no og:image)' },
   // ---- Search-engine ownership proofs (blank = no tag) ----
   { key: 'seo.googleSiteVerification', value: '', type: 'string', description: 'Google Search Console verification token (the content value of google-site-verification)' },

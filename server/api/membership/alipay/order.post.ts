@@ -1,4 +1,4 @@
-import { createError, getRequestURL } from 'h3'
+import { createError } from 'h3'
 import { randomInt } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 import { db } from '~~/server/database'
@@ -6,6 +6,7 @@ import { alipayOrders } from '~~/server/database/schema'
 import { buildAlipayPagePayUrl, getAlipayConfig } from '~~/server/utils/alipay'
 import { getPurchasablePlan, membershipOrderDescription, requireMembershipEnabled } from '~~/server/utils/membership'
 import { getConfigValue } from '~~/server/utils/configs'
+import { resolveSiteOrigin } from '~~/server/utils/site'
 
 // POST /api/membership/alipay/order — membership checkout with Alipay (web page pay).
 // body: { planId: number }
@@ -50,7 +51,7 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const origin = getRequestURL(event).origin
+    const origin = await resolveSiteOrigin(event)
     const successPath = (await getConfigValue<string>('membership.successUrl', '/membership')).trim() || '/membership'
     // Alipay appends its own params to return_url, so the order number goes in first
     const returnUrl = `${origin}${successPath}${successPath.includes('?') ? '&' : '?'}outTradeNo=${encodeURIComponent(outTradeNo)}&channel=alipay`

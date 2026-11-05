@@ -1,5 +1,5 @@
 import { setHeader } from 'h3'
-import { resolveSiteOrigin } from '../utils/sitemap'
+import { resolveSiteOrigin } from '../utils/site'
 
 /**
  * GET /robots.txt

@@ -101,6 +101,7 @@ Upload (configurable size / MIME whitelist), local storage, download/serve, per-
   - **WeChat Pay Native** (web, CNY plans only) — `POST /api/membership/wechat/order` returns a `code_url` rendered as a QR code; the page polls `GET /api/membership/wechat/order` until it settles.
   - **WeChat Pay JSAPI** (mini-program) — `POST /api/wx/membership/order` returns `wx.requestPayment` params; poll `GET /api/wx/membership/order` for the result.
   - **Alipay page pay** (web, CNY plans only) — `POST /api/membership/alipay/order` returns a signed cashier URL; RSA2 signing/verification is implemented with Node `crypto` (no SDK), the async notify lands on `POST /api/alipay/pay/notify`, and `GET /api/membership/alipay/order` reconciles lost callbacks.
+- Payment return/notify URLs use the canonical `site.url` config when set, so checkout can be initiated from a legacy host without sending the payer or Alipay callback to that host.
 - Membership periods are stored in `membership_subscriptions` (start / expiry / source / order no. / amount) and activated **server-side only** on payment success — by the provider callback or by order-query reconciliation when the callback is lost; the browser never grants membership.
 - Subscribers can be website accounts (`user_id`) or mini-program users (`wx_user_id`); both share the same fulfilment logic.
 - **Renewals stack**: a new purchase starts where the current period ends instead of overwriting it, so paying twice simply extends the expiry date.

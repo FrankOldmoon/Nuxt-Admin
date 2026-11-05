@@ -4,10 +4,10 @@ import { getConfigValue } from '../utils/configs'
 import {
   collectSitemapEntries,
   localizedSitemapPath,
-  resolveSiteOrigin,
   SEO_LOCALES,
   type SitemapEntry
 } from '../utils/sitemap'
+import { resolveSiteOrigin } from '../utils/site'
 
 /**
  * GET /sitemap.xml — every public, canonical page in every language.

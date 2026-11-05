@@ -1,9 +1,10 @@
-import { createError, getRequestURL } from 'h3'
+import { createError } from 'h3'
 import { eq } from 'drizzle-orm'
 import { randomInt } from 'node:crypto'
 import { db } from '~~/server/database'
 import { alipayOrders } from '~~/server/database/schema'
 import { buildAlipayPagePayUrl, getAlipayConfig } from '~~/server/utils/alipay'
+import { resolveSiteOrigin } from '~~/server/utils/site'
 
 // POST /api/alipay/pay/order — create a generic Alipay page-pay order (web users).
 // body: { amount: number (cents/fen, >0), description: string, outTradeNo?: string, returnUrl?: string }
@@ -40,7 +41,7 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const origin = getRequestURL(event).origin
+    const origin = await resolveSiteOrigin(event)
     const absolute = (path: string) => /^https?:\/\//i.test(path)
       ? path
       : `${origin.replace(/\/$/, '')}${path.startsWith('/') ? path : `/${path}`}`

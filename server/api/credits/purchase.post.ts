@@ -1,10 +1,11 @@
-import { createError, getRequestURL, readBody } from 'h3'
+import { createError, readBody } from 'h3'
 import { randomInt } from 'node:crypto'
 import { eq } from 'drizzle-orm'
 import { db } from '~~/server/database'
 import { alipayOrders } from '~~/server/database/schema'
 import { buildAlipayPagePayUrl, getAlipayConfig, isAlipayEnabled } from '~~/server/utils/alipay'
 import { findCreditPackage } from '~~/server/utils/credits'
+import { resolveSiteOrigin } from '~~/server/utils/site'
 
 // POST /api/credits/purchase — buy a credit pack with Alipay page pay.
 // body: { packageId: number }
@@ -49,7 +50,7 @@ export default defineEventHandler(async (event) => {
   }
 
   try {
-    const origin = getRequestURL(event).origin
+    const origin = await resolveSiteOrigin(event)
     const returnUrl = `${origin}/credits?outTradeNo=${encodeURIComponent(outTradeNo)}&channel=alipay`
     const payUrl = await buildAlipayPagePayUrl({
       outTradeNo,
