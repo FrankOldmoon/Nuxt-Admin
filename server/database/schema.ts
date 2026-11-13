@@ -269,12 +269,15 @@ export const agentDrafts = pgTable(
     /** draft | submitted | cancelled */
     status: varchar('status', { length: 20 }).notNull().default('draft'),
     executionId: integer('execution_id'),
+    /** Drafts expire so an old form cannot be replayed indefinitely. */
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
   },
   table => ({
     conversationStatusIdx: index('agent_drafts_conversation_status_idx').on(table.conversationId, table.status),
-    userIdx: index('agent_drafts_user_idx').on(table.userId)
+    userIdx: index('agent_drafts_user_idx').on(table.userId),
+    expiresIdx: index('agent_drafts_expires_idx').on(table.expiresAt)
   })
 )
 

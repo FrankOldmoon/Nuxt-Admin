@@ -31,6 +31,12 @@ interface SuspendContext {
 
 export default defineEventHandler(async (event) => {
   const ctx = await requireUser(event)
+  await enforceRateLimit(event, {
+    keyPrefix: 'agent-approval',
+    max: 20,
+    windowMs: 60 * 1000,
+    identifier: String(ctx.user.id)
+  })
   const params = getRouterParams(event) as { batchId?: string }
   const batchId = params.batchId?.trim()
   if (!batchId) throw createError({ statusCode: 400, message: 'batchId is required' })

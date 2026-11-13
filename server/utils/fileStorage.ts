@@ -63,25 +63,37 @@ export async function getFileSize(relativePath: string): Promise<number> {
   return s.size
 }
 
-/** MIME types that browsers can preview inline */
-const PREVIEWABLE_PREFIXES = [
-  'image/',
-  'video/',
-  'audio/',
-  'text/',
+/**
+ * MIME types that browsers may render inline.
+ *
+ * Active content (HTML/SVG/XML/JS/JSON) is intentionally excluded: serving a
+ * user upload inline from the app origin would allow stored XSS. Those types
+ * are still accepted but always returned as `attachment`.
+ */
+const PREVIEWABLE_MIME_TYPES = new Set([
   'application/pdf',
-  'application/json',
-  'application/xml',
-  'text/xml',
-  'application/javascript',
-  'application/x-javascript',
-  'image/svg+xml'
-]
+  'text/plain',
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'image/avif',
+  'image/bmp',
+  'image/x-icon',
+  'video/mp4',
+  'video/webm',
+  'video/quicktime',
+  'audio/mpeg',
+  'audio/mp4',
+  'audio/ogg',
+  'audio/wav',
+  'audio/webm'
+])
 
-/** Check if a MIME type can be previewed in the browser */
+/** Check if a MIME type can be previewed in the browser (safe types only). */
 export function isPreviewable(mimeType: string | null): boolean {
   if (!mimeType) return false
-  return PREVIEWABLE_PREFIXES.some(prefix => mimeType.startsWith(prefix))
+  return PREVIEWABLE_MIME_TYPES.has(mimeType.split(';')[0]!.trim().toLowerCase())
 }
 
 /** Build Content-Disposition header value with RFC 5987 filename encoding */

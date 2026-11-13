@@ -27,7 +27,7 @@
 // password fields, i18n-friendly option lists etc. should still be
 // registered manually — the manual entry always wins over auto-discovery.
 
-import type { FieldMeta, TableMeta, FieldType } from '~/types/dashboard'
+import type { FieldMeta, TableMeta, FieldType } from '../../../app/types/dashboard'
 import { getTableColumns } from 'drizzle-orm'
 import type { PgColumn, PgTableWithColumns } from 'drizzle-orm/pg-core'
 
@@ -1246,7 +1246,7 @@ export function discoverManyToManyForTable(tableName: string): Array<{ field: Fi
 export function attachManyToManyVirtualFields(meta: TableMeta): TableMeta {
   const extras = discoverManyToManyForTable(meta.table)
   if (!extras.length) return meta
-  const existingKeys = new Set(meta.fields.map(f => f.key))
+  const existingKeys = new Set(meta.fields.map((f: FieldMeta) => f.key))
   const newOnes = extras.filter(e => !existingKeys.has(e.field.key))
   if (!newOnes.length) return meta
   return {

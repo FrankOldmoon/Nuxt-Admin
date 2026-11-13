@@ -9,6 +9,12 @@ import { submitAgentDraft } from '~~/server/utils/agentDraftService'
 
 export default defineEventHandler(async (event) => {
   const ctx = await requireUser(event)
+  await enforceRateLimit(event, {
+    keyPrefix: 'agent-draft-submit',
+    max: 20,
+    windowMs: 60 * 1000,
+    identifier: String(ctx.user.id)
+  })
   const params = getRouterParams(event) as { id?: string }
   const draftId = Number(params.id)
   if (!Number.isSafeInteger(draftId) || draftId <= 0) {

@@ -11,6 +11,7 @@ export default defineEventHandler(async (event) => {
   setResponseHeader(event, 'Content-Type', file.mimeType || 'application/octet-stream')
   setResponseHeader(event, 'Content-Disposition', formatContentDisposition('attachment', file.originalName))
   setResponseHeader(event, 'Content-Length', await getFileSize(file.path))
+  setResponseHeader(event, 'X-Content-Type-Options', 'nosniff')
 
   return sendStream(event, createStorageStream(file.path))
 })

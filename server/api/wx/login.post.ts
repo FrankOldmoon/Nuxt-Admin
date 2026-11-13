@@ -41,6 +41,9 @@ export default defineEventHandler(async (event) => {
       avatarUrl: body?.avatarUrl?.slice(0, 500) ?? null,
       lastLoginAt: new Date()
     }).returning()
+    if (!created) {
+      throw createError({ statusCode: 500, statusMessage: 'Internal Server Error', message: 'Failed to create wx user' })
+    }
     user = created
     isNew = true
     console.log('[wx] new mini-program user created:', user.id, '| openid:', user.openid)

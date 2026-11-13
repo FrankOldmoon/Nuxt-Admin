@@ -9,6 +9,9 @@ export type ConversationStatus = 'active' | 'archived'
 export type ConversationMessageRole = 'user' | 'assistant' | 'system'
 export type DraftStatus = 'draft' | 'submitted' | 'cancelled'
 
+/** Chat form drafts expire so an old confirmation cannot be replayed later. */
+export const AGENT_DRAFT_TTL_MS = 30 * 60 * 1000
+
 const DRAFT_TRANSITIONS: Record<DraftStatus, readonly DraftStatus[]> = {
   draft: ['submitted', 'cancelled'],
   submitted: [],

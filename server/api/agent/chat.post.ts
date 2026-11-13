@@ -62,6 +62,12 @@ function positiveId(value: unknown, field: string): number | null {
 
 export default defineEventHandler(async (event) => {
   const ctx = await requireUser(event)
+  await enforceRateLimit(event, {
+    keyPrefix: 'agent-chat',
+    max: 30,
+    windowMs: 60 * 1000,
+    identifier: String(ctx.user.id)
+  })
   const body = await readBody<ChatBody>(event).catch(() => {
     throw createError({ statusCode: 400, message: 'Invalid JSON body' })
   })

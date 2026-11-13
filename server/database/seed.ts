@@ -18,7 +18,7 @@ function richDoc(text: string): Record<string, unknown> {
   const blocks: Record<string, unknown>[] = []
   let i = 0
   while (i < lines.length) {
-    const line = lines[i].trim()
+    const line = lines[i]!.trim()
     if (!line) {
       i++
       continue
@@ -29,22 +29,22 @@ function richDoc(text: string): Record<string, unknown> {
       i++
     } else if (/^[-*+]\s+/.test(line)) {
       const items: Record<string, unknown>[] = []
-      while (i < lines.length && /^[-*+]\s+/.test(lines[i].trim())) {
-        items.push({ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: lines[i].trim().replace(/^[-*+]\s+/, '') }] }] })
+      while (i < lines.length && /^[-*+]\s+/.test(lines[i]!.trim())) {
+        items.push({ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: lines[i]!.trim().replace(/^[-*+]\s+/, '') }] }] })
         i++
       }
       blocks.push({ type: 'bulletList', content: items })
     } else if (/^\d+\.\s+/.test(line)) {
       const items: Record<string, unknown>[] = []
-      while (i < lines.length && /^\d+\.\s+/.test(lines[i].trim())) {
-        items.push({ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: lines[i].trim().replace(/^\d+\.\s+/, '') }] }] })
+      while (i < lines.length && /^\d+\.\s+/.test(lines[i]!.trim())) {
+        items.push({ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: lines[i]!.trim().replace(/^\d+\.\s+/, '') }] }] })
         i++
       }
       blocks.push({ type: 'orderedList', content: items })
     } else if (/^>\s?/.test(line)) {
       const quote: Record<string, unknown>[] = []
-      while (i < lines.length && /^>\s?/.test(lines[i].trim())) {
-        quote.push({ type: 'paragraph', content: [{ type: 'text', text: lines[i].trim().replace(/^>\s?/, '') }] })
+      while (i < lines.length && /^>\s?/.test(lines[i]!.trim())) {
+        quote.push({ type: 'paragraph', content: [{ type: 'text', text: lines[i]!.trim().replace(/^>\s?/, '') }] })
         i++
       }
       blocks.push({ type: 'blockquote', content: quote })
@@ -382,32 +382,52 @@ export async function seed(db: Database): Promise<void> {
   }
 
   // 2. Users
-  const records = [
-    {
-      username: 'admin',
+  // Production never receives the well-known demo credentials. The initial
+  // admin must be provisioned explicitly through SEED_ADMIN_PASSWORD; demo
+  // accounts (known password) are development-only.
+  const isProduction = process.env.NODE_ENV === 'production'
+  const seedAdminPassword = process.env.SEED_ADMIN_PASSWORD
+  const seedAdminEmail = process.env.SEED_ADMIN_EMAIL?.trim() || 'admin@example.com'
+  const seedAdminUsername = process.env.SEED_ADMIN_USERNAME?.trim() || 'admin'
+
+  const records: Array<typeof usersTable.$inferInsert> = []
+  if (!isProduction || seedAdminPassword) {
+    records.push({
+      username: seedAdminUsername,
       name: 'Administrator',
-      email: 'admin@example.com',
+      email: seedAdminEmail,
       telephone: '13800000000',
-      passwordHash: hashPassword('Admin@123'),
+      passwordHash: hashPassword(isProduction ? seedAdminPassword! : 'Admin@123'),
       isActive: true,
       roleId: adminRole.id,
       emailVerifiedAt: new Date()
-    }
-  ]
-  for (let i = 1; i <= 30; i++) {
-    const num = String(i).padStart(2, '0')
-    records.push({
-      username: `test${num}`,
-      name: `Test User ${num}`,
-      email: `test${num}@example.com`,
-      telephone: '13900000000',
-      passwordHash: hashPassword('Test@123'),
-      isActive: true,
-      roleId: userRole.id,
-      emailVerifiedAt: new Date()
     })
+  } else {
+    console.warn(
+      '[database] Production admin seeding skipped: set SEED_ADMIN_PASSWORD '
+      + '(and optionally SEED_ADMIN_EMAIL) before the first start to create the initial admin.'
+    )
   }
-  await db.insert(usersTable).values(records)
+
+  if (!isProduction) {
+    for (let i = 1; i <= 30; i++) {
+      const num = String(i).padStart(2, '0')
+      records.push({
+        username: `test${num}`,
+        name: `Test User ${num}`,
+        email: `test${num}@example.com`,
+        telephone: '13900000000',
+        passwordHash: hashPassword('Test@123'),
+        isActive: true,
+        roleId: userRole.id,
+        emailVerifiedAt: new Date()
+      })
+    }
+  }
+
+  if (records.length > 0) {
+    await db.insert(usersTable).values(records)
+  }
 
   console.log(`[database] Seeded: 2 roles, ${records.length} users, ${DEFAULT_CONFIGS.length} configs`)
 }

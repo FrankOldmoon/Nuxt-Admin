@@ -142,6 +142,16 @@ Artifact 服务已存在，但**尚无内置文件生成工具**（Planned）。
 
 在工具管道之上增加一层 **Capability** 契约，让 Chat / Apps / Agents 共用同一份业务能力定义。
 
+| 运行时组件 | 实现位置 |
+|---|---|
+| Capability Registry | `server/core/capability.ts`（能力目录 + `describeCapabilities`） |
+| Permission Resolver | `capabilityPermissionMatches` + `ToolRegistry.authorize`（每次执行复检） |
+| Tool Executor | `ToolRegistry.run`（schema/限流/超时/输出上限） |
+| Draft Manager | `server/utils/agentDraftService.ts` + `agentStore` 的 draft 函数 |
+| Approval Manager | `server/core/agentApproval.ts` + `agentStore` 的 approval 函数 + `/api/agent/approvals` |
+| Conversation Manager | `agentStore` 的 conversation/message 函数 + `/api/agent/conversations` |
+| Audit Logger | `server/core/audit.ts` + `createAgentAudit`（`agent_tool_calls` + `audit_logs`） |
+
 | 文件 | 作用 |
 |---|---|
 | `server/core/capability.ts` | `CapabilityDefinition`（Tool + `title`/`resource`/`form`/`preview`/`summarize`）、能力目录、权限过滤、模块聊天提示词注册 |
@@ -150,6 +160,7 @@ Artifact 服务已存在，但**尚无内置文件生成工具**（Planned）。
 | `server/utils/agentDraftService.ts` | 草稿提交：重校验权限/预览 → 原子领取草稿 → 调用 `ToolRegistry.run` → 审计 |
 | `server/api/agent/*` | `chat`、`conversations`、`approvals/:batchId`、`drafts/:id/submit` |
 | `server/database/migrations/0014_agent_conversations.sql` | `agent_conversations` / `agent_messages` / `agent_drafts` |
+| `server/database/migrations/0015_agent_draft_expiry.sql` | `agent_drafts.expires_at` + 索引（草稿 TTL） |
 | `app/components/chat/ChatFormCard.vue` | Schema 驱动的通用表单卡（客户端不能自造字段） |
 
 流程：
@@ -174,3 +185,6 @@ POST /api/agent/drafts/:id/submit
 - 写入从不在 chat 请求内直接执行；必须经过表单提交或审批恢复。
 - 草稿只能提交一次；执行失败会恢复为 `draft` 以便重试。
 - 审批恢复时重新走 `ToolRegistry.run`，角色/组织变化会使旧审批失效。
+- 草稿 TTL 为 30 分钟（`AGENT_DRAFT_TTL_MS`）；过期提交返回 `410` 并关闭草稿。
+- `/api/agent/chat`、草稿提交、审批、文件上传均有用户级限流（进程内，多实例需共享存储）。
+- 模型网关对超时、429、5xx 与部分 MaaS `400001` 做有限重试（`LLM_RETRIES`，默认 7），真实参数错误立即失败。

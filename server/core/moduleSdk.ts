@@ -52,6 +52,11 @@ export interface ModuleMigration {
   checksum: string
   /** Apply the migration. Receives a pg client so DDL is transactional. */
   up: (executor: unknown) => void | Promise<void>
+  /**
+   * Optional reverse migration. Not executed automatically yet; it documents
+   * how an operator can roll back a module revision manually.
+   */
+  down?: (executor: unknown) => void | Promise<void>
 }
 
 export type ModuleApiHandler<Context = unknown, Result = unknown> = (

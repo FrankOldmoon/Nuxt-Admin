@@ -16,6 +16,11 @@ export default defineEventHandler(async (event) => {
   setResponseHeader(event, 'Content-Type', mimeType)
   setResponseHeader(event, 'Content-Disposition', disposition)
   setResponseHeader(event, 'Content-Length', await getFileSize(file.path))
+  // Defense in depth: never let a user upload execute as active content even if
+  // the MIME mapping above changes later.
+  setResponseHeader(event, 'X-Content-Type-Options', 'nosniff')
+  setResponseHeader(event, 'Content-Security-Policy', 'sandbox; default-src \'none\'; img-src \'self\' data:; style-src \'unsafe-inline\'')
+  setResponseHeader(event, 'Cross-Origin-Resource-Policy', 'same-origin')
 
   return sendStream(event, createStorageStream(file.path))
 })

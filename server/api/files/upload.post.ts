@@ -7,6 +7,12 @@ function parseAllowedMimeTypes(raw: string): string[] | null {
 
 export default defineEventHandler(async (event) => {
   const ctx = await requireUser(event)
+  await enforceRateLimit(event, {
+    keyPrefix: 'file-upload',
+    max: 30,
+    windowMs: 60 * 1000,
+    identifier: String(ctx.user.id)
+  })
 
   const formData = await readMultipartFormData(event)
   if (!formData) {

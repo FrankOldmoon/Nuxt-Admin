@@ -19,6 +19,7 @@ import {
   addAgentMessage,
   attachDraftExecution,
   claimAgentDraftForSubmit,
+  expireAgentDraft,
   findAgentConversation,
   findAgentDraft,
   finishAgentExecution,
@@ -66,6 +67,10 @@ export async function submitAgentDraft(input: SubmitDraftInput): Promise<ChatRes
   if (draft.status !== 'draft') {
     throw createError({ statusCode: 409, message: `Draft is ${draft.status}` })
   }
+  if (draft.expiresAt && draft.expiresAt.getTime() <= Date.now()) {
+    await expireAgentDraft(draft.id)
+    throw createError({ statusCode: 410, message: 'Draft has expired; ask the assistant to prepare it again' })
+  }
 
   const capability = getCapability(draft.capabilityId)
   if (!capability) throw createError({ statusCode: 409, message: 'Capability is no longer available' })
@@ -88,7 +93,13 @@ export async function submitAgentDraft(input: SubmitDraftInput): Promise<ChatRes
   }
 
   const claimed = await claimAgentDraftForSubmit(draft.id, input.recordActor)
-  if (!claimed) throw createError({ statusCode: 409, message: 'Draft has already been submitted' })
+  if (!claimed) {
+    const latest = await findAgentDraft(draft.id)
+    if (latest?.expiresAt && latest.expiresAt.getTime() <= Date.now()) {
+      throw createError({ statusCode: 410, message: 'Draft has expired; ask the assistant to prepare it again' })
+    }
+    throw createError({ statusCode: 409, message: 'Draft has already been submitted' })
+  }
 
   const executionId = await startAgentExecution({
     ...input.recordActor,

@@ -214,7 +214,7 @@ pnpm preview
 
 > Note: `server/database/ensure.ts` can create the target database automatically. In development (`NODE_ENV !== 'production'`) the app runs base migrations, module lifecycle, module migrations and seed on startup. Production instances never migrate on boot — run `pnpm db:migrate:release` once in the release pipeline. `AUTO_MIGRATE` is no longer used.
 
-**Default admin account** (created by the seed script): username `admin`, password `Admin@123`, email `admin@example.com`.
+**Default admin account (development only)**: username `admin`, password `Admin@123`, email `admin@example.com`. Production seeding requires `SEED_ADMIN_PASSWORD` (and optionally `SEED_ADMIN_EMAIL` / `SEED_ADMIN_USERNAME`) before the first start; demo `test01…test30` accounts are never seeded in production.
 
 ---
 

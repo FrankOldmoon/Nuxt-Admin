@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, isNull, or } from 'drizzle-orm'
 import { createError } from 'h3'
 import { db } from '../database'
 import {
@@ -16,6 +16,7 @@ import {
   type ApprovalCall,
   type ApprovalStatus
 } from '../core/agentApproval'
+import { AGENT_DRAFT_TTL_MS } from '../core/conversation'
 import type { ModelUsage } from '../core/modelGateway'
 
 export interface AgentRecordActor {
@@ -372,7 +373,8 @@ export async function createAgentDraft(input: CreateDraftInput) {
     organizationId: input.organizationId ?? null,
     tenantId: input.tenantId ?? null,
     capabilityId: input.capabilityId,
-    payload: input.payload ?? {}
+    payload: input.payload ?? {},
+    expiresAt: new Date(Date.now() + AGENT_DRAFT_TTL_MS)
   }).returning()
   if (!row) throw createError({ statusCode: 500, message: 'Failed to create draft' })
   return row
@@ -395,7 +397,8 @@ export async function claimAgentDraftForSubmit(draftId: number, actor: Conversat
     .where(and(
       eq(agentDrafts.id, draftId),
       eq(agentDrafts.userId, actor.userId),
-      eq(agentDrafts.status, 'draft')
+      eq(agentDrafts.status, 'draft'),
+      or(isNull(agentDrafts.expiresAt), gt(agentDrafts.expiresAt, new Date()))
     ))
     .returning()
   return row ?? null
@@ -406,6 +409,13 @@ export async function restoreAgentDraft(draftId: number): Promise<void> {
   await db.update(agentDrafts)
     .set({ status: 'draft', updatedAt: new Date() })
     .where(and(eq(agentDrafts.id, draftId), eq(agentDrafts.status, 'submitted')))
+}
+
+/** Close an expired draft so it can never be executed later. */
+export async function expireAgentDraft(draftId: number): Promise<void> {
+  await db.update(agentDrafts)
+    .set({ status: 'cancelled', updatedAt: new Date() })
+    .where(and(eq(agentDrafts.id, draftId), eq(agentDrafts.status, 'draft')))
 }
 
 export async function attachDraftExecution(draftId: number, executionId: number): Promise<void> {

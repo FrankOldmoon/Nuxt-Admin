@@ -81,12 +81,23 @@ describe('getAbsolutePath', () => {
 })
 
 describe('isPreviewable', () => {
-  it('images/video/text/PDF are previewable', () => {
+  it('safe images/video/audio/PDF/plain text are previewable', () => {
     expect(isPreviewable('image/png')).toBe(true)
+    expect(isPreviewable('image/jpeg; charset=binary')).toBe(true)
     expect(isPreviewable('video/mp4')).toBe(true)
+    expect(isPreviewable('audio/mpeg')).toBe(true)
     expect(isPreviewable('text/plain')).toBe(true)
     expect(isPreviewable('application/pdf')).toBe(true)
-    expect(isPreviewable('application/json')).toBe(true)
+  })
+
+  it('active content is forced to download (stored XSS defense)', () => {
+    expect(isPreviewable('image/svg+xml')).toBe(false)
+    expect(isPreviewable('text/html')).toBe(false)
+    expect(isPreviewable('application/xhtml+xml')).toBe(false)
+    expect(isPreviewable('application/javascript')).toBe(false)
+    expect(isPreviewable('application/json')).toBe(false)
+    expect(isPreviewable('application/xml')).toBe(false)
+    expect(isPreviewable('text/xml')).toBe(false)
   })
 
   it('binary and empty values are not previewable', () => {
