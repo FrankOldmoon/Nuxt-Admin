@@ -45,7 +45,10 @@ describe('module catalog decoupling', () => {
       .filter(file => !file.includes('/test/'))
     expect(files.length).toBeGreaterThan(0)
     for (const file of files) {
-      expect(readFileSync(file, 'utf8'), file).not.toMatch(/from\s+['"][^'"]*server\/core\//)
+      const source = readFileSync(file, 'utf8')
+      expect(source, file).not.toMatch(/from\s+['"][^'"]*server\/core\//)
+      // Host database internals must be reached through the SDK contract.
+      expect(source, file).not.toMatch(/from\s+['"][^'"]*\/server\/database['"]/)
     }
   })
 

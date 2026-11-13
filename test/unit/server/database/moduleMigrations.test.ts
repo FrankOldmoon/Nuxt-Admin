@@ -2,7 +2,9 @@ import { afterAll, describe, expect, it } from 'vitest'
 import { pool } from '../../../../server/database'
 import {
   applyModuleMigrations,
-  moduleMigrationChecksum
+  listRollbackCandidates,
+  moduleMigrationChecksum,
+  rollbackModuleMigration
 } from '../../../../server/database/moduleMigrations'
 import type { ModuleDefinition, ModuleMigration } from '../../../../server/core/moduleSdk'
 
@@ -62,6 +64,63 @@ describe('module migration checksums', () => {
     const badId = `${migrationId}-missing-checksum`
     await expect(applyModuleMigrations(pool, [definition({ id: badId, up: async () => {} } as unknown as ModuleMigration)]))
       .rejects.toThrow(`Module migration ${badId} must declare a checksum revision`)
+  })
+
+  it('rolls a migration back through its down handler', async () => {
+    const rollbackId = `${migrationId}-rollback`
+    const rollbackTable = `${tableName}_rollback`
+    const migration: ModuleMigration = {
+      id: rollbackId,
+      checksum: '1',
+      up: async (executor: unknown) => {
+        const client = executor as { query: (sql: string) => Promise<unknown> }
+        await client.query(`CREATE TABLE IF NOT EXISTS "${rollbackTable}" (id serial PRIMARY KEY)`)
+      },
+      down: async (executor: unknown) => {
+        const client = executor as { query: (sql: string) => Promise<unknown> }
+        await client.query(`DROP TABLE IF EXISTS "${rollbackTable}"`)
+      }
+    }
+    const definition = (): ModuleDefinition => ({
+      id: 'itest-rollback',
+      name: 'Rollback test',
+      version: '1.0.0',
+      dependencies: [],
+      permissions: [],
+      navigation: [],
+      database: [],
+      api: [],
+      tools: [],
+      components: [],
+      migrations: [migration]
+    })
+
+    await applyModuleMigrations(pool, [definition()])
+    const candidates = await listRollbackCandidates(pool, [definition()])
+    expect(candidates.map(item => item.id)).toContain(rollbackId)
+
+    await rollbackModuleMigration(pool, [definition()], rollbackId)
+
+    const table = await pool.query(
+      'SELECT to_regclass($1) AS name',
+      [`public.${rollbackTable}`]
+    )
+    expect(table.rows[0].name).toBeNull()
+    const record = await pool.query('SELECT 1 FROM "__module_migrations" WHERE "id" = $1', [rollbackId])
+    expect(record.rows).toHaveLength(0)
+
+    // Rolling back again fails because the migration is no longer applied.
+    await expect(rollbackModuleMigration(pool, [definition()], rollbackId))
+      .rejects.toThrow(`Module migration ${rollbackId} is not applied; nothing to roll back`)
+  })
+
+  it('refuses rollback without a down handler', async () => {
+    const noDownId = `${migrationId}-nodown`
+    const up = async () => {}
+    await applyModuleMigrations(pool, [definition({ id: noDownId, checksum: '1', up })])
+
+    await expect(rollbackModuleMigration(pool, [definition({ id: noDownId, checksum: '1', up })], noDownId))
+      .rejects.toThrow(`Module migration ${noDownId} does not declare a down handler`)
   })
 
   it('records execution failures and retries them', async () => {

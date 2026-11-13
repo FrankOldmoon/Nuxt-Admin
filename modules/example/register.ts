@@ -1,13 +1,13 @@
-import type {
-  ModuleApiDefinition,
-  ModuleApiRouter,
-  ToolDefinition,
-  ToolRegistry,
-  UiDefinition,
-  UiRegistry
+import {
+  db,
+  writeAudit,
+  type ModuleApiDefinition,
+  type ModuleApiRouter,
+  type ToolDefinition,
+  type ToolRegistry,
+  type UiDefinition,
+  type UiRegistry
 } from '../../server/sdk'
-import { db } from '../../server/database'
-import { writeAudit } from '../../server/sdk'
 import { canUseExample, requireOrganization, type ModuleActor } from './server/context'
 import { countNotes, createNote, listNotes } from './server/notes'
 

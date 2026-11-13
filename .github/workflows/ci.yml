@@ -86,13 +86,17 @@ jobs:
         run: >-
           pnpm exec eslint
           server/core
+          server/sdk
+          server/database
           server/api/agent
           server/utils/agentChatRuntime.ts
           server/utils/agentDraftService.ts
           server/utils/agentStore.ts
           server/utils/originPolicy.ts
+          server/utils/rateLimit.ts
           server/middleware/csrf.ts
           server/utils/fileStorage.ts
+          modules/example
           app/components/chat
 
       - name: Lint (SMS module, blocking)

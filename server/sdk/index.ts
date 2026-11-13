@@ -20,6 +20,13 @@
 export * from '../core/moduleSdk'
 export * from '../core/capability'
 export * from '../core/conversation'
+/**
+ * Module database access. Modules must reach the host database through this
+ * export (or their own `server/database` folder) so the coupling surface stays
+ * explicit and auditable.
+ */
+export { db, pool } from '../database'
+export type { Database } from '../database'
 export { validateModuleManifests, CORE_VERSION, MODULE_API_VERSION } from '../core/moduleManifest'
 export {
   ADMIN_ONLY_TABLES,

@@ -281,6 +281,23 @@ export const agentDrafts = pgTable(
   })
 )
 
+/**
+ * Shared rate-limit counters (`RATE_LIMIT_DRIVER=postgres`). One row per
+ * bucket key with a fixed window; rows are pruned by the limiter itself.
+ */
+export const rateLimitCounters = pgTable(
+  'rate_limit_counters',
+  {
+    bucketKey: varchar('bucket_key', { length: 255 }).primaryKey(),
+    windowStartedAt: timestamp('window_started_at', { withTimezone: true }).notNull(),
+    hits: integer('hits').notNull().default(0),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    updatedIdx: index('rate_limit_counters_updated_idx').on(table.updatedAt)
+  })
+)
+
 export const roles = pgTable(
   'roles',
   {

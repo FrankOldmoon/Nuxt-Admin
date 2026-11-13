@@ -113,8 +113,20 @@ export const migrations: ModuleMigration[] = [
 
 ## 7. 回滚策略
 
-- 数据库迁移默认**不做自动回滚**。
-- 发布前备份；失败时通过新迁移修复或从备份恢复。
+- 基础库（Drizzle）迁移仍**不做自动回滚**：发布前备份；失败时通过新迁移修复或从备份恢复。
+- 模块迁移支持**显式单步回滚**（需要该迁移声明 `down`）：
+
+```bash
+# 列出可回滚的已应用模块迁移
+pnpm db:rollback:module --list
+
+# 回滚指定迁移（在同一事务内执行 down，并删除 __module_migrations 记录）
+pnpm db:rollback:module sms:004-academic-domain
+```
+
+  - `down` 未声明 → 直接报错，不做猜测性删表。
+  - 迁移未处于 `applied` 状态 → 报错，避免重复回滚。
+  - `down` 失败 → 事务回滚，记录保持 `applied`，数据不受影响。
 - 模块卸载只改变状态，不删数据；需要清理时由管理员显式执行独立脚本。
 - 生产发布建议：备份 → `pnpm db:migrate:release` → 启动新实例 → 健康检查。
 
@@ -124,5 +136,6 @@ export const migrations: ModuleMigration[] = [
 - [ ] `pnpm exec drizzle-kit check` 通过。
 - [ ] 迁移只追加，历史文件未修改。
 - [ ] 新模块迁移声明唯一 `id` 与 `checksum`。
+- [ ] 需要可回滚的模块迁移已声明 `down`，并验证 `pnpm db:rollback:module --list` 可见。
 - [ ] 本地 `pnpm test` 通过（含真实 PG 集成测试）。
 - [ ] 生产发布前已备份，并安排维护窗口（如需）。

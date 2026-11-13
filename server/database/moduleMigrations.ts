@@ -50,6 +50,71 @@ function ensureMigrationTable(pool: Pool): Promise<void> {
 }
 
 /**
+ * Roll one applied module migration back through its declared `down` handler.
+ *
+ * Runs in a transaction with the same advisory lock as `applyModuleMigrations`
+ * and only deletes the bookkeeping row after `down` succeeds, so a failed
+ * rollback leaves the migration recorded as applied.
+ */
+export async function rollbackModuleMigration(
+  pool: Pool,
+  modules: readonly ModuleDefinition[],
+  migrationId: string
+): Promise<void> {
+  const meta = new Map<string, MigrationMeta>()
+  for (const module of modules) {
+    for (const migration of module.migrations ?? []) {
+      meta.set(migration.id, { moduleId: module.id, moduleVersion: module.version, migration })
+    }
+  }
+
+  const target = meta.get(migrationId)
+  if (!target) throw new Error(`Unknown module migration: ${migrationId}`)
+  if (!target.migration.down) {
+    throw new Error(`Module migration ${migrationId} does not declare a down handler`)
+  }
+
+  await ensureMigrationTable(pool)
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [`module-migration:${migrationId}`])
+
+    const result = await client.query('SELECT "status" FROM "__module_migrations" WHERE "id" = $1', [migrationId])
+    const existing = result.rows[0] as { status: string } | undefined
+    if (!existing || existing.status !== 'applied') {
+      throw new Error(`Module migration ${migrationId} is not applied; nothing to roll back`)
+    }
+
+    await target.migration.down(client)
+    await client.query('DELETE FROM "__module_migrations" WHERE "id" = $1', [migrationId])
+    await client.query('COMMIT')
+  } catch (error) {
+    await client.query('ROLLBACK')
+    throw error
+  } finally {
+    client.release()
+  }
+}
+
+/** List migrations that can be rolled back (applied + `down` declared). */
+export async function listRollbackCandidates(
+  pool: Pool,
+  modules: readonly ModuleDefinition[]
+): Promise<Array<{ id: string, moduleId: string }>> {
+  await ensureMigrationTable(pool)
+  const { rows } = await pool.query(
+    'SELECT "id", "module_id" FROM "__module_migrations" WHERE "status" = \'applied\' ORDER BY "id"'
+  )
+  const withDown = new Set(
+    modules.flatMap(module => (module.migrations ?? []).filter(migration => !!migration.down).map(migration => migration.id))
+  )
+  return (rows as Array<{ id: string, module_id: string | null }>)
+    .filter(row => withDown.has(row.id))
+    .map(row => ({ id: row.id, moduleId: row.module_id ?? '' }))
+}
+
+/**
  * Shared module-migration orchestrator used by both the release entry point
  * and the development boot path. Serializes each migration with an advisory
  * lock and records module/version/checksum/status/duration in

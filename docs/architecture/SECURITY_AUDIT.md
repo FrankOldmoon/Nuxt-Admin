@@ -14,8 +14,9 @@
 | S4 | `/api/agent/chat`、草稿提交、审批、文件上传缺少用户级限流 | 中 | 已修复 |
 | S5 | 仅依赖 `SameSite=Lax`，缺少显式 Origin 校验 | 低 | 已修复（纵深防御） |
 | S6 | 缺少针对注入、跨组织、跨角色、审批重放、过期草稿的自动化测试 | 中 | 已补充 |
-| S7 | 生产依赖存在 6 critical / 67 high 的传递漏洞 | 中 | 部分缓解 / 待上游 |
-| S8 | 模块直接 `import server/database`，未完全经由 SDK 隔离 | 低 | 记录为技术债 |
+| S7 | 生产依赖存在 critical / high 传递漏洞 | 中 | 部分缓解 / 待上游 |
+| S8 | 模块直接 `import server/database`，未完全经由 SDK 隔离 | 低 | 已修复 |
+| S9 | 限流为进程内实现，多实例各自计数 | 中 | 已修复（可选共享存储） |
 
 ## 2. 已修复项
 
@@ -66,6 +67,21 @@
 | 文件活动内容不可内联 | `test/unit/server/fileStorage.test.ts` |
 | Origin 白名单 | `test/unit/server/originPolicy.test.ts` |
 | 工具调用瞬时 400001 重试 / 非瞬时错误不重试 | `test/unit/server/core/modelGateway.test.ts` |
+| 共享限流存储（Postgres）建表、计数、窗口重置 | `test/unit/server/rateLimit.test.ts` |
+| 模块迁移回滚（down 执行 / 记录删除 / 无 down 拒绝 / 重复回滚拒绝） | `test/unit/server/database/moduleMigrations.test.ts` |
+| 模块 manifest 与能力/权限/表前缀一致 | `modules/sms/test/capabilities.test.ts` |
+
+### S8 模块数据库访问边界
+
+- 证据：`modules/*/server/*.ts` 直接 `import .../server/database`。
+- 修复：`server/sdk` 导出 `db` / `pool` / `Database`；SMS 与 example 模块改为只从 SDK 取数据库句柄。
+- 守卫：`moduleDecoupling.test.ts` 扫描所有模块源码，禁止直接 import `server/core/**` 与 `.../server/database`。
+
+### S9 多实例限流
+
+- 证据：原 `server/utils/rateLimit.ts` 只有进程内 Map。
+- 修复：新增可插拔存储；`RATE_LIMIT_DRIVER=postgres` 时使用 `rate_limit_counters` 表做共享固定窗口计数（原子 UPSERT，自动过期清理）。默认仍为内存实现，单节点零依赖。
+- 迁移：`0016_rate_limit_counters.sql`；表也会在首次使用时惰性创建。
 
 ## 3. 已确认的安全基线
 
@@ -84,20 +100,29 @@
 pnpm audit --prod --registry=https://registry.npmjs.org --audit-level=high
 ```
 
-结果：`6 critical / 67 high / 63 moderate / 30 low`，绝大多数为 Nuxt/Nitro/CLI 工具链的传递依赖：
+结果（升级后）：`6 critical / 63 high / 60 moderate / 30 low`。已升级的直接依赖：
 
-- `node-forge <=1.4.0`（high）：经 `nuxt > @nuxt/cli > listhen`
-- `tar`、`shell-quote`、`brace-expansion`、`nanoid`、`js-yaml`（critical/high）：构建与工具链传递依赖
-- 直接依赖建议升级：`sharp >=0.35.4`、`nodemailer >=9.1.0`、`@tiptap/core >=3.30.5`、`@tiptap/markdown >=3.30.5`
-- `xlsx`：npm 上无 patched 版本（SheetJS 建议官方 CDN 版本），当前通过 KaTeX/上传导入路径使用；建议限制导入文件大小并仅在服务端解析
+| 包 | 升级前 | 升级后 |
+|---|---|---|
+| `sharp` | 0.35.3 | 0.35.5 |
+| `nodemailer` | 9.1.1 | 10.5.0 |
+| `@tiptap/core` / `@tiptap/markdown` | 3.27.1 | 3.34.0 |
+| `markdown-it` | 15.0.0 | 15.0.3 |
+
+仍为上游传递依赖（需等 Nuxt/Nitro/CLI 发布修复）：
+
+- `node-forge <=1.4.0`（high）：`nuxt > @nuxt/cli > listhen`
+- `tar`、`shell-quote`、`brace-expansion`、`nanoid`、`js-yaml`、`undici`、`vite`（critical/high）：构建与工具链传递依赖
+- `xlsx`：npm 上无 patched 版本（SheetJS 建议官方 CDN 版本），当前用于导入/导出；建议限制导入文件大小并仅在服务端解析
 
 CI 已增加 report-only 依赖审计步骤；修复上游传递依赖前不阻塞合并。
 
 ## 5. 剩余风险与技术债
 
-1. 限流为进程内实现，多实例需外部存储（Redis/Postgres）。
-2. 模块仍可直接 `import server/database`；SDK 未提供隔离的数据库访问契约。
-3. `ModuleMigration.down` 仅作为契约声明，尚无自动回滚执行器。
+1. 共享限流需显式开启 `RATE_LIMIT_DRIVER=postgres`；默认内存实现仍是单节点语义。
+2. 模块数据库访问虽已收敛到 SDK，但 SDK 仍暴露完整 `db`，未做按表/按模块的最小权限隔离。
+3. 模块迁移回滚为“单步显式执行”，没有批量/按版本回滚编排。
 4. 全仓 ESLint/TypeScript 仍有历史债务（本次对平台核心与 SMS 模块启用阻塞式 lint）。
 5. 文件仍与主站同源提供；高安全场景建议独立文件域名。
 6. LLM 网关（腾讯 MaaS）工具调用偶发 `400001`，已通过重试缓解，仍依赖上游稳定性。
+7. `xlsx` 无 npm 修复版本，导入路径仍需业务侧限制文件大小。

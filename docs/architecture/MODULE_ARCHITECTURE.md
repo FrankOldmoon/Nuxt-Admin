@@ -180,8 +180,9 @@ modules/<id>/
 ## 11. SDK 稳定化（2026-11）
 
 - **兼容校验**：`validateModuleManifests` 要求 `apiVersion === MODULE_API_VERSION`；版本范围支持 `^`/`~`/`>=`/`>`/精确。
-- **迁移契约**：`ModuleMigration` 增加可选 `down`（文档化回滚方式，暂不自动执行）；`up` 仍按 `id + checksum` 记录，重复执行幂等。
+- **迁移契约**：`ModuleMigration` 支持可选 `down`；`pnpm db:rollback:module <id>` 会在事务内执行反向迁移并删除 `__module_migrations` 记录。`up` 仍按 `id + checksum` 记录，重复执行幂等。
 - **注册表一致性**：`test/unit/server/core/moduleDecoupling.test.ts` 会自动扫描 `modules/*/module.ts`，要求每个本地模块都在 `modules.catalog.ts` 中注册，防止手工目录漂移。
-- **边界校验**：同一测试会扫描所有本地模块源码，禁止 `import server/core/**`；模块只能通过 `server/sdk`、`server/database` 与宿主交互。
+- **边界校验**：同一测试会扫描所有本地模块源码，禁止 `import server/core/**`，也禁止直接 `import .../server/database`；模块必须通过 `server/sdk` 的 `db` / `pool` 导出访问宿主数据。
+- **迁移回滚**：声明了 `down` 的模块迁移可通过 `pnpm db:rollback:module <id>` 单步回滚（事务内执行，失败保留记录）。
 - **构建期组合 vs 运行期激活**：`ENABLED_MODULES` 决定 layer 与注册；`module_states` 决定运行期 API/工具是否放行，两者继续分离。
 - **CI**：新增“无业务模块”构建 job，验证禁用所有模块时主仓库仍可构建。

@@ -1,6 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { db } from '../../../server/database'
-import { writeAudit } from '../../../server/sdk'
+import { db, writeAudit } from '../../../server/sdk'
 import { requireOrganization, type ModuleActor } from './context'
 
 export interface ExampleNote {

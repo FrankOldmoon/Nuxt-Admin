@@ -227,6 +227,7 @@ pnpm preview
 | `pnpm lint` / `typecheck` | Lint / type check |
 | `pnpm db:generate / migrate / push / studio` | Drizzle Kit migrations and database management |
 | `pnpm db:migrate:release` | Release entry: base + module + blog migrations (`server/database/migrate.ts`) |
+| `pnpm db:rollback:module [id]` | List (`--list`) or roll back one module migration that declares `down` |
 | `pnpm test` / `test:watch` / `test:coverage` | Run the test suite (integration tests use a real PostgreSQL) |
 | `pnpm server` | Run the built output (with `--env-file`) |
 | `pnpm pm` | Start production with PM2 (see `ecosystem.config.cjs`) |
