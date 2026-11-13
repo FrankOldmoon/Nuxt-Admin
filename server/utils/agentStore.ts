@@ -1,10 +1,13 @@
-import { and, desc, eq } from 'drizzle-orm'
+import { and, asc, desc, eq } from 'drizzle-orm'
 import { createError } from 'h3'
 import { db } from '../database'
 import {
   agentApprovals,
   agentArtifacts,
+  agentConversations,
+  agentDrafts,
   agentExecutions,
+  agentMessages,
   agentToolCalls
 } from '../database/schema'
 import {
@@ -242,4 +245,183 @@ export async function listAgentArtifacts(executionId: number) {
   return await db.select().from(agentArtifacts)
     .where(eq(agentArtifacts.executionId, executionId))
     .orderBy(desc(agentArtifacts.createdAt))
+}
+
+// ---------------------------------------------------------------------------
+// Conversations / messages / drafts (chat workbench)
+// ---------------------------------------------------------------------------
+
+export interface ConversationActor {
+  userId: number
+  organizationId?: number | null
+  tenantId?: number | null
+}
+
+export interface CreateConversationInput extends ConversationActor {
+  title?: string | null
+}
+
+export async function createAgentConversation(input: CreateConversationInput) {
+  const [row] = await db.insert(agentConversations).values({
+    userId: input.userId,
+    tenantId: input.tenantId ?? null,
+    organizationId: input.organizationId ?? null,
+    title: input.title?.trim() || '新对话'
+  }).returning()
+  if (!row) throw createError({ statusCode: 500, message: 'Failed to create conversation' })
+  return row
+}
+
+export async function listAgentConversations(actor: ConversationActor, limit = 50) {
+  return await db.select().from(agentConversations)
+    .where(and(
+      eq(agentConversations.userId, actor.userId),
+      eq(agentConversations.status, 'active')
+    ))
+    .orderBy(desc(agentConversations.updatedAt))
+    .limit(Math.min(Math.max(limit, 1), 200))
+}
+
+/**
+ * Load a conversation owned by the actor. Organization mismatches return
+ * `null` (mapped to 404 by the API) instead of leaking existence.
+ */
+export async function findAgentConversation(conversationId: number, actor: ConversationActor) {
+  const [row] = await db.select().from(agentConversations)
+    .where(and(
+      eq(agentConversations.id, conversationId),
+      eq(agentConversations.userId, actor.userId)
+    ))
+    .limit(1)
+  if (!row) return null
+  if (actor.organizationId && row.organizationId && row.organizationId !== actor.organizationId) return null
+  return row
+}
+
+export async function touchAgentConversation(conversationId: number): Promise<void> {
+  await db.update(agentConversations)
+    .set({ updatedAt: new Date() })
+    .where(eq(agentConversations.id, conversationId))
+}
+
+export async function renameAgentConversation(conversationId: number, actor: ConversationActor, title: string) {
+  const clean = title.replace(/\s+/g, ' ').trim().slice(0, 200)
+  if (!clean) throw createError({ statusCode: 400, message: 'title is required' })
+  const [row] = await db.update(agentConversations)
+    .set({ title: clean, updatedAt: new Date() })
+    .where(and(
+      eq(agentConversations.id, conversationId),
+      eq(agentConversations.userId, actor.userId)
+    ))
+    .returning()
+  return row ?? null
+}
+
+/** Soft-delete: archived conversations disappear from lists but keep audit data. */
+export async function archiveAgentConversation(conversationId: number, actor: ConversationActor): Promise<boolean> {
+  const [row] = await db.update(agentConversations)
+    .set({ status: 'archived', updatedAt: new Date() })
+    .where(and(
+      eq(agentConversations.id, conversationId),
+      eq(agentConversations.userId, actor.userId)
+    ))
+    .returning({ id: agentConversations.id })
+  return !!row
+}
+
+export interface AddMessageInput {
+  conversationId: number
+  role: 'user' | 'assistant' | 'system'
+  content: string
+  toolCalls?: unknown
+  ui?: unknown
+  executionId?: number | null
+}
+
+export async function addAgentMessage(input: AddMessageInput) {
+  const [row] = await db.insert(agentMessages).values({
+    conversationId: input.conversationId,
+    role: input.role,
+    content: input.content,
+    toolCalls: input.toolCalls ?? null,
+    ui: input.ui ?? null,
+    executionId: input.executionId ?? null
+  }).returning()
+  if (!row) throw createError({ statusCode: 500, message: 'Failed to store message' })
+  await touchAgentConversation(input.conversationId)
+  return row
+}
+
+export async function listAgentMessages(conversationId: number, limit = 200) {
+  return await db.select().from(agentMessages)
+    .where(eq(agentMessages.conversationId, conversationId))
+    .orderBy(asc(agentMessages.createdAt), asc(agentMessages.id))
+    .limit(Math.min(Math.max(limit, 1), 500))
+}
+
+export interface CreateDraftInput extends ConversationActor {
+  conversationId: number
+  capabilityId: string
+  payload: unknown
+}
+
+export async function createAgentDraft(input: CreateDraftInput) {
+  const [row] = await db.insert(agentDrafts).values({
+    conversationId: input.conversationId,
+    userId: input.userId,
+    organizationId: input.organizationId ?? null,
+    tenantId: input.tenantId ?? null,
+    capabilityId: input.capabilityId,
+    payload: input.payload ?? {}
+  }).returning()
+  if (!row) throw createError({ statusCode: 500, message: 'Failed to create draft' })
+  return row
+}
+
+export async function findAgentDraft(draftId: number) {
+  const [row] = await db.select().from(agentDrafts)
+    .where(eq(agentDrafts.id, draftId))
+    .limit(1)
+  return row ?? null
+}
+
+/**
+ * Atomically claim a draft for submission. Only the first caller wins; later
+ * submissions see `null` and map to 409, which is the idempotency guarantee.
+ */
+export async function claimAgentDraftForSubmit(draftId: number, actor: ConversationActor) {
+  const [row] = await db.update(agentDrafts)
+    .set({ status: 'submitted', updatedAt: new Date() })
+    .where(and(
+      eq(agentDrafts.id, draftId),
+      eq(agentDrafts.userId, actor.userId),
+      eq(agentDrafts.status, 'draft')
+    ))
+    .returning()
+  return row ?? null
+}
+
+/** Restore a claimed draft when execution failed before any business write. */
+export async function restoreAgentDraft(draftId: number): Promise<void> {
+  await db.update(agentDrafts)
+    .set({ status: 'draft', updatedAt: new Date() })
+    .where(and(eq(agentDrafts.id, draftId), eq(agentDrafts.status, 'submitted')))
+}
+
+export async function attachDraftExecution(draftId: number, executionId: number): Promise<void> {
+  await db.update(agentDrafts)
+    .set({ executionId, updatedAt: new Date() })
+    .where(eq(agentDrafts.id, draftId))
+}
+
+export async function cancelAgentDraft(draftId: number, actor: ConversationActor): Promise<boolean> {
+  const [row] = await db.update(agentDrafts)
+    .set({ status: 'cancelled', updatedAt: new Date() })
+    .where(and(
+      eq(agentDrafts.id, draftId),
+      eq(agentDrafts.userId, actor.userId),
+      eq(agentDrafts.status, 'draft')
+    ))
+    .returning({ id: agentDrafts.id })
+  return !!row
 }

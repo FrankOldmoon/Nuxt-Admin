@@ -1,6 +1,7 @@
 import type { ModuleDefinition } from './server/sdk'
 import { parseEnabledModuleIds } from './server/core/moduleCatalog'
 import { exampleModule } from './modules/example/module'
+import { smsModule } from './modules/sms/module'
 
 /**
  * Static module catalog. This is the ONLY file that knows which business
@@ -12,7 +13,8 @@ import { exampleModule } from './modules/example/module'
  * top-level files in `modules/` as local Nuxt modules.
  */
 export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [
-  exampleModule
+  exampleModule,
+  smsModule
 ]
 
 /** Module IDs that can be enabled at build time. */

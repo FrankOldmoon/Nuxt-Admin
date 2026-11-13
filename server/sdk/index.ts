@@ -18,6 +18,8 @@
  * module manifest when a contract changes incompatibly.
  */
 export * from '../core/moduleSdk'
+export * from '../core/capability'
+export * from '../core/conversation'
 export { validateModuleManifests, CORE_VERSION, MODULE_API_VERSION } from '../core/moduleManifest'
 export {
   ADMIN_ONLY_TABLES,

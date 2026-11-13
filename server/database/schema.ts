@@ -210,6 +210,74 @@ export const agentArtifacts = pgTable(
   })
 )
 
+/**
+ * Chat workbench conversation. Ownership is always the authenticated user;
+ * organization/tenant are copies of the server-resolved context at creation.
+ */
+export const agentConversations = pgTable(
+  'agent_conversations',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id').notNull(),
+    organizationId: integer('organization_id'),
+    tenantId: integer('tenant_id'),
+    title: varchar('title', { length: 200 }).notNull().default('新对话'),
+    /** active | archived */
+    status: varchar('status', { length: 20 }).notNull().default('active'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    userUpdatedIdx: index('agent_conversations_user_updated_idx').on(table.userId, table.updatedAt),
+    organizationIdx: index('agent_conversations_org_idx').on(table.organizationId)
+  })
+)
+
+/** One persisted chat message. Raw tool payloads live in tool_calls/ui only. */
+export const agentMessages = pgTable(
+  'agent_messages',
+  {
+    id: serial('id').primaryKey(),
+    conversationId: integer('conversation_id').notNull(),
+    /** user | assistant | system */
+    role: varchar('role', { length: 20 }).notNull(),
+    content: text('content').notNull().default(''),
+    toolCalls: jsonb('tool_calls'),
+    ui: jsonb('ui'),
+    executionId: integer('execution_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    conversationIdx: index('agent_messages_conversation_idx').on(table.conversationId, table.createdAt)
+  })
+)
+
+/**
+ * Chat form draft. A draft can be submitted exactly once: the submit path
+ * transitions `draft -> submitted` atomically before executing.
+ */
+export const agentDrafts = pgTable(
+  'agent_drafts',
+  {
+    id: serial('id').primaryKey(),
+    conversationId: integer('conversation_id').notNull(),
+    userId: integer('user_id').notNull(),
+    organizationId: integer('organization_id'),
+    tenantId: integer('tenant_id'),
+    capabilityId: varchar('capability_id', { length: 160 }).notNull(),
+    payload: jsonb('payload').notNull(),
+    /** draft | submitted | cancelled */
+    status: varchar('status', { length: 20 }).notNull().default('draft'),
+    executionId: integer('execution_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    conversationStatusIdx: index('agent_drafts_conversation_status_idx').on(table.conversationId, table.status),
+    userIdx: index('agent_drafts_user_idx').on(table.userId)
+  })
+)
+
 export const roles = pgTable(
   'roles',
   {

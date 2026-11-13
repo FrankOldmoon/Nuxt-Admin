@@ -137,3 +137,40 @@ Artifact 服务已存在，但**尚无内置文件生成工具**（Planned）。
 | WS 路径工具调用 | Planned | 仅 HTTP chat 走工具管道 |
 | 文件生成工具 | Planned | Artifact 服务已就绪 |
 | 多实例工具限流 | Partial | 当前限流为进程内 |
+
+## 10. Capability Chat（SMS 工作台）
+
+在工具管道之上增加一层 **Capability** 契约，让 Chat / Apps / Agents 共用同一份业务能力定义。
+
+| 文件 | 作用 |
+|---|---|
+| `server/core/capability.ts` | `CapabilityDefinition`（Tool + `title`/`resource`/`form`/`preview`/`summarize`）、能力目录、权限过滤、模块聊天提示词注册 |
+| `server/core/conversation.ts` | 会话/消息/草稿类型、草稿状态机、聊天 UI 描述与响应 DTO |
+| `server/utils/agentChatRuntime.ts` | 权限过滤工具集、模型适配、`pending_confirmation → form/approval` 物化、消息落库 |
+| `server/utils/agentDraftService.ts` | 草稿提交：重校验权限/预览 → 原子领取草稿 → 调用 `ToolRegistry.run` → 审计 |
+| `server/api/agent/*` | `chat`、`conversations`、`approvals/:batchId`、`drafts/:id/submit` |
+| `server/database/migrations/0014_agent_conversations.sql` | `agent_conversations` / `agent_messages` / `agent_drafts` |
+| `app/components/chat/ChatFormCard.vue` | Schema 驱动的通用表单卡（客户端不能自造字段） |
+
+流程：
+
+```text
+POST /api/agent/chat
+  → 权限过滤 capability → runAgentLoop
+  → 只读 capability 直接执行并返回结果卡
+  → 写 capability（有 form）→ preview + 创建 draft → pending_form
+  → 高风险 command（无 form）→ agent_approvals + suspend → pending_confirmation
+
+POST /api/agent/drafts/:id/submit
+  → 复核 capability 可见性 + schema + preview（跨组织校验）
+  → draft: draft → submitted（原子，保证幂等）
+  → ToolRegistry.run（再次鉴权/限流/超时/输出上限）
+  → 业务 service 写库 + audit_logs，返回结果卡
+```
+
+安全边界：
+
+- 模型只能看到当前 actor 有权限的 capability；`organizationId` / `tenantId` / `roleName` 由服务端注入。
+- 写入从不在 chat 请求内直接执行；必须经过表单提交或审批恢复。
+- 草稿只能提交一次；执行失败会恢复为 `draft` 以便重试。
+- 审批恢复时重新走 `ToolRegistry.run`，角色/组织变化会使旧审批失效。

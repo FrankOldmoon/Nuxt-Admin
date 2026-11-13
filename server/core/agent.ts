@@ -1,3 +1,4 @@
+import { capabilityPermissionMatches } from './capability'
 import type { ModelUsage } from './modelGateway'
 import type { ToolDefinition, ToolRegistry } from './moduleSdk'
 
@@ -123,7 +124,7 @@ export function describeAgentTools(
 ): AgentToolDescriptor[] {
   const admin = permissions.includes('*')
   return registry.list()
-    .filter(tool => !tool.permission || admin || permissions.includes(tool.permission))
+    .filter(tool => !tool.permission || admin || capabilityPermissionMatches(permissions, tool.permission))
     .map((tool) => {
       const definition = tool as Partial<ToolDefinition>
       const riskLevel = definition.riskLevel ?? (tool.operation === 'command' ? 'medium' : 'low')
