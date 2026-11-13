@@ -26,7 +26,7 @@
 - 契约入口：`server/sdk/index.ts`
 - 模块清单：`modules.catalog.ts`
 - 内置模块：`modules/example`
-- 外部模块：`Nuxt-Extend-SMS`（SIS/SMS，克隆到 `modules/sis-demo`）
+- 外部模块：`Nuxt-Extend-SMS`（SMS，克隆到 `modules/sms`，注册 `smsModule`）
 - 管理页面：`/dashboard/modules`
 
 ## 4. 提交前检查

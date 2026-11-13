@@ -29,7 +29,7 @@ A general-purpose admin framework built on **Nuxt 4 + Nuxt UI**. The core highli
 - **Multi-tenancy**: `tenants → organizations → departments → organization_memberships`; generic CRUD injects `organization_id` / `tenant_id`, rejects cross-organization relations and uses scoped unique indexes.
 - **Module SDK**: `server/sdk` is the only contract modules may import; `modules.catalog.ts` is the single catalog; manifests validate ID/version/API compatibility/permissions/navigation/migrations.
 - **Module lifecycle**: `discovered → validated → installed → migrated → active ⇄ deactivated → uninstalling → uninstalled`, persisted in `module_states` with audit rows, dependency guards, module-owned migrations and a management UI at `/dashboard/modules`.
-- **SIS/SMS module (external)**: the school information system lives in its own repository [`Nuxt-Extend-SMS`](https://github.com/FrankOldmoon/Nuxt-Extend-SMS); clone it into `modules/sis-demo` and register it in `modules.catalog.ts` to enable. The main repository no longer bundles SIS code.
+- **SIS/SMS module (external)**: the school information system lives in its own repository [`Nuxt-Extend-SMS`](https://github.com/FrankOldmoon/Nuxt-Extend-SMS); clone it into `modules/sms` and register `smsModule` in `modules.catalog.ts` to enable. The main repository no longer bundles SIS code.
 - **Agent foundation**: Model Gateway (OpenAI-compatible adapter, timeout, retry, fallback, cost), hardened tool pipeline (permission re-check, rate limit, timeout, cancellation, output cap), persisted executions/tool calls/approvals/artifacts and hash-bound human approvals.
 - **Realtime**: single `/api/ws` gateway with cross-instance messaging/presence via PostgreSQL `LISTEN/NOTIFY`; see [docs/architecture/PRODUCTION.md](docs/architecture/PRODUCTION.md).
 
@@ -267,9 +267,9 @@ Business modules live under `modules/<id>/` and connect only through the public 
 The SIS/SMS module is maintained in [`Nuxt-Extend-SMS`](https://github.com/FrankOldmoon/Nuxt-Extend-SMS). It is not bundled here:
 
 ```bash
-git clone https://github.com/FrankOldmoon/Nuxt-Extend-SMS.git modules/sis-demo
-# register it in modules.catalog.ts, then:
-ENABLED_MODULES=example,sis-demo pnpm build
+git clone https://github.com/FrankOldmoon/Nuxt-Extend-SMS.git modules/sms
+# register it as smsModule in modules.catalog.ts, then:
+ENABLED_MODULES=example,sms pnpm build
 pnpm db:migrate:release
 ```
 

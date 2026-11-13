@@ -96,7 +96,7 @@ CREATE UNIQUE INDEX ... ON sis_classes (organization_id, name);
 
 ## 7. SIS/SMS 模块实践（外部仓库）
 
-SIS/SMS 模块位于独立仓库 `Nuxt-Extend-SMS`，克隆到 `modules/sis-demo` 后使用。其隔离策略：
+SIS/SMS 模块位于独立仓库 `Nuxt-Extend-SMS`，克隆到 `modules/sms` 后使用。其隔离策略：
 
 - 所有业务表 org 级；服务层在写入前校验组织归属。
 - 角色范围：

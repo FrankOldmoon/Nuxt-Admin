@@ -72,8 +72,8 @@ Known gaps:
 ## Phase 4 — SIS module (moved out)
 
 > **Moved**: the SIS/SMS code and tests now live in
-> [Nuxt-Extend-SMS](https://github.com/FrankOldmoon/Nuxt-Extend-SMS). The main
-> repository no longer bundles `modules/sis-demo`; the table below records the
+> [Nuxt-Extend-SMS](https://github.com/FrankOldmoon/Nuxt-Extend-SMS) as module `sms`.
+> The main repository no longer bundles SIS code; the table below records the
 > implementation delivered before the extraction.
 
 Implemented domain (migration `sis-demo:004` unless noted):

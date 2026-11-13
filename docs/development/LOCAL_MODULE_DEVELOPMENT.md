@@ -29,7 +29,7 @@ pnpm dev
 # 只启用需要的模块
 ENABLED_MODULES=example pnpm dev
 
-# 或写入 .env（外部 SIS/SMS 模块需先克隆到 modules/sis-demo 并在 catalog 注册）
+# 或写入 .env（外部 SMS 模块需先克隆到 modules/sms 并在 catalog 注册 smsModule）
 ENABLED_MODULES=example,my-module
 ```
 

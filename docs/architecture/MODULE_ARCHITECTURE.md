@@ -155,7 +155,7 @@ modules/<id>/
 └── docs/
 ```
 
-内置模块：`modules/example`（示例）。SIS/SMS 模块位于独立仓库 `Nuxt-Extend-SMS`，克隆到 `modules/sis-demo` 并在 catalog 注册后启用。
+内置模块：`modules/example`（示例）。SMS 模块位于独立仓库 `Nuxt-Extend-SMS`，克隆到 `modules/sms` 并在 catalog 注册 `smsModule` 后启用。
 
 ## 9. 模块管理
 
