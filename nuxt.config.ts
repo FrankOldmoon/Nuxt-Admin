@@ -19,15 +19,31 @@ const ENV_EXTENDS = (process.env.EXTENDS_MODULES || '')
   .map(line => line.trim())
   .filter(line => line.startsWith('./') || line.startsWith('~/') || line.startsWith('/'))
 
-// Auto-enable any `modules/<name>` folder whose `<NAME>_ENABLED=true` is set.
+const ENABLED_MODULE_IDS = new Set(
+  (process.env.ENABLED_MODULES ?? 'example')
+    .split(/[\s,]+/)
+    .map(id => id.trim())
+    .filter(Boolean)
+)
+const AVAILABLE_MODULE_IDS = new Set(['example'])
+for (const id of ENABLED_MODULE_IDS) {
+  if (!AVAILABLE_MODULE_IDS.has(id)) throw new Error(`Unknown enabled module: ${id}`)
+}
+
+// Nuxt layer inclusion is resolved at build time; runtime toggles cannot unload its routes.
 const ENABLED_MODULES = (() => {
   const dir = join(process.cwd(), 'modules')
-  if (!existsSync(dir)) return []
-  return readdirSync(dir, { withFileTypes: true })
-    .filter(d => d.isDirectory())
-    .map(d => d.name)
-    .filter(name => process.env[`${name.toUpperCase()}_ENABLED`] === 'true')
-    .map(name => `./modules/${name}`)
+  const modulePaths = existsSync(dir)
+    ? readdirSync(dir, { withFileTypes: true })
+        .filter(d => d.isDirectory())
+        .filter(d => ENABLED_MODULE_IDS.has(d.name))
+        .map(d => `./modules/${d.name}`)
+    : []
+  return [...new Set([
+    ...(process.env.BLOG_ENABLED !== 'false' ? ['./extends/blog'] : []),
+    ...ENV_EXTENDS,
+    ...modulePaths
+  ])]
 })()
 
 export default defineNuxtConfig({
@@ -35,7 +51,7 @@ export default defineNuxtConfig({
   // layer is added the same way: an `./modules/<name>` folder with a matching
   // `<NAME>_ENABLED=true` env switch (or a path in EXTENDS_MODULES) and
   // nothing else in the host codebase.
-  extends: [...new Set(['./extends/blog', ...ENV_EXTENDS, ...ENABLED_MODULES])],
+  extends: [...new Set([...ENV_EXTENDS, ...ENABLED_MODULES])],
 
   modules: ['@nuxt/eslint', '@nuxt/ui', '@nuxtjs/i18n'],
 

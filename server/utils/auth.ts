@@ -1,12 +1,58 @@
 import type { H3Event } from 'h3'
-import { createError } from 'h3'
+import { createError, getHeader } from 'h3'
 import { readSessionToken, setSessionCookie, clearSessionCookie } from './session'
 import { createSessionToken, verifySessionToken, deleteSessionToken } from './tokens'
 import { findUserById, findRoleById, type UserRow, type RoleRow } from './users'
+import { and, eq } from 'drizzle-orm'
+import { db } from './db'
+import { organizationMemberships, organizations } from '../database/schema'
+import {
+  ADMIN_ONLY_TABLES,
+  authorize,
+  permMatches,
+  roleCanAccessTable,
+  roleCanTableAction,
+  roleHasDashboardAccess,
+  type TableAction
+} from '../core/permissions'
+
+export {
+  ADMIN_ONLY_TABLES,
+  authorize,
+  permMatches,
+  roleCanAccessTable,
+  roleCanTableAction,
+  roleHasDashboardAccess
+}
+export type { TableAction }
 
 export interface AuthContext {
   user: UserRow
   role: RoleRow | null
+  organization?: { id: number, tenantId: number } | null
+}
+
+export async function getOrganizationContext(event: H3Event, userId: number): Promise<{ id: number, tenantId: number } | null> {
+  const requestedId = event.context?.organizationId ?? event.context?.orgId ?? getHeader(event, 'x-organization-id')
+  if (requestedId === undefined || requestedId === null || requestedId === '') return null
+  const organizationId = Number(requestedId)
+  if (!Number.isSafeInteger(organizationId) || organizationId <= 0) {
+    throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'Invalid organization context' })
+  }
+
+  const [membership] = await db.select({ id: organizations.id, tenantId: organizations.tenantId })
+    .from(organizationMemberships)
+    .innerJoin(organizations, eq(organizationMemberships.organizationId, organizations.id))
+    .where(and(
+      eq(organizationMemberships.userId, userId),
+      eq(organizationMemberships.organizationId, organizationId),
+      eq(organizationMemberships.status, 'active')
+    ))
+    .limit(1)
+  if (!membership) {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: 'No active membership in the requested organization' })
+  }
+  return membership
 }
 
 // Issue a new persisted token and set the cookie
@@ -28,7 +74,8 @@ export async function getSessionUser(event: H3Event): Promise<AuthContext | null
   const user = await findUserById(userId)
   if (!user || !user.isActive || user.deletedAt) return null
   const role = await findRoleById(user.roleId)
-  return { user, role }
+  const organization = await getOrganizationContext(event, user.id)
+  return { user, role, organization }
 }
 
 // Logout: delete token + clear cookie
@@ -60,39 +107,6 @@ export function isAdmin(ctx: AuthContext): boolean {
 
 // --- Role-based dashboard table access (RBAC) ---
 
-/** Sensitive tables accessible only to admins (users/roles/configs, etc.). */
-export const ADMIN_ONLY_TABLES = new Set(['roles', 'users', 'files', 'configs'])
-
-/** Fine-grained operations on dashboard tables: read=view/export, create=add/import, update=edit, delete=remove/batch */
-export type TableAction = 'read' | 'create' | 'update' | 'delete'
-
-/** Permission entry matching: '*' (all), 'table' (all actions on that table), 'table:action' (that single action). */
-export function permMatches(perm: string, table: string, action?: TableAction): boolean {
-  if (perm === '*') return true
-  const idx = perm.indexOf(':')
-  if (idx < 0) return perm === table          // bare table name -> all actions on that table
-  const t = perm.slice(0, idx)
-  const a = perm.slice(idx + 1) as string
-  if (t !== table) return false
-  if (action === undefined) return true        // no action specified -> table match is enough
-  return a === action
-}
-
-export function roleHasDashboardAccess(permissions: string[] | null | undefined): boolean {
-  if (!Array.isArray(permissions)) return false
-  return permissions.includes('*') || permissions.length > 0
-}
-
-export function roleCanAccessTable(permissions: string[] | null | undefined, table: string): boolean {
-  if (!Array.isArray(permissions)) return false
-  return permissions.some(p => permMatches(p, table))
-}
-
-export function roleCanTableAction(permissions: string[] | null | undefined, table: string, action?: TableAction): boolean {
-  if (!Array.isArray(permissions)) return false
-  return permissions.some(p => permMatches(p, table, action))
-}
-
 /**
  * Dashboard table access guard:
  * - Sensitive tables (ADMIN_ONLY_TABLES) are accessible only to admins;
@@ -102,24 +116,22 @@ export function roleCanTableAction(permissions: string[] | null | undefined, tab
  */
 export async function requireDashboardAccess(event: H3Event, table?: string, action?: TableAction): Promise<AuthContext> {
   const ctx = await requireUser(event)
-  if (!table) {
-    if (!isAdmin(ctx) && !roleHasDashboardAccess(ctx.role?.permissions)) {
-      throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: 'No dashboard access' })
-    }
-    return ctx
-  }
-  if (ADMIN_ONLY_TABLES.has(table)) {
-    if (!isAdmin(ctx)) {
-      throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: 'Admin privileges required for this table' })
-    }
-    return ctx
-  }
-  if (!roleCanTableAction(ctx.role?.permissions, table, action)) {
-    throw createError({
-      statusCode: 403,
-      statusMessage: 'Forbidden',
-      message: action ? `No '${action}' access to table: ${table}` : `No access to table: ${table}`
-    })
-  }
-  return ctx
+  const decision = authorize(
+    {
+      userId: ctx.user.id,
+      roleName: ctx.role?.name,
+      permissions: ctx.role?.permissions,
+      organizationId: ctx.organization?.id,
+      tenantId: ctx.organization?.tenantId
+    },
+    { table: table ?? '', action }
+  )
+  if (decision.allowed) return ctx
+
+  const message = decision.reason === 'admin-only'
+    ? 'Admin privileges required for this table'
+    : decision.reason === 'no-access'
+      ? 'No dashboard access'
+      : action ? `No '${action}' access to table: ${table}` : `No access to table: ${table}`
+  throw createError({ statusCode: 403, statusMessage: 'Forbidden', message })
 }

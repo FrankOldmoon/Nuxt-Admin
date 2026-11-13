@@ -12,6 +12,8 @@ import {
   rowsToSheetRows,
   toDataScopeActor,
 } from '~~/server/utils/dashboard/crudService'
+import { writeAudit } from '~~/server/core/audit'
+import { db } from '~~/server/database'
 
 function csvEscape(v: string): string {
   const needsQuotes = /[",\n\r]/.test(v)
@@ -35,6 +37,7 @@ export default defineEventHandler(async (event) => {
   // We cap at 50k to keep memory bounded; callers can paginate-export via CSV
   // on their side if they need larger datasets.
   const EXPORT_LIMIT = 50_000
+  const scopeActor = toDataScopeActor(actor)
   const { rows } = await listTableData(meta, {
     offset: 0,
     limit: EXPORT_LIMIT,
@@ -42,7 +45,17 @@ export default defineEventHandler(async (event) => {
     search,
     filters,
     sort,
-  }, toDataScopeActor(actor))
+  }, scopeActor)
+
+  await writeAudit(db, {
+    actorUserId: scopeActor?.userId,
+    tenantId: scopeActor?.tenantId,
+    organizationId: scopeActor?.organizationId,
+    action: 'export',
+    resource: table,
+    after: { format, count: rows.length },
+    source: 'dashboard-export'
+  })
 
   // JSON format: return the raw matching rows as-is (respects filters/search).
   if (format === 'json') {

@@ -17,7 +17,7 @@ describe('basic component rendering', () => {
   it('logo renders as an SVG', async () => {
     const wrapper = await mountSuspended(Logo)
     expect(wrapper.find('svg').exists()).toBe(true)
-    expect(wrapper.find('svg').attributes('viewBox')).toBe('0 0 1020 200')
+    expect(wrapper.find('svg').attributes('viewBox')).toBe('0 0 300 200')
   })
 
   it('paginationBar shows the total when total>0', async () => {

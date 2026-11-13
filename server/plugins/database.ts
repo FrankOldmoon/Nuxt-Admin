@@ -6,6 +6,9 @@ import { configs as configsTable, roles as rolesTable } from '../database/schema
 import { eq } from 'drizzle-orm'
 import * as mainSchema from '../database/schema'
 import { registerDrizzleSchema } from '../utils/dashboard/tables'
+import { resolveModules, runModuleLifecycle } from '../core/moduleSdk'
+import { MODULE_DEFINITIONS, parseEnabledModuleIds } from '../core/moduleCatalog'
+import { applyModuleMigrations } from '../database/moduleMigrations'
 
 const DEFAULT_DASHBOARD_MENU = [
   { table: 'roles', label: 'Roles', icon: 'i-lucide-shield', order: 10 },
@@ -30,9 +33,9 @@ export default defineNitroPlugin(async () => {
     throw new Error('DATABASE_URL is not set')
   }
 
-  // Auto-migrate in dev for convenience; in production require explicit
-  // AUTO_MIGRATE=true so deploy pipelines can run `pnpm db:migrate` separately.
-  const autoMigrate = process.env.NODE_ENV !== 'production' || process.env.AUTO_MIGRATE === 'true'
+  // Schema migrations run before deployment through the single release entry point.
+  // Dev retains automatic Drizzle migrations for convenience.
+  const autoMigrate = process.env.NODE_ENV !== 'production'
 
   try {
     if (autoMigrate) {
@@ -45,9 +48,15 @@ export default defineNitroPlugin(async () => {
         migrationsSchema: 'public',
         migrationsTable: '__drizzle_migrations'
       })
+      // Dev-only convenience: run module migrations through the same
+      // orchestrator used by the release entry point.
+      const resolved = resolveModules(MODULE_DEFINITIONS, parseEnabledModuleIds())
+      await runModuleLifecycle(resolved.modules, resolved.enabledIds, 'onRegister')
+      await runModuleLifecycle(resolved.modules, resolved.enabledIds, 'onEnable')
+      await applyModuleMigrations(pool, resolved.modules)
       console.log('[database] Migrations applied successfully')
     } else {
-      console.log('[database] AUTO_MIGRATE not enabled; skipping migrations (run `pnpm db:migrate` in deploy pipeline)')
+      console.log('[database] Skipping migrations; run `pnpm db:migrate:release` once before starting production instances')
     }
 
     // 3. Seed initial data (idempotent: upserts configs, skips roles/users if present)

@@ -17,12 +17,18 @@ const h = vi.hoisted(() => {
     e.statusMessage = opts?.statusMessage
     return e
   })
+  const dbSelect = vi.fn()
   return {
     readSessionToken, setSessionCookie, clearSessionCookie,
     createSessionToken, verifySessionToken, deleteSessionToken,
-    findUserById, findRoleById, getHeader, getCookie, createError
+    findUserById, findRoleById, getHeader, getCookie, createError,
+    dbSelect
   }
 })
+
+vi.mock('../../../server/utils/db', () => ({
+  db: { select: h.dbSelect }
+}))
 
 vi.mock('h3', () => ({
   createError: h.createError,
@@ -44,7 +50,7 @@ vi.mock('../../../server/utils/users', () => ({
   findRoleById: h.findRoleById
 }))
 
-import { startSession, getSessionUser, endSession, requireUser, requireAdmin, isAdmin } from '../../../server/utils/auth'
+import { getOrganizationContext, startSession, getSessionUser, endSession, requireUser, requireAdmin, isAdmin } from '../../../server/utils/auth'
 
 const activeUser = {
   id: 5, username: 'alice', email: 'a@x.com', passwordHash: 'h', roleId: 2,
@@ -171,5 +177,55 @@ describe('isAdmin', () => {
     expect(isAdmin({ user: activeUser, role: adminRole })).toBe(true)
     expect(isAdmin({ user: activeUser, role: userRole })).toBe(false)
     expect(isAdmin({ user: activeUser, role: null })).toBe(false)
+  })
+})
+
+describe('getOrganizationContext', () => {
+  beforeEach(() => {
+    h.dbSelect.mockReset()
+  })
+
+  function mockMembership(rows: Array<{ id: number, tenantId: number }>) {
+    const limit = vi.fn(async () => rows)
+    const where = vi.fn(() => ({ limit }))
+    const innerJoin = vi.fn(() => ({ where }))
+    const from = vi.fn(() => ({ innerJoin }))
+    h.dbSelect.mockReturnValue({ from })
+  }
+
+  it('returns null without a requested organization', async () => {
+    expect(await getOrganizationContext({ context: {} } as never, 5)).toBeNull()
+    expect(h.dbSelect).not.toHaveBeenCalled()
+  })
+
+  it('rejects malformed organization IDs', async () => {
+    await expect(getOrganizationContext({ context: { organizationId: 'abc' } } as never, 5))
+      .rejects.toMatchObject({ statusCode: 400 })
+    await expect(getOrganizationContext({ context: { organizationId: 0 } } as never, 5))
+      .rejects.toMatchObject({ statusCode: 400 })
+    expect(h.dbSelect).not.toHaveBeenCalled()
+  })
+
+  it('rejects when the user has no active membership', async () => {
+    mockMembership([])
+    await expect(getOrganizationContext({ context: { organizationId: 3 } } as never, 5))
+      .rejects.toMatchObject({ statusCode: 403 })
+  })
+
+  it('resolves the tenant for an active membership', async () => {
+    mockMembership([{ id: 3, tenantId: 9 }])
+    await expect(getOrganizationContext({ context: { organizationId: 3 } } as never, 5))
+      .resolves.toEqual({ id: 3, tenantId: 9 })
+  })
+
+  it('includes the resolved organization in getSessionUser', async () => {
+    h.readSessionToken.mockReturnValue('tok')
+    h.verifySessionToken.mockResolvedValue(5)
+    h.findUserById.mockResolvedValue(activeUser)
+    h.findRoleById.mockResolvedValue(adminRole)
+    mockMembership([{ id: 3, tenantId: 9 }])
+
+    const ctx = await getSessionUser({ context: { organizationId: 3 } } as never)
+    expect(ctx?.organization).toEqual({ id: 3, tenantId: 9 })
   })
 })

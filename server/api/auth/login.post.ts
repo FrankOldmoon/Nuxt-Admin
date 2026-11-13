@@ -4,6 +4,8 @@ import { createError, getRequestIP } from 'h3'
 import { users } from '~~/server/database/schema'
 import { getConfigValue } from '~~/server/utils/configs'
 import { verifyCaptcha } from '~~/server/utils/captcha'
+import { writeAudit } from '~~/server/core/audit'
+import { db as auditDb } from '~~/server/utils/db'
 
 // Dummy password hash used to equalize timing between user-exists and user-not-exists paths,
 // preventing user-enumeration via timing side-channels.
@@ -96,6 +98,14 @@ export default defineEventHandler(async (event) => {
   if (!user || !passwordValid) {
     // Increment the failure counter + possible lock (only when the user actually exists)
     if (user) await recordFailedLogin(user.id)
+    // Best-effort security event; never let an audit outage block authentication.
+    await writeAudit(auditDb, {
+      action: 'login-failed',
+      resource: 'auth',
+      recordId: identifier,
+      source: 'auth',
+      outcome: 'failure'
+    }).catch(() => {})
     throw createError({ statusCode: 401, statusMessage: 'Unauthorized', message: 'Invalid credentials' })
   }
   if (!user.isActive) {
@@ -107,6 +117,12 @@ export default defineEventHandler(async (event) => {
 
   const role = await findRoleById(user.roleId)
   await startSession(event, user.id)
+  await writeAudit(auditDb, {
+    actorUserId: user.id,
+    action: 'login',
+    resource: 'auth',
+    source: 'auth'
+  }).catch(() => {})
 
   // Update last login timestamp/IP (best-effort; ignore failures) and return updated row
   const trustProxy = process.env.TRUST_PROXY === 'true'

@@ -106,9 +106,15 @@ BEGIN
 END $$;
 `
 
+/** Minimal SQL runner shared by the host pool and the release migration pool. */
+export interface BlogMigrationExecutor {
+  query: (text: string) => Promise<unknown>
+}
+
 /**
- * Apply the blog schema (idempotent). Safe to call on every server boot.
+ * Apply the blog schema (idempotent). Safe to call on every server boot and
+ * from the host's release migration entry point.
  */
-export async function runBlogMigrations(): Promise<void> {
-  await pool.query(DDL)
+export async function runBlogMigrations(executor: BlogMigrationExecutor = pool): Promise<void> {
+  await executor.query(DDL)
 }

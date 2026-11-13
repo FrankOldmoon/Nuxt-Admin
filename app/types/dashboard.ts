@@ -126,6 +126,13 @@ export interface TableFeatures {
    * `max` (default 50). E.g. `{ fields: ['title','content'], max: 50 }`.
    */
   versions?: { fields: string[]; max?: number }
+  /**
+   * Field-level read/write policy keyed by field key. Each list contains the
+   * role names allowed to read/write that field (`'*'` allows everyone);
+   * admins always bypass. Fields without an entry keep table-level behavior.
+   * Enforced server-side on list/detail/export and create/update payloads.
+   */
+  fieldPolicy?: Record<string, { read?: string[]; write?: string[] }>
 }
 
 export interface TableMeta {

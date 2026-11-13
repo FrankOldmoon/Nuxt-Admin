@@ -6,6 +6,9 @@ import AuthForm from '~/components/auth/form.vue'
 
 mockNuxtImport('useI18n', () => () => ({ t: (k: string) => k }))
 mockNuxtImport('useRoute', () => () => ({ query: {} }))
+// Page metadata (title/OG tags) needs the Head plugin and public config; it is
+// out of scope for these component rendering assertions.
+mockNuxtImport('usePageMeta', () => () => {})
 mockNuxtImport('useAuth', () => () => ({
   user: { value: null }, loading: { value: false },
   isLoggedIn: { value: false }, isAdmin: { value: false }, fetchUser: async () => null

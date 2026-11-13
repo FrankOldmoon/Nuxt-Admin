@@ -142,10 +142,9 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
 
-# Independent Nuxt modules (e.g. cloned navigation site). Each folder
-# is its own repo; enabled from nuxt.config.ts via `<NAME>_ENABLED=true` env
-# switches, never committed here.
-modules/
+# Independent local Nuxt modules; keep checked-in modules tracked.
+modules/*
+!modules/example/
 # ...but tests that exercise module code belong to this repo.
 !test/unit/modules/
 .workbuddy

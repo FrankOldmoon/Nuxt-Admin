@@ -1,4 +1,10 @@
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { defineVitestConfig } from '@nuxt/test-utils/config'
+
+// `modules/tools` is an optional, independently cloned Nuxt layer (see .gitignore).
+// Its tests live in this repo, so only run them when the layer is present.
+const hasToolsModule = existsSync(resolve(process.cwd(), 'modules/tools'))
 
 // The default project runs pure-function unit tests in the node environment (files under test/** excluding test/nuxt/).
 // defineVitestConfig automatically creates an additional project named "nuxt",
@@ -12,7 +18,19 @@ export default defineVitestConfig({
       'extends/blog/**/*.{test,spec}.{ts,js,mjs}',
       'modules/*/test/**/*.{test,spec}.{ts,js,mjs}'
     ],
-    exclude: ['**/.DS_Store', '**/node_modules/**', '**/.nuxt/**', '**/.output/**'],
+    exclude: [
+      '**/.DS_Store',
+      '**/node_modules/**',
+      '**/.nuxt/**',
+      '**/.output/**',
+      ...(hasToolsModule
+        ? []
+        : [
+            'test/unit/app/chatTools.test.ts',
+            'test/unit/app/chatUi.test.ts',
+            'test/unit/modules/tools/**'
+          ])
+    ],
     setupFiles: ['test/setup/global.ts'],
     testTimeout: 30000,
     hookTimeout: 60000,

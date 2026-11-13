@@ -1,0 +1,377 @@
+export interface ModuleManifestItem {
+  id: string
+  [key: string]: unknown
+}
+
+/**
+ * Declarative module metadata. Everything here is validated at registration
+ * time (unique IDs, dependency resolution) and is build-time static — runtime
+ * enable/disable only decides which of these declarations get registered.
+ */
+export interface ModuleManifest {
+  /** Stable unique module ID (also used as the layer folder name). */
+  id: string
+  name: string
+  version: string
+  /** Other module IDs that must be enabled too; ordering is dependency-first. */
+  dependencies: readonly string[]
+  /** Permission entries owned by the module (e.g. `example:read`). */
+  permissions: readonly string[]
+  /** Navigation entries merged into the dashboard menu by the host. */
+  navigation: readonly ModuleManifestItem[]
+  /** Module-owned database table names (created by module migrations). */
+  database: readonly string[]
+  /** Declared API routes, served by `/api/modules/**`. */
+  api: readonly string[]
+  /** Server tool IDs registered in the tool registry. */
+  tools: readonly string[]
+  /** Fixed UI component IDs registered in the UI registry. */
+  components: readonly string[]
+}
+
+export type ModuleSchema = object | ((value: unknown) => boolean)
+
+export interface ModuleMigration {
+  /** Stable ID recorded in `__module_migrations`; never reuse or rename. */
+  id: string
+  /** Apply the migration. Receives a pg client so DDL is transactional. */
+  up: (executor: unknown) => void | Promise<void>
+}
+
+export type ModuleApiHandler<Context = unknown, Result = unknown> = (
+  event: unknown,
+  context: Context,
+  input: unknown
+) => Result | Promise<Result>
+
+export interface ModuleApiDefinition<Context = unknown, Result = unknown> {
+  id: string
+  moduleId: string
+  method: string
+  path: string
+  schema: ModuleSchema
+  authorize: AuthorizationCallback<Context>
+  handler: ModuleApiHandler<Context, Result>
+}
+
+/** Thrown by module handlers when the caller lacks a required scope (mapped to 403). */
+export class ModuleForbiddenError extends Error {}
+
+export interface ModuleLifecycleContext {
+  enabledModuleIds: readonly string[]
+  migrations: readonly ModuleMigration[]
+}
+
+export interface ModuleLifecycle {
+  onRegister?: (context: ModuleLifecycleContext) => void | Promise<void>
+  onEnable?: (context: ModuleLifecycleContext) => void | Promise<void>
+  onDisable?: (context: ModuleLifecycleContext) => void | Promise<void>
+}
+
+export interface ModuleDefinition extends ModuleManifest {
+  lifecycle?: ModuleLifecycle
+  migrations?: readonly ModuleMigration[]
+}
+
+export interface ResolvedModules<T extends ModuleDefinition> {
+  modules: T[]
+  enabledIds: string[]
+}
+export type AuthorizationCallback<Context = unknown> = (
+  context: Context,
+  input: unknown
+) => boolean | Promise<boolean>
+export type ExecuteCallback<Context = unknown, Result = unknown> = (
+  input: unknown,
+  context: Context
+) => Result | Promise<Result>
+
+export interface ApiRegistration<Context = unknown, Result = unknown> {
+  id: string
+  schema: ModuleSchema
+  authorize: AuthorizationCallback<Context>
+  execute: ExecuteCallback<Context, Result>
+}
+
+export interface ToolRegistration<Context = unknown, Result = unknown> {
+  id: string
+  schema: ModuleSchema
+  execute: ExecuteCallback<Context, Result>
+  authorize?: AuthorizationCallback<Context>
+}
+
+export interface ToolDefinition<Context = unknown, Result = unknown> extends ToolRegistration<Context, Result> {
+  moduleId: string
+  description: string
+}
+
+export interface UiRegistration<Props = unknown, Result = unknown> {
+  id: string
+  schema: ModuleSchema
+  render: (props: Props) => Result
+}
+
+export interface UiDefinition<Props = unknown, Result = unknown> extends UiRegistration<Props, Result> {
+  moduleId: string
+  label: string
+}
+
+function assertPresent(value: unknown, field: string): void {
+  if (value === undefined || value === null) {
+    throw new TypeError(`Module registration requires ${field}`)
+  }
+}
+
+function assertValidInput(schema: ModuleSchema, input: unknown, label: string): void {
+  if (typeof schema === 'function' && !schema(input)) {
+    throw new TypeError(`Invalid input for ${label}`)
+  }
+  if (typeof schema === 'object' && schema !== null) {
+    if ('safeParse' in schema && typeof schema.safeParse === 'function') {
+      if (!schema.safeParse(input).success) throw new TypeError(`Invalid input for ${label}`)
+    } else if ('parse' in schema && typeof schema.parse === 'function') {
+      try {
+        schema.parse(input)
+      } catch {
+        throw new TypeError(`Invalid input for ${label}`)
+      }
+    }
+  }
+}
+
+function assertFunction(value: unknown, field: string): asserts value is (...args: never[]) => unknown {
+  if (typeof value !== 'function') {
+    throw new TypeError(`Module registration requires ${field} to be a function`)
+  }
+}
+
+export class ModuleRegistry<T extends { id: string }> {
+  private readonly entries = new Map<string, T>()
+
+  register(entry: T): void {
+    if (!entry.id.trim()) {
+      throw new TypeError('Module registration ID must not be empty')
+    }
+    if (this.entries.has(entry.id)) {
+      throw new Error(`Duplicate module registration ID: ${entry.id}`)
+    }
+    this.entries.set(entry.id, entry)
+  }
+
+  get(id: string): T | undefined {
+    return this.entries.get(id)
+  }
+
+  list(): T[] {
+    return [...this.entries.values()]
+  }
+}
+
+export class ApiRegistry<Context = unknown> extends ModuleRegistry<ApiRegistration<Context>> {
+  override register(entry: ApiRegistration<Context>): void {
+    assertPresent(entry.schema, 'schema')
+    assertFunction(entry.authorize, 'authorize')
+    assertFunction(entry.execute, 'execute')
+    super.register(entry)
+  }
+
+  async run<Result = unknown>(id: string, input: unknown, context: Context): Promise<Result> {
+    const api = this.get(id)
+    if (!api) throw new Error(`Unknown module API: ${id}`)
+    assertValidInput(api.schema, input, `module API ${id}`)
+    try {
+      if (!await api.authorize(context, input)) throw new Error(`Module API authorization denied: ${id}`)
+    } catch (error) {
+      if (error instanceof Error && error.message === `Module API authorization denied: ${id}`) throw error
+      throw new Error(`Module API authorization denied: ${id}`, { cause: error })
+    }
+    return await api.execute(input, context) as Result
+  }
+}
+
+export class ToolRegistry<Context = unknown> extends ModuleRegistry<ToolRegistration<Context>> {
+  override register(entry: ToolRegistration<Context>): void {
+    assertPresent(entry.schema, 'schema')
+    assertFunction(entry.execute, 'execute')
+    if (entry.authorize !== undefined) assertFunction(entry.authorize, 'authorize')
+    super.register(entry)
+  }
+
+  async run<Result = unknown>(id: string, input: unknown, context: Context): Promise<Result> {
+    const tool = this.get(id)
+    if (!tool) throw new Error(`Unknown module tool: ${id}`)
+
+    assertValidInput(tool.schema, input, `module tool ${id}`)
+    try {
+      if (!tool.authorize || !await tool.authorize(context, input)) {
+        throw new Error(`Module tool authorization denied: ${id}`)
+      }
+    } catch (error) {
+      if (error instanceof Error && error.message === `Module tool authorization denied: ${id}`) throw error
+      throw new Error(`Module tool authorization denied: ${id}`, { cause: error })
+    }
+
+    return await tool.execute(input, context) as Result
+  }
+}
+
+export class UiRegistry<Props = unknown, Result = unknown> extends ModuleRegistry<UiRegistration<Props, Result>> {
+  override register(entry: UiRegistration<Props, Result>): void {
+    assertPresent(entry.schema, 'schema')
+    assertFunction(entry.render, 'render')
+    super.register(entry)
+  }
+
+  render(id: string, props: Props): Result {
+    const component = this.get(id)
+    if (!component) throw new Error(`Unknown module UI component: ${id}`)
+    assertValidInput(component.schema, props, `module UI component ${id}`)
+    return component.render(props) as Result
+  }
+}
+
+export class ModuleApiRouter<Context = unknown> {
+  private readonly definitions = new Map<string, ModuleApiDefinition<Context>>()
+
+  register(definition: ModuleApiDefinition<Context>): void {
+    const normalizedPath = definition.path.trim().replace(/^\/+|\/+$/g, '')
+    if (!definition.id.trim() || !definition.moduleId.trim() || !normalizedPath) {
+      throw new TypeError('Module API requires id, moduleId and path')
+    }
+    const key = `${definition.method.toUpperCase()} /${normalizedPath}`
+    if (this.definitions.has(key)) throw new Error(`Duplicate module API route: ${key}`)
+    if ([...this.definitions.values()].some(existing => existing.id === definition.id)) {
+      throw new Error(`Duplicate module registration ID: ${definition.id}`)
+    }
+    this.definitions.set(key, definition)
+  }
+
+  list(): ModuleApiDefinition<Context>[] {
+    return [...this.definitions.values()]
+  }
+
+  async dispatch(method: string, path: string, event: unknown, context: Context, input: unknown): Promise<unknown> {
+    const normalizedPath = path.trim().replace(/^\/+|\/+$/g, '')
+    const key = `${method.toUpperCase()} /${normalizedPath}`
+    const definition = this.definitions.get(key)
+    if (!definition) throw new Error(`Unknown module API route: ${key}`)
+    assertValidInput(definition.schema, input, `module API ${definition.id}`)
+    try {
+      if (!await definition.authorize(context, input)) throw new Error(`Module API authorization denied: ${definition.id}`)
+    } catch {
+      throw new Error(`Module API authorization denied: ${definition.id}`)
+    }
+    return definition.handler(event, context, input)
+  }
+}
+
+export function sortModulesByDependencies<T extends ModuleManifest>(modules: readonly T[]): T[] {
+  const byId = new Map<string, T>()
+  for (const module of modules) {
+    if (!module.id.trim()) throw new TypeError('Module ID must not be empty')
+    if (byId.has(module.id)) throw new Error(`Duplicate module ID: ${module.id}`)
+    byId.set(module.id, module)
+  }
+
+  const dependents = new Map<string, string[]>()
+  const remainingDependencies = new Map<string, number>()
+  for (const module of modules) {
+    const dependencies = new Set(module.dependencies)
+    for (const dependency of dependencies) {
+      if (!byId.has(dependency)) {
+        throw new Error(`Module ${module.id} has missing dependency: ${dependency}`)
+      }
+      const dependencyDependents = dependents.get(dependency) ?? []
+      dependencyDependents.push(module.id)
+      dependents.set(dependency, dependencyDependents)
+    }
+    remainingDependencies.set(module.id, dependencies.size)
+  }
+
+  const ready = [...modules]
+    .filter(module => remainingDependencies.get(module.id) === 0)
+    .map(module => module.id)
+    .sort()
+  const sorted: T[] = []
+
+  while (ready.length > 0) {
+    const id = ready.shift()!
+    sorted.push(byId.get(id)!)
+    for (const dependent of dependents.get(id) ?? []) {
+      const count = remainingDependencies.get(dependent)! - 1
+      remainingDependencies.set(dependent, count)
+      if (count === 0) {
+        ready.push(dependent)
+        ready.sort()
+      }
+    }
+  }
+
+  if (sorted.length !== modules.length) {
+    const cycle = [...remainingDependencies.entries()]
+      .filter(([, count]) => count > 0)
+      .map(([id]) => id)
+      .sort()
+    throw new Error(`Circular module dependencies: ${cycle.join(', ')}`)
+  }
+  return sorted
+}
+
+export function filterEnabledModules<T extends ModuleManifest>(
+  modules: readonly T[],
+  enabledIds: readonly string[]
+): T[] {
+  const enabled = new Set(enabledIds)
+  return modules.filter(module => enabled.has(module.id))
+}
+
+export function resolveModules<T extends ModuleDefinition>(
+  modules: readonly T[],
+  enabledIds: readonly string[]
+): ResolvedModules<T> {
+  const sorted = sortModulesByDependencies(modules)
+  const enabled = new Set(enabledIds)
+  for (const id of enabled) {
+    if (!sorted.some(module => module.id === id)) throw new Error(`Unknown enabled module: ${id}`)
+  }
+  for (const module of sorted) {
+    if (!enabled.has(module.id)) continue
+    for (const dependency of module.dependencies) {
+      if (!enabled.has(dependency)) {
+        throw new Error(`Enabled module ${module.id} requires disabled dependency: ${dependency}`)
+      }
+    }
+  }
+  return {
+    modules: sorted.filter(module => enabled.has(module.id)),
+    enabledIds: sorted.filter(module => enabled.has(module.id)).map(module => module.id)
+  }
+}
+
+export async function runModuleLifecycle<T extends ModuleDefinition>(
+  modules: readonly T[],
+  enabledIds: readonly string[],
+  phase: 'onRegister' | 'onEnable' | 'onDisable'
+): Promise<void> {
+  const resolved = resolveModules(modules, enabledIds)
+  const migrations = resolved.modules.flatMap(module => module.migrations ?? [])
+  const context: ModuleLifecycleContext = { enabledModuleIds: resolved.enabledIds, migrations }
+  for (const module of resolved.modules) {
+    await module.lifecycle?.[phase]?.(context)
+  }
+}
+
+export async function runModuleMigrations(
+  migrations: readonly ModuleMigration[],
+  executeOnce: (id: string, run: (executor?: unknown) => void | Promise<void>) => void | Promise<void>,
+  executor: unknown
+): Promise<void> {
+  const seen = new Set<string>()
+  for (const migration of migrations) {
+    if (!migration.id.trim()) throw new TypeError('Module migration ID must not be empty')
+    if (seen.has(migration.id)) throw new Error(`Duplicate module migration ID: ${migration.id}`)
+    if (typeof migration.up !== 'function') throw new TypeError(`Module migration ${migration.id} requires an up handler`)
+    seen.add(migration.id)
+    await executeOnce(migration.id, migrationExecutor => migration.up(migrationExecutor ?? executor))
+  }
+}

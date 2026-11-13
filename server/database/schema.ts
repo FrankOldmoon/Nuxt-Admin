@@ -15,6 +15,77 @@ import {
   doublePrecision
 } from 'drizzle-orm/pg-core'
 
+export const tenants = pgTable(
+  'tenants',
+  {
+    id: serial('id').primaryKey(),
+    name: varchar('name', { length: 120 }).notNull(),
+    slug: varchar('slug', { length: 80 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({ slugIdx: uniqueIndex('tenants_slug_idx').on(table.slug) })
+)
+
+export const organizations = pgTable(
+  'organizations',
+  {
+    id: serial('id').primaryKey(),
+    tenantId: integer('tenant_id').notNull(),
+    name: varchar('name', { length: 120 }).notNull(),
+    slug: varchar('slug', { length: 80 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    tenantSlugIdx: uniqueIndex('organizations_tenant_slug_idx').on(table.tenantId, table.slug),
+    tenantFk: foreignKey({ columns: [table.tenantId], foreignColumns: [tenants.id] }).onDelete('restrict').onUpdate('cascade')
+  })
+)
+
+export const departments = pgTable(
+  'departments',
+  {
+    id: serial('id').primaryKey(),
+    organizationId: integer('organization_id').notNull(),
+    name: varchar('name', { length: 120 }).notNull(),
+    parentId: integer('parent_id'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    organizationIdx: index('departments_organization_idx').on(table.organizationId),
+    organizationFk: foreignKey({ columns: [table.organizationId], foreignColumns: [organizations.id] }).onDelete('cascade').onUpdate('cascade'),
+    parentFk: foreignKey({ columns: [table.parentId], foreignColumns: [table.id] }).onDelete('set null').onUpdate('cascade')
+  })
+)
+
+export const auditLogs = pgTable(
+  'audit_logs',
+  {
+    id: serial('id').primaryKey(),
+    actorUserId: integer('actor_user_id'),
+    tenantId: integer('tenant_id'),
+    organizationId: integer('organization_id'),
+    moduleId: varchar('module_id', { length: 100 }).notNull().default('core'),
+    action: varchar('action', { length: 100 }).notNull(),
+    resource: varchar('resource', { length: 160 }).notNull(),
+    recordId: varchar('record_id', { length: 160 }),
+    before: jsonb('before'),
+    after: jsonb('after'),
+    source: varchar('source', { length: 100 }),
+    outcome: varchar('outcome', { length: 20 }).notNull().default('success'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    actorIdx: index('audit_logs_actor_created_idx').on(table.actorUserId, table.createdAt),
+    resourceIdx: index('audit_logs_resource_record_idx').on(table.resource, table.recordId),
+    organizationIdx: index('audit_logs_organization_created_idx').on(table.organizationId, table.createdAt),
+    tenantFk: foreignKey({ columns: [table.tenantId], foreignColumns: [tenants.id] }).onDelete('set null').onUpdate('cascade'),
+    organizationFk: foreignKey({ columns: [table.organizationId], foreignColumns: [organizations.id] }).onDelete('set null').onUpdate('cascade')
+  })
+)
+
 export const roles = pgTable(
   'roles',
   {
@@ -95,6 +166,31 @@ export const oauthAccounts = pgTable(
 
 export type OAuthAccount = typeof oauthAccounts.$inferSelect
 export type NewOAuthAccount = typeof oauthAccounts.$inferInsert
+
+export const organizationMemberships = pgTable(
+  'organization_memberships',
+  {
+    id: serial('id').primaryKey(),
+    userId: integer('user_id').notNull(),
+    organizationId: integer('organization_id').notNull(),
+    departmentId: integer('department_id'),
+    roleId: integer('role_id'),
+    status: varchar('status', { length: 20 }).default('active').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    userOrganizationIdx: uniqueIndex('organization_memberships_user_org_idx').on(table.userId, table.organizationId),
+    organizationIdx: index('organization_memberships_organization_idx').on(table.organizationId),
+    userFk: foreignKey({ columns: [table.userId], foreignColumns: [users.id] }).onDelete('cascade').onUpdate('cascade'),
+    organizationFk: foreignKey({ columns: [table.organizationId], foreignColumns: [organizations.id] }).onDelete('cascade').onUpdate('cascade'),
+    departmentFk: foreignKey({ columns: [table.departmentId], foreignColumns: [departments.id] }).onDelete('set null').onUpdate('cascade'),
+    roleFk: foreignKey({ columns: [table.roleId], foreignColumns: [roles.id] }).onDelete('set null').onUpdate('cascade')
+  })
+)
+
+export type OrganizationMembership = typeof organizationMemberships.$inferSelect
+export type NewOrganizationMembership = typeof organizationMemberships.$inferInsert
 
 // Membership (subscription) plans. A plan is a purchasable option granting
 // `durationDays` of membership. Prices are stored in the smallest currency unit.

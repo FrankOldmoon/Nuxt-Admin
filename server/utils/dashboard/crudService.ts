@@ -41,6 +41,12 @@ import {
 } from 'drizzle-orm'
 import type { PgTableWithColumns, PgColumn } from 'drizzle-orm/pg-core'
 import { createError } from 'h3'
+import type { Database } from '~~/server/database'
+import { writeAudit } from '~~/server/core/audit'
+import { deniedWriteFields, hiddenFieldsFor, withoutHiddenFields } from '~~/server/core/fieldPolicy'
+
+/** Minimal executor shared by the pool and a transaction so writes can be atomic. */
+type CrudExecutor = Pick<Database, 'insert' | 'delete'>
 
 // ---- many-to-many pivot helpers ----
 
@@ -87,6 +93,7 @@ async function syncManyToManyPivots(
   baseId: number | string,
   payload: Record<string, unknown>,
   mode: 'insert' | 'update',
+  executor: CrudExecutor = db
 ) {
   const entries = m2mEntries(meta)
   for (const ent of entries) {
@@ -105,18 +112,16 @@ async function syncManyToManyPivots(
     const ourCol = col(pivotTbl, ourFk)
 
     try {
-      await db.transaction(async (tx) => {
-        if (mode === 'update') {
-          await tx.delete(pivotTbl).where(eq(ourCol as any, baseId as any))
-        }
-        if (ids.length > 0) {
-          const rows = ids.map((otherId) => ({
-            [ourFk]: typeof baseId === 'number' ? Number(baseId) : baseId,
-            [otherFk]: typeof otherId === 'number' ? Number(otherId) : otherId,
-          }))
-          await tx.insert(pivotTbl).values(rows as any).onConflictDoNothing()
-        }
-      })
+      if (mode === 'update') {
+        await executor.delete(pivotTbl).where(eq(ourCol as any, baseId as any))
+      }
+      if (ids.length > 0) {
+        const rows = ids.map((otherId) => ({
+          [ourFk]: typeof baseId === 'number' ? Number(baseId) : baseId,
+          [otherFk]: typeof otherId === 'number' ? Number(otherId) : otherId,
+        }))
+        await executor.insert(pivotTbl).values(rows as any).onConflictDoNothing()
+      }
     } catch (e) {
       throw createError({ statusCode: 500, message: `Failed to sync ${ent.field.key}: ${e instanceof Error ? e.message : String(e)}` })
     }
@@ -385,19 +390,47 @@ export interface DataScopeActor {
   userId: number
   roleName: string
   dataScope: string
+  organizationId?: number
+  tenantId?: number
+}
+
+async function writeCrudAudit(
+  executor: CrudExecutor,
+  action: string,
+  meta: TableMeta,
+  actor: DataScopeActor | undefined,
+  recordId: number | string | undefined,
+  before: unknown,
+  after: unknown
+): Promise<void> {
+  await writeAudit(executor, {
+    actorUserId: actor?.userId,
+    tenantId: actor?.tenantId,
+    organizationId: actor?.organizationId,
+    moduleId: 'core',
+    action,
+    resource: meta.table,
+    recordId: recordId ?? null,
+    before,
+    after,
+    source: 'dashboard-crud'
+  })
 }
 
 /** Convert a role-level AuthContext (logged-in user + role) into a data-scope actor
  *  context; returns undefined when there is no role (no restriction). */
 export function toDataScopeActor(ctx: {
   user: { id: number }
-  role: { name: string; dataScope?: string | null } | null
+  role: { name: string, dataScope?: string | null } | null
+  organization?: { id: number, tenantId: number } | null
 }): DataScopeActor | undefined {
   if (!ctx.role) return undefined
   return {
     userId: ctx.user.id,
     roleName: ctx.role.name,
     dataScope: ctx.role.dataScope || 'all',
+    organizationId: ctx.organization?.id,
+    tenantId: ctx.organization?.tenantId
   }
 }
 
@@ -412,23 +445,22 @@ async function buildDataScopeWhere(
   tbl: PgTableWithColumns<any>,
   actor: DataScopeActor | undefined
 ): Promise<any> {
-  if (!actor || actor.roleName === 'admin') return undefined
+  if (!actor) {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: 'A permission context is required for dashboard data access' })
+  }
+  if (actor.roleName === 'admin') return undefined
   const scope = actor.dataScope || 'all'
   if (scope === 'all') return undefined
-  const ds = meta.features.dataScope
-  if (!ds) return undefined
-
-  if (scope === 'self') {
-    if (ds.userTable) {
-      try { return eq(col(tbl, 'id'), actor.userId) } catch { return undefined }
-    }
-    if (ds.ownerColumn) {
-      try { return eq(col(tbl, ds.ownerColumn), actor.userId) } catch { return undefined }
-    }
-    return undefined
+  if (scope !== 'self') {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: `Unsupported data scope: ${scope}` })
   }
 
-  return undefined
+  const ds = meta.features.dataScope
+  if (ds?.userTable) return eq(col(tbl, 'id'), actor.userId)
+  if (!ds?.ownerColumn) {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: `Table ${meta.table} has no owner mapping for self scope` })
+  }
+  return eq(col(tbl, ds.ownerColumn), actor.userId)
 }
 
 /** Merge the caller's where with the data-scope condition (undefined means unrestricted). */
@@ -441,6 +473,31 @@ async function applyDataScope(
   const scopeCond = await buildDataScopeWhere(meta, tbl, actor)
   if (!scopeCond) return where
   return where ? and(where, scopeCond) : scopeCond
+}
+
+// ------- field-level policy -------
+
+/** Reject writes to fields the role is not allowed to manage. */
+function assertWritableFields(meta: TableMeta, actor: DataScopeActor | undefined, payload: Record<string, unknown>): void {
+  if (!actor) return
+  const [denied] = deniedWriteFields(actor.roleName, meta.features.fieldPolicy, payload)
+  if (denied) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Forbidden',
+      message: `No write access to field: ${denied}`
+    })
+  }
+}
+
+/** Remove fields the role must not read from a single row. */
+function hideUnreadableFields<T extends Record<string, unknown>>(
+  meta: TableMeta,
+  actor: DataScopeActor | undefined,
+  row: T
+): T {
+  if (!actor) return row
+  return withoutHiddenFields(row, hiddenFieldsFor(actor.roleName, meta.features.fieldPolicy))
 }
 
 // ------- public API -------
@@ -470,7 +527,11 @@ export async function listTableData<T = Record<string, unknown>>(
   ] as const)
 
   const total = Number(countRows[0]?.value ?? 0)
-  return { rows: rows as T[], total }
+  const hidden = actor ? hiddenFieldsFor(actor.roleName, meta.features.fieldPolicy) : new Set<string>()
+  const visibleRows = hidden.size === 0
+    ? rows as T[]
+    : rows.map(row => withoutHiddenFields(row as Record<string, unknown>, hidden)) as T[]
+  return { rows: visibleRows, total }
 }
 
 export { parsePageQuery }
@@ -484,32 +545,42 @@ export async function getById<T = Record<string, unknown>>(meta: TableMeta, id: 
   const row = (rows[0] as Record<string, unknown> | undefined) ?? null
   if (!row) return null as T | null
   const m2m = meta.fields.filter(f => f.type === 'many-to-many')
-  if (m2m.length === 0) return row as unknown as T
   for (const f of m2m) {
     row[f.key] = await loadManyToManyIds(meta, f.key, id)
   }
-  return row as unknown as T
+  return hideUnreadableFields(meta, actor, row) as unknown as T
 }
 
 export async function insertRow(meta: TableMeta, payload: Record<string, unknown>, actor?: DataScopeActor): Promise<Record<string, unknown>> {
   const tbl = resolveTable(meta)
   // self data scope: force the owner column to the current user to prevent
   // creating data for others.
-  if (actor && actor.roleName !== 'admin' && actor.dataScope === 'self') {
-    const ownerCol = meta.features.dataScope?.ownerColumn
-    if (ownerCol) {
-      try {
-        col(tbl, ownerCol)
-        payload[ownerCol] = actor.userId
-      } catch { /* ignore — skip if the column doesn't exist */ }
+  if (!actor) {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: 'A permission context is required for dashboard data access' })
+  }
+  assertWritableFields(meta, actor, payload)
+  if (actor.roleName !== 'admin' && actor.dataScope === 'self') {
+    const scope = meta.features.dataScope
+    if (scope?.userTable) {
+      throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: `Creating rows in ${meta.table} is not allowed with self scope` })
     }
+    if (!scope?.ownerColumn) {
+      throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: `Table ${meta.table} has no owner mapping for self scope` })
+    }
+    col(tbl, scope.ownerColumn)
+    payload[scope.ownerColumn] = actor.userId
   }
   throwOnInvalid(meta, payload, 'create')
-  const inserted = await db.insert(tbl).values(castForDbInsert(meta, payload, new Date())).returning()
-  const row = inserted[0] as Record<string, unknown>
+  const row = await db.transaction(async (tx) => {
+    const [inserted] = await tx.insert(tbl).values(castForDbInsert(meta, payload, new Date())).returning()
+    if (!inserted) throw createError({ statusCode: 500, message: 'Failed to insert row' })
+    if (meta.fields.some(f => f.type === 'many-to-many')) {
+      await syncManyToManyPivots(meta, inserted.id as number | string, payload, 'insert', tx)
+    }
+    await writeCrudAudit(tx, 'create', meta, actor, inserted.id as number | string | undefined, null, inserted)
+    return inserted as Record<string, unknown>
+  })
   if (row && row.id !== undefined && meta.fields.some(f => f.type === 'many-to-many')) {
-    await syncManyToManyPivots(meta, row.id as number | string, payload, 'insert')
-    // Re-load the row so virtual m2m fields are populated for the caller
     return (await getById(meta, row.id as number | string, actor)) ?? row
   }
   return row
@@ -748,20 +819,29 @@ export async function seedTable(
 export async function updateRow(meta: TableMeta, id: number | string, payload: Record<string, unknown>, actor?: DataScopeActor): Promise<Record<string, unknown> | null> {
   const tbl = resolveTable(meta)
   const idCol = col(tbl, 'id')
+  assertWritableFields(meta, actor, payload)
   throwOnInvalid(meta, payload, 'update')
   const now = new Date()
   const set = castForDbUpdate(meta, payload, now)
-  // Snapshot the previous content into the row's `versions` history (if the
-  // table opted in via `features.versions`) before applying the update.
-  await addVersionSnapshot(meta, tbl, idCol, id, set, now)
-  if (Object.keys(set).length > 0) {
-    const where = await applyDataScope(meta, tbl, actor, eq(idCol, id as any))
-    await db.update(tbl).set(set).where(where).returning()
-  }
-  if (meta.fields.some(f => f.type === 'many-to-many')) {
-    await syncManyToManyPivots(meta, id, payload, 'update')
-  }
-  return getById(meta, id, actor)
+  const where = await applyDataScope(meta, tbl, actor, eq(idCol, id as any))
+  return await db.transaction(async (tx) => {
+    const [current] = await tx.select().from(tbl).where(where).limit(1)
+    if (!current) return null
+
+    const before = { ...(current as Record<string, unknown>) }
+    await addVersionSnapshot(meta, tbl, idCol, id, set, now, tx)
+    let after = before
+    if (Object.keys(set).length > 0) {
+      const [updated] = await tx.update(tbl).set(set).where(where).returning()
+      if (!updated) return null
+      after = updated as Record<string, unknown>
+    }
+    if (meta.fields.some(f => f.type === 'many-to-many')) {
+      await syncManyToManyPivots(meta, id, payload, 'update', tx)
+    }
+    await writeCrudAudit(tx, 'update', meta, actor, id, before, after)
+    return after
+  })
 }
 
 /**
@@ -778,12 +858,13 @@ async function addVersionSnapshot(
   id: number | string,
   set: Record<string, unknown>,
   now: Date,
+  executor: any = db
 ): Promise<void> {
   const cfg = meta.features?.versions
   if (!cfg || !cfg.fields?.length) return
   const changed = cfg.fields.filter(f => f in set)
   if (changed.length === 0) return
-  const rows = await db.select().from(tbl).where(eq(idCol, id as any)).limit(1)
+  const rows = await executor.select().from(tbl).where(eq(idCol, id as any)).limit(1)
   const cur = rows[0] as Record<string, unknown> | undefined
   if (!cur) return
   const snapshot: Record<string, unknown> = { savedAt: now.toISOString() }
@@ -1000,8 +1081,14 @@ export async function softDeleteRow(meta: TableMeta, id: number | string, actor?
   const idCol = col(tbl, 'id')
   const deletedAtCol = col(tbl, 'deletedAt')
   const where = await applyDataScope(meta, tbl, actor, eq(idCol, id as any))
-  const res = await db.update(tbl).set({ [deletedAtCol.name as any]: new Date() } as any).where(where)
-  return Number(res.rowCount ?? 0)
+  return await db.transaction(async (tx) => {
+    const [before] = await tx.select().from(tbl).where(where).limit(1)
+    if (!before) return 0
+    const [after] = await tx.update(tbl).set({ deletedAt: new Date() } as any).where(where).returning()
+    if (!after) return 0
+    await writeCrudAudit(tx, 'delete', meta, actor, id, before, after)
+    return 1
+  })
 }
 
 export async function restoreRow(meta: TableMeta, id: number | string, actor?: DataScopeActor): Promise<number> {
@@ -1010,16 +1097,28 @@ export async function restoreRow(meta: TableMeta, id: number | string, actor?: D
   const idCol = col(tbl, 'id')
   const deletedAtCol = col(tbl, 'deletedAt')
   const where = await applyDataScope(meta, tbl, actor, eq(idCol, id as any))
-  const res = await db.update(tbl).set({ [deletedAtCol.name as any]: null } as any).where(where)
-  return Number(res.rowCount ?? 0)
+  return await db.transaction(async (tx) => {
+    const [before] = await tx.select().from(tbl).where(where).limit(1)
+    if (!before) return 0
+    const [after] = await tx.update(tbl).set({ deletedAt: null } as any).where(where).returning()
+    if (!after) return 0
+    await writeCrudAudit(tx, 'restore', meta, actor, id, before, after)
+    return 1
+  })
 }
 
 export async function permanentDeleteRow(meta: TableMeta, id: number | string, actor?: DataScopeActor): Promise<number> {
   const tbl = resolveTable(meta)
   const idCol = col(tbl, 'id')
   const where = await applyDataScope(meta, tbl, actor, eq(idCol, id as any))
-  const res = await db.delete(tbl).where(where)
-  return Number(res.rowCount ?? 0)
+  return await db.transaction(async (tx) => {
+    const [before] = await tx.select().from(tbl).where(where).limit(1)
+    if (!before) return 0
+    const [deleted] = await tx.delete(tbl).where(where).returning()
+    if (!deleted) return 0
+    await writeCrudAudit(tx, 'permanent-delete', meta, actor, id, before, null)
+    return 1
+  })
 }
 
 export async function applyBatch(meta: TableMeta, action: 'soft-delete' | 'restore' | 'permanent-delete', ids: Array<number | string>, actor?: DataScopeActor): Promise<number> {
@@ -1033,18 +1132,39 @@ export async function applyBatch(meta: TableMeta, action: 'soft-delete' | 'resto
     // Verify the column exists; use the JS property name ('deletedAt') as the
     // SET key — Drizzle expects JS property keys, NOT SQL column names (.name).
     col(tbl, 'deletedAt')
-    const res = await db.update(tbl).set({ deletedAt: new Date() } as any).where(where)
-    return Number(res.rowCount ?? 0)
+    return await db.transaction(async (tx) => {
+      const beforeRows = await tx.select().from(tbl).where(where)
+      const updatedRows = await tx.update(tbl).set({ deletedAt: new Date() } as any).where(where).returning()
+      for (let index = 0; index < updatedRows.length; index++) {
+        const row = updatedRows[index] as Record<string, unknown>
+        await writeCrudAudit(tx, 'delete', meta, actor, row.id as number | string, beforeRows[index], row)
+      }
+      return updatedRows.length
+    })
   }
   if (action === 'restore') {
     if (!meta.features.softDelete) throw createError({ statusCode: 405, message: 'Table does not support soft delete' })
     col(tbl, 'deletedAt')
-    const res = await db.update(tbl).set({ deletedAt: null } as any).where(where)
-    return Number(res.rowCount ?? 0)
+    return await db.transaction(async (tx) => {
+      const beforeRows = await tx.select().from(tbl).where(where)
+      const updatedRows = await tx.update(tbl).set({ deletedAt: null } as any).where(where).returning()
+      for (let index = 0; index < updatedRows.length; index++) {
+        const row = updatedRows[index] as Record<string, unknown>
+        await writeCrudAudit(tx, 'restore', meta, actor, row.id as number | string, beforeRows[index], row)
+      }
+      return updatedRows.length
+    })
   }
   // permanent-delete
-  const res = await db.delete(tbl).where(where)
-  return Number(res.rowCount ?? 0)
+  return await db.transaction(async (tx) => {
+    const beforeRows = await tx.select().from(tbl).where(where)
+    const deletedRows = await tx.delete(tbl).where(where).returning()
+    for (let index = 0; index < deletedRows.length; index++) {
+      const row = deletedRows[index] as Record<string, unknown>
+      await writeCrudAudit(tx, 'permanent-delete', meta, actor, row.id as number | string, beforeRows[index], null)
+    }
+    return deletedRows.length
+  })
 }
 
 /** Load option lists for `relation` / `select` fields so the frontend can
