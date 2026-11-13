@@ -118,7 +118,7 @@ Upload (configurable size / MIME whitelist), local storage, download/serve, per-
 - Gated by `membership.enabled` (System Config → General); redirect paths are configurable (`membership.successUrl` / `membership.cancelUrl`).
 
 ### Analytics / Tracking
-- Config-driven integrations for **Google Analytics 4**, **Google Ads** and **Baidu Tongji (百度统计)** — set the IDs in System Config → General (`analytics.*`), empty = off.
+- Config-driven integrations for **Google Analytics 4**, **Google Ads** and **Baidu Tongji** — set the IDs in System Config → General (`analytics.*`), empty = off.
 - Scripts are injected automatically from the public config; IDs are sanitized so the inline snippet stays injection-safe.
 - A client plugin syncs SPA route changes to both networks (`page_view` / `_trackPageview`), so single-page navigation is tracked correctly.
 - `useAnalytics()` composable for business events: `trackEvent()`, `trackGoogleAdsConversion('AW-.../label')`, `trackBaiduPageview()`.
@@ -253,6 +253,7 @@ Business modules live under `modules/<id>/` and connect only through the public 
 - Generic CRUD metadata can be registered through `registerDashboardTable` (moduleId/resource/permissions/contextColumns); business validation through `registerTableValidator`; custom data scopes through `registerDataScopeResolver`.
 - Modules must not import `server/core/**` or `server/utils/**`; `test/unit/server/core/moduleDecoupling.test.ts` enforces the boundary.
 - Build-time enablement uses `ENABLED_MODULES`; runtime state (`active`/`deactivated`/`uninstalled`) is managed at `/dashboard/modules`.
+- The repository is a **pnpm workspace** (`pnpm-workspace.yaml` covers `modules/*`). A module with its own `package.json` is installed as a workspace package, so run `pnpm install` after cloning or updating it.
 
 ---
 
@@ -268,12 +269,13 @@ The SIS/SMS module is maintained in [`Nuxt-Extend-SMS`](https://github.com/Frank
 
 ```bash
 git clone https://github.com/FrankOldmoon/Nuxt-Extend-SMS.git modules/sms
+pnpm install        # link the cloned workspace package and install its dependencies
 # register it as smsModule in modules.catalog.ts, then:
 ENABLED_MODULES=example,sms pnpm build
 pnpm db:migrate:release
 ```
 
-Modules are not standalone apps: they run inside the host Nitro process as Nuxt layers plus server code. Add a module in three steps:
+Modules are not standalone apps: they run inside the host Nitro process as Nuxt layers plus server code. A module may have its own `package.json` (metadata and `peerDependencies`); the host workspace installs it, but it still needs the host Nuxt/Nitro runtime. Add a module in three steps:
 
 ```bash
 # 1. Put the module in modules/<id>/ (clone / submodule / local folder)
