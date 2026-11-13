@@ -56,6 +56,31 @@ describe('ModelGateway', () => {
     expect(result.attempts).toBe(2)
   })
 
+  it('stops retrying errors rejected by retryOn', async () => {
+    const chat = vi.fn().mockRejectedValue(new Error('Upstream API error (400): invalid schema'))
+    const gateway = new ModelGateway({
+      providers: [provider('p', chat)],
+      retries: 5,
+      retryOn: error => !/invalid schema/.test(String(error))
+    })
+    await expect(gateway.complete({ messages: [], model: 'm' })).rejects.toThrow('invalid schema')
+    expect(chat).toHaveBeenCalledTimes(1)
+  })
+
+  it('retries transient gateway errors matched by retryOn', async () => {
+    const chat = vi.fn()
+      .mockRejectedValueOnce(new Error('Upstream API error (400): 400001 internal MaaS component'))
+      .mockResolvedValueOnce({ content: 'ok' })
+    const gateway = new ModelGateway({
+      providers: [provider('p', chat)],
+      retries: 3,
+      retryOn: error => /400001/.test(String(error))
+    })
+    const result = await gateway.complete({ messages: [], model: 'm' })
+    expect(result.content).toBe('ok')
+    expect(result.attempts).toBe(2)
+  })
+
   it('falls back to the next provider and can disable fallback', async () => {
     const first = provider('first', async () => {
       throw new Error('down')

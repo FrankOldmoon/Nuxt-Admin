@@ -42,6 +42,25 @@ function readEnv(name: string): string | undefined {
   return value || undefined
 }
 
+/**
+ * Some OpenAI-compatible gateways (e.g. Tencent MaaS) intermittently reject a
+ * valid tool-calling request with `400001 internal MaaS component`. The same
+ * request succeeds on retry, so transient upstream/tool errors are retried
+ * while genuine validation errors (401/403/404/regular 400) are not.
+ */
+function isRetryableModelError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  if (/timed out|ECONNRESET|ETIMEDOUT|socket hang up|fetch failed/i.test(message)) return true
+  if (/internal MaaS component|400001/i.test(message)) return true
+  const status = Number(/Upstream API error \((\d+)\)/.exec(message)?.[1])
+  return [408, 409, 425, 429, 500, 502, 503, 504].includes(status)
+}
+
+function modelRetries(): number {
+  const configured = Number(process.env.LLM_RETRIES)
+  return Number.isFinite(configured) && configured >= 0 ? Math.floor(configured) : 7
+}
+
 /** Load all LLM configs in one pass and return a typed bag (env overrides DB). */
 export async function loadLlmConfig() {
   const [dbApiKey, dbBaseUrl, dbModel, temperature, maxTokens, systemPrompt] = await Promise.all([
@@ -170,7 +189,8 @@ export async function runLlmChatTurn(req: TurnRequest): Promise<AgentModelTurn> 
   const model = req.model || cfg.model
   const gateway = new ModelGateway({
     providers: [createOpenAiCompatibleProvider({ baseUrl: cfg.baseUrl, apiKey: cfg.apiKey })],
-    retries: Number(process.env.LLM_RETRIES ?? 1),
+    retries: modelRetries(),
+    retryOn: isRetryableModelError,
     timeoutMs: Number(process.env.LLM_TIMEOUT_MS ?? 60_000),
     pricing: {
       [model]: {

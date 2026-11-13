@@ -43,6 +43,11 @@ export interface ModelGatewayOptions {
   providers: readonly ModelProvider[]
   /** Retries per provider after the first failed attempt. */
   retries?: number
+  /**
+   * Decide whether a failed attempt is retryable. Defaults to retrying every
+   * error (providers may still fall back to the next provider).
+   */
+  retryOn?: (error: unknown) => boolean
   /** Per-attempt timeout; 0/undefined disables it. */
   timeoutMs?: number
   /** Try the next provider after retries are exhausted. Defaults to true. */
@@ -89,6 +94,7 @@ function abortable<T>(promise: Promise<T>, timeoutMs: number | undefined, signal
 export class ModelGateway {
   private readonly providers: ModelProvider[]
   private readonly retries: number
+  private readonly retryOn?: (error: unknown) => boolean
   private readonly timeoutMs?: number
   private readonly fallback: boolean
   private readonly pricing: Readonly<Record<string, ModelPricing>>
@@ -103,6 +109,7 @@ export class ModelGateway {
     }
     this.providers = [...options.providers]
     this.retries = Math.max(0, options.retries ?? 1)
+    this.retryOn = options.retryOn
     this.timeoutMs = options.timeoutMs
     this.fallback = options.fallback ?? true
     this.pricing = options.pricing ?? {}
@@ -137,6 +144,7 @@ export class ModelGateway {
           }
         } catch (error) {
           lastError = error
+          if (this.retryOn && !this.retryOn(error)) break
         }
       }
     }
