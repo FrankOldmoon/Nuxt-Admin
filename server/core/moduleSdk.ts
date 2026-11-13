@@ -165,6 +165,8 @@ export interface UiRegistration<Props = unknown, Result = unknown> {
   render: (props: Props) => Result
   /** Fixed component version; checked by `render(id, props, { version })`. */
   version?: string
+  /** Human-readable name shown to the model when offering the component. */
+  label?: string
 }
 
 export interface UiDefinition<Props = unknown, Result = unknown> extends UiRegistration<Props, Result> {
@@ -331,13 +333,23 @@ export class UiRegistry<Props = unknown, Result = unknown> extends ModuleRegistr
     super.register(entry)
   }
 
-  render(id: string, props: Props, options?: { version?: string }): Result {
+  /**
+   * Validate props for a registered component without rendering it. Used by the
+   * chat component-block protocol so the model can only pass schema-valid props.
+   */
+  validateProps(id: string, props: Props, options?: { version?: string }): void {
     const component = this.get(id)
     if (!component) throw new Error(`Unknown module UI component: ${id}`)
     if (component.version && options?.version && component.version !== options.version) {
       throw new Error(`Module UI component version mismatch: ${id} (expected ${component.version}, got ${options.version})`)
     }
     assertValidInput(component.schema, props, `module UI component ${id}`)
+  }
+
+  render(id: string, props: Props, options?: { version?: string }): Result {
+    const component = this.get(id)
+    if (!component) throw new Error(`Unknown module UI component: ${id}`)
+    this.validateProps(id, props, options)
     return component.render(props) as Result
   }
 }

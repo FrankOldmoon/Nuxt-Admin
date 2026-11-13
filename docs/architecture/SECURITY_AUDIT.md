@@ -70,6 +70,8 @@
 | 共享限流存储（Postgres）建表、计数、窗口重置 | `test/unit/server/rateLimit.test.ts` |
 | 模块迁移回滚（down 执行 / 记录删除 / 无 down 拒绝 / 重复回滚拒绝） | `test/unit/server/database/moduleMigrations.test.ts` |
 | 模块 manifest 与能力/权限/表前缀一致 | `modules/sms/test/capabilities.test.ts` |
+| 组件块：未知 ID / 坏 JSON / 版本不一致 / props schema 失败均被丢弃 | `test/unit/server/core/componentBlock.test.ts` |
+| SMS 学生表格组件拒绝 `rows`/`students`，只接受 `query`/`limit` | `modules/sms/test/capabilities.test.ts` |
 
 ### S8 模块数据库访问边界
 
@@ -92,6 +94,7 @@
 - Agent：能力按权限过滤；写操作必须表单/审批；执行走 `ToolRegistry`（schema、鉴权、限流、超时、输出上限）；审批与参数哈希绑定。
 - 数据访问：无通用 SQL/HTTP 工具；业务写入只经模块 service。
 - 聊天渲染：助手 Markdown 由 `markdown-it`（`html: false`）渲染，原始 HTML 被转义，链接强制 `noopener noreferrer nofollow`；只读结果表格的列由服务端 `resultView` 固定，模型输出不能决定字段。
+- 组件块：` ```component ` 只接受 `UiRegistry` 中已注册且模块启用的 ID，版本与 props schema 均校验；SMS 学生表格只接受 `query`/`limit`，拒绝模型传入行数据；客户端从构建期固定映射渲染，未知组件 fail-closed。
 
 ## 4. 依赖审计
 

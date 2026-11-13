@@ -94,6 +94,7 @@ export function registerExampleModule(registries: ExampleRegistries): void {
   registries.ui.register({
     id: exampleUi.id,
     version: exampleUi.version,
+    label: exampleUi.label,
     schema: exampleUi.schema,
     render: props => exampleUi.render(props as { count: number })
   })

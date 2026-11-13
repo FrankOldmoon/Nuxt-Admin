@@ -40,10 +40,11 @@ import type {
   ToolCallCard
 } from '../core/conversation'
 import { asChatUi, asToolCallCards } from '../core/conversation'
+import { buildComponentPrompt, extractComponentBlock } from '../core/componentBlock'
 import type { agentConversations, agentMessages } from '../database/schema'
 import { writeAudit } from '../core/audit'
 import { db } from '../database'
-import { moduleTools } from './moduleRuntime'
+import { moduleTools, moduleUi } from './moduleRuntime'
 import {
   addAgentMessage,
   createAgentApproval,
@@ -162,9 +163,14 @@ export function createChatModel(options: ChatModelOptions) {
   }
 }
 
-/** System prompt for a chat turn (base safety + registered module prompts). */
+/** System prompt for a chat turn (base safety + module prompts + components). */
 export function chatSystemMessage(actor: ChatActor): AgentMessage {
-  return { role: 'system', content: buildChatSystemPrompt(actor) }
+  const components = moduleUi.list().map(component => ({ id: component.id, label: component.label }))
+  const componentSection = buildComponentPrompt(components)
+  const content = componentSection
+    ? `${buildChatSystemPrompt(actor)}\n\n${componentSection}`
+    : buildChatSystemPrompt(actor)
+  return { role: 'system', content }
 }
 
 export function isCapabilityVisible(capability: CapabilityDefinition | undefined, actor: ChatActor): boolean {
@@ -269,8 +275,22 @@ export async function finalizeChatResult(options: FinalizeChatOptions): Promise<
   }
 
   if (result.status === 'completed') {
-    const content = result.content.trim() || '已完成。'
-    await addAgentMessage({ conversationId, role: 'assistant', content, toolCalls, executionId })
+    // A trailing ```component block may reference a registered component; it is
+    // validated (id/version/props schema) and persisted as message UI.
+    const extraction = extractComponentBlock(result.content, moduleUi)
+    const content = extraction.content.trim() || '已完成。'
+    const componentUi: ChatUi | undefined = extraction.directive
+      ? { kind: 'component', ...extraction.directive }
+      : undefined
+
+    await addAgentMessage({
+      conversationId,
+      role: 'assistant',
+      content,
+      toolCalls,
+      ui: componentUi,
+      executionId
+    })
     await finishAgentExecution(executionId, {
       status: 'completed',
       usage: result.usage,
@@ -282,7 +302,8 @@ export async function finalizeChatResult(options: FinalizeChatOptions): Promise<
       conversationId,
       status: 'completed',
       message: { role: 'assistant', content },
-      toolCalls
+      toolCalls,
+      ...(componentUi ? { ui: componentUi } : {})
     }
   }
 

@@ -20,6 +20,7 @@
 export * from '../core/moduleSdk'
 export * from '../core/capability'
 export * from '../core/conversation'
+export * from '../core/componentBlock'
 /**
  * Module database access. Modules must reach the host database through this
  * export (or their own `server/database` folder) so the coupling surface stays

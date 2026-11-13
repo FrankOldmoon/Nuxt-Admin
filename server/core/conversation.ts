@@ -85,7 +85,15 @@ export interface ChatToolsUi {
   cards: ToolCallCard[]
 }
 
-export type ChatUi = ChatFormUi | ChatApprovalUi | ChatResultUi | ChatToolsUi
+/** Registered Vue component requested by the model via a ```component block. */
+export interface ChatComponentUi {
+  kind: 'component'
+  component: string
+  version?: string
+  props: Record<string, unknown>
+}
+
+export type ChatUi = ChatFormUi | ChatApprovalUi | ChatResultUi | ChatToolsUi | ChatComponentUi
 
 export type ChatStatus = 'completed' | 'pending_confirmation' | 'pending_form' | 'failed'
 
@@ -124,7 +132,7 @@ export interface ConversationDetail extends ConversationSummary {
 export function isChatUi(value: unknown): value is ChatUi {
   if (!value || typeof value !== 'object') return false
   const kind = (value as { kind?: unknown }).kind
-  return kind === 'form' || kind === 'approval' || kind === 'result' || kind === 'tools'
+  return kind === 'form' || kind === 'approval' || kind === 'result' || kind === 'tools' || kind === 'component'
 }
 
 export function asChatUi(value: unknown): ChatUi | null {
