@@ -162,6 +162,8 @@ Artifact 服务已存在，但**尚无内置文件生成工具**（Planned）。
 | `server/database/migrations/0014_agent_conversations.sql` | `agent_conversations` / `agent_messages` / `agent_drafts` |
 | `server/database/migrations/0015_agent_draft_expiry.sql` | `agent_drafts.expires_at` + 索引（草稿 TTL） |
 | `app/components/chat/ChatFormCard.vue` | Schema 驱动的通用表单卡（客户端不能自造字段） |
+| `app/components/chat/ChatMarkdown.vue` + `app/utils/markdown.ts` | 助手消息 Markdown 渲染（`html:false` 转义原始 HTML，链接 `noopener`） |
+| `CapabilityDefinition.resultView` | 只读能力的固定结果表格列定义；服务端投影，模型无法生成列 |
 
 流程：
 

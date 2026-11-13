@@ -18,6 +18,7 @@ import {
 import type { ApprovalCall } from '../core/agentApproval'
 import type { Database } from '../database'
 import {
+  buildCapabilityResultTable,
   buildChatSystemPrompt,
   describeCapabilities,
   getCapability,
@@ -217,7 +218,10 @@ export function collectToolCards(messages: AgentMessage[]): ToolCallCard[] {
         status: error ? 'failure' : 'success',
         summary: error ?? summarizeCapabilityResult(capability, payload),
         arguments: parseJson(call.function.arguments) ?? undefined,
-        error
+        error,
+        // Read capabilities declare their own fixed table; the model cannot
+        // invent columns or extra fields.
+        ...(!error ? { table: buildCapabilityResultTable(capability, payload) } : {})
       })
     }
   }

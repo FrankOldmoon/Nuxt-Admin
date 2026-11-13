@@ -91,6 +91,7 @@
 - 组织隔离：组织/租户由服务端上下文注入，模型与浏览器无法指定。
 - Agent：能力按权限过滤；写操作必须表单/审批；执行走 `ToolRegistry`（schema、鉴权、限流、超时、输出上限）；审批与参数哈希绑定。
 - 数据访问：无通用 SQL/HTTP 工具；业务写入只经模块 service。
+- 聊天渲染：助手 Markdown 由 `markdown-it`（`html: false`）渲染，原始 HTML 被转义，链接强制 `noopener noreferrer nofollow`；只读结果表格的列由服务端 `resultView` 固定，模型输出不能决定字段。
 
 ## 4. 依赖审计
 

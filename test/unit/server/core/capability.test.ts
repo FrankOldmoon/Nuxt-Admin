@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
+  buildCapabilityResultTable,
   capabilityPermissionMatches,
   defineCapability,
   describeCapabilities,
@@ -99,5 +100,56 @@ describe('capability contract', () => {
       { summary: 'ok', fieldOptions: { classId: [{ label: 'A', value: 1 }] } }
     )
     expect(form.fields[0]?.options).toEqual([{ label: 'A', value: 1 }])
+  })
+
+  it('rejects a resultView without columns', () => {
+    expect(() => defineCapability(command({
+      operation: 'query',
+      form: undefined,
+      preview: undefined,
+      resultView: { kind: 'table', columns: [] }
+    }))).toThrow(/at least one column/)
+  })
+
+  it('projects results onto declared columns only', () => {
+    const table = buildCapabilityResultTable({
+      resultView: {
+        kind: 'table',
+        columns: [
+          { key: 'name', label: '姓名' },
+          { key: 'studentNo', label: '学号' }
+        ]
+      }
+    }, [
+      { id: 1, name: '张三', studentNo: 'S1', organizationId: 99 },
+      { id: 2, name: '李四', studentNo: 'S2' }
+    ])
+
+    expect(table?.total).toBe(2)
+    expect(table?.columns).toHaveLength(2)
+    expect(table?.rows[0]).toEqual({ name: '张三', studentNo: 'S1' })
+  })
+
+  it('caps table rows and wraps single objects', () => {
+    const capability = {
+      resultView: {
+        kind: 'table' as const,
+        columns: [{ key: 'name', label: '姓名' }],
+        maxRows: 2
+      }
+    }
+    const many = buildCapabilityResultTable(capability, [
+      { name: 'a' }, { name: 'b' }, { name: 'c' }
+    ])
+    expect(many?.rows).toHaveLength(2)
+    expect(many?.total).toBe(3)
+
+    const single = buildCapabilityResultTable(capability, { name: '张三', extra: true })
+    expect(single?.rows).toEqual([{ name: '张三' }])
+  })
+
+  it('returns no table when the capability declares no resultView', () => {
+    expect(buildCapabilityResultTable(undefined, [{ name: 'a' }])).toBeUndefined()
+    expect(buildCapabilityResultTable({}, [{ name: 'a' }])).toBeUndefined()
   })
 })

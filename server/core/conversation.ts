@@ -3,7 +3,7 @@
  * Stored payloads are plain JSON (jsonb); the helpers here keep the wire and
  * persistence shapes in one place.
  */
-import type { FormDescriptor, PreviewResult } from './capability'
+import type { CapabilityResultTable, FormDescriptor, PreviewResult } from './capability'
 
 export type ConversationStatus = 'active' | 'archived'
 export type ConversationMessageRole = 'user' | 'assistant' | 'system'
@@ -44,6 +44,8 @@ export interface ToolCallCard {
   arguments?: unknown
   error?: string
   durationMs?: number
+  /** Fixed table projection declared by the capability (read results). */
+  table?: CapabilityResultTable
 }
 
 /** Chat-rendered UI directives. The client never invents fields. */
