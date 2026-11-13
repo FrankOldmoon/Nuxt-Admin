@@ -5,9 +5,9 @@ import type {
   ToolRegistry,
   UiDefinition,
   UiRegistry
-} from '../../server/core/moduleSdk'
+} from '../../server/sdk'
 import { db } from '../../server/database'
-import { writeAudit } from '../../server/core/audit'
+import { writeAudit } from '../../server/sdk'
 import { canUseExample, requireOrganization, type ModuleActor } from './server/context'
 import { countNotes, createNote, listNotes } from './server/notes'
 

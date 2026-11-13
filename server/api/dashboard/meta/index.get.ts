@@ -77,6 +77,7 @@ export default defineEventHandler(async (event): Promise<DashboardMeta> => {
         label: cfg.label ?? def?.label ?? reg?.label ?? t,
         icon: cfg.icon ?? def?.icon ?? reg?.icon ?? 'i-lucide-circle-dashed',
         order: typeof cfg.order === 'number' ? cfg.order : merged.length * 10,
+        url: cfg.url ?? def?.url,
         translatable: isDefault
       })
     }
@@ -100,6 +101,7 @@ export default defineEventHandler(async (event): Promise<DashboardMeta> => {
         label: def?.label ?? reg?.label ?? t,
         icon: def?.icon ?? reg?.icon ?? 'i-lucide-circle-dashed',
         order: def?.order ?? merged.length * 10,
+        url: def?.url,
         translatable: def != null
       })
     }

@@ -16,6 +16,9 @@ export default defineEventHandler(async (event) => {
   const actor = await requireDashboardAccess(event, table, 'create')
   const meta = getExposedTableMeta(table)
   if (!meta) throw createError({ statusCode: 404, message: `Unknown table: ${table}` })
+  if (meta.custom) {
+    throw createError({ statusCode: 405, message: `Custom table "${table}" cannot be imported via generic API` })
+  }
 
   const body = await readBody<{ rows?: string[][] }>(event)
   if (!body || !Array.isArray(body.rows)) {

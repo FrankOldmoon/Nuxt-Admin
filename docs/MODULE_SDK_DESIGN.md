@@ -1,5 +1,9 @@
 # Module SDK 设计（vNext）
 
+> **Implemented**：本设计已落地；当前契约与生命周期以
+> [architecture/MODULE_ARCHITECTURE.md](./architecture/MODULE_ARCHITECTURE.md)、
+> [architecture/MODULE_LIFECYCLE.md](./architecture/MODULE_LIFECYCLE.md) 为准。
+
 > Phase 0 产出。目标是在**现有实现上演进**，不重写：保留 `moduleSdk.ts` 的注册表、依赖排序与迁移编排，补齐目录解耦、生命周期状态、版本与契约。
 
 ## 1. 设计目标
@@ -17,7 +21,7 @@
 |---|---|---|
 | Manifest | `ModuleManifest` 字符串数组 | 增加 `description`、`dependencies: { id, range }[]`、结构化 API/Tool/UI/Workflow 定义（保留字符串形式兼容） |
 | Definition | `ModuleDefinition` + lifecycle 回调 | 增加 `manifest`、`register(context)`、`state` 生命周期操作 |
-| Catalog | `moduleCatalog.ts` 硬编码 example | 由 `modules/index.ts` 静态清单提供，Core 只 import 该文件 |
+| Catalog | `moduleCatalog.ts` 硬编码 example | 由仓库根 `modules.catalog.ts` 静态清单提供，Core 只 import 该文件 |
 | Layer 开关 | `nuxt.config.ts` 硬编码 `AVAILABLE_MODULE_IDS` | 从静态清单推导 |
 | 运行时装配 | `moduleRuntime.ts` 判断 `'example'` | 遍历启用模块调用 `register(context)` |
 | 注册表 | API/Tool/UI Registry 已存在 | 保留；Tool 增加 operation/timeout/output schema；UI 增加 version/protocol |
@@ -30,7 +34,7 @@
 新增仓库根 `modules.catalog.ts`（不能放在 `modules/` 下，Nuxt 会把该目录顶层文件当作 Nuxt module 扫描）：
 
 ```ts
-import type { ModuleDefinition } from '../server/core/moduleSdk'
+import type { ModuleDefinition } from './server/sdk'
 import { exampleModule } from './example/module'
 // 新增模块只在此处添加一行；Core 不需要修改。
 

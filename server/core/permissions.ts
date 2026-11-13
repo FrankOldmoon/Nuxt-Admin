@@ -53,6 +53,8 @@ export interface ResourceRef {
   /** Registered resource/table name. */
   table: string
   action?: TableAction
+  /** Canonical resource permission per action (e.g. `sis.students.read`). */
+  permissions?: Partial<Record<TableAction, string>>
 }
 
 export interface PermissionDecision {
@@ -106,6 +108,10 @@ export function authorize(ctx: PermissionContext, resource: ResourceRef): Permis
     return admin || roleHasDashboardAccess(permissions)
       ? { allowed: true, reason: 'allowed' }
       : { allowed: false, reason: 'no-access' }
+  }
+  const canonical = resource.action ? resource.permissions?.[resource.action] : undefined
+  if (canonical && permissions.includes(canonical)) {
+    return { allowed: true, reason: 'allowed' }
   }
   if (admin || roleCanTableAction(permissions, resource.table, resource.action)) {
     return { allowed: true, reason: 'allowed' }

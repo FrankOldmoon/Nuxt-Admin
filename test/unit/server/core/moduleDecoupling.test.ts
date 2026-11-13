@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
@@ -34,4 +34,22 @@ describe('module catalog decoupling', () => {
     expect(source).toContain('AVAILABLE_MODULE_IDS')
     expect(source).toContain('DEFAULT_ENABLED_MODULE_IDS')
   })
+
+  it('business modules only consume the public SDK, never Core internals', () => {
+    const files = ['modules/example']
+      .flatMap(dir => listSourceFiles(resolve(process.cwd(), dir)))
+      .filter(file => !file.includes('/test/'))
+    expect(files.length).toBeGreaterThan(0)
+    for (const file of files) {
+      expect(readFileSync(file, 'utf8'), file).not.toMatch(/from\s+['"][^'"]*server\/core\//)
+    }
+  })
 })
+
+function listSourceFiles(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = resolve(dir, entry.name)
+    if (entry.isDirectory()) return entry.name === 'test' ? [] : listSourceFiles(full)
+    return /\.(ts|vue)$/.test(entry.name) ? [full] : []
+  })
+}

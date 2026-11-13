@@ -1,5 +1,9 @@
 # 安全差距分析（P0 / P1）
 
+> **Historical**：Phase 0 分析，修复状态已随后续阶段变化。当前安全状态见
+> [architecture/AUTHORIZATION.md](./architecture/AUTHORIZATION.md) 与
+> [architecture/IMPLEMENTATION_AUDIT.md](./architecture/IMPLEMENTATION_AUDIT.md)。
+
 > Phase 0 产出。只记录**当前代码可证实**的风险，按可利用性与影响排序。
 > 所有结论均给出代码位置；修复建议对应 `IMPLEMENTATION_PLAN.md` 的任务编号。
 

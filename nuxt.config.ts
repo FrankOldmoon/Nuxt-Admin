@@ -4,16 +4,16 @@ import { join } from 'node:path'
 import { AVAILABLE_MODULE_IDS, DEFAULT_ENABLED_MODULE_IDS } from './modules.catalog'
 
 /**
- * Optional Nuxt layers are enabled via the environment. Supported sources:
+ * Nuxt layers are resolved at build time:
  *
- *  1. Auto-discovery of `modules/` — every sub-folder is mounted as a layer
- *     when its matching `<NAME>_ENABLED=true` switch is set (e.g.
- *     `DOC_ENABLED=true` enables `./modules/doc`). This is the primary way to
- *     toggle extension modules without editing this file.
+ *  1. Business modules — every ID in `ENABLED_MODULES` must exist in
+ *     `modules.catalog.ts`; its `./modules/<id>` folder is mounted as a layer.
+ *     Unknown IDs fail the build instead of being ignored.
  *  2. `EXTENDS_MODULES` env var — a space / comma / newline separated list of
- *     layer paths (e.g. `EXTENDS_MODULES="./modules/nav ./modules/doc"`).
+ *     layer paths (e.g. `EXTENDS_MODULES="./extends/extra"`).
  *
- * Upstream defaults (`./extends/blog`) stay hardcoded below.
+ * Upstream defaults (`./extends/blog`) stay hardcoded below and can be turned
+ * off with `BLOG_ENABLED=false`.
  */
 const ENV_EXTENDS = (process.env.EXTENDS_MODULES || '')
   .split(/[\s,]+/)
@@ -48,10 +48,8 @@ const ENABLED_MODULES = (() => {
 })()
 
 export default defineNuxtConfig({
-  // Mount the demo blog layer as an independent Nuxt layer. Each extension
-  // layer is added the same way: an `./modules/<name>` folder with a matching
-  // `<NAME>_ENABLED=true` env switch (or a path in EXTENDS_MODULES) and
-  // nothing else in the host codebase.
+  // Mount the blog layer plus every catalog module enabled through
+  // `ENABLED_MODULES` (and any extra paths from `EXTENDS_MODULES`).
   extends: [...new Set([...ENV_EXTENDS, ...ENABLED_MODULES])],
 
   modules: ['@nuxt/eslint', '@nuxt/ui', '@nuxtjs/i18n'],

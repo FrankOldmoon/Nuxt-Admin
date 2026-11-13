@@ -13,6 +13,7 @@ import {
   type ModuleManifest
 } from '../../../../server/core/moduleSdk'
 import { assertTransition, canTransition } from '../../../../server/core/moduleState'
+import { activeDependents, isModuleStateUnavailable } from '../../../../server/core/moduleGuards'
 
 function moduleManifest(id: string, dependencies: string[] = []): ModuleManifest {
   return {
@@ -91,9 +92,43 @@ describe('module lifecycle transitions', () => {
     expect(canTransition('active', 'deactivated')).toBe(true)
     expect(canTransition('deactivated', 'active')).toBe(true)
     expect(canTransition('failed', 'validated')).toBe(true)
+    expect(canTransition('deactivated', 'uninstalling')).toBe(true)
+    expect(canTransition('uninstalling', 'uninstalled')).toBe(true)
+    expect(canTransition('uninstalled', 'active')).toBe(false)
+    expect(canTransition('active', 'uninstalled')).toBe(false)
     expect(canTransition('discovered', 'active')).toBe(false)
     expect(() => assertTransition('discovered', 'active'))
       .toThrow('Invalid module lifecycle transition: discovered -> active')
+  })
+})
+
+describe('module removal guards', () => {
+  const modules = [
+    moduleManifest('core'),
+    moduleManifest('child', ['core']),
+    moduleManifest('grandchild', ['child'])
+  ]
+
+  it('blocks uninstall while a dependent module is active', () => {
+    const states = new Map([['core', 'deactivated'], ['child', 'active'], ['grandchild', 'active']])
+    expect(activeDependents(modules, 'core', id => states.get(id))).toEqual(['child'])
+    expect(activeDependents(modules, 'child', id => states.get(id))).toEqual(['grandchild'])
+    expect(activeDependents(modules, 'grandchild', id => states.get(id))).toEqual([])
+  })
+
+  it('ignores dependents that are not active and missing states', () => {
+    const states = new Map([['core', 'deactivated'], ['child', 'deactivated'], ['grandchild', 'uninstalled']])
+    expect(activeDependents(modules, 'core', id => states.get(id))).toEqual([])
+    expect(activeDependents(modules, 'core', () => undefined)).toEqual([])
+  })
+
+  it('treats disabled and removed states as runtime-unavailable', () => {
+    expect(isModuleStateUnavailable('active')).toBe(false)
+    expect(isModuleStateUnavailable('migrated')).toBe(false)
+    expect(isModuleStateUnavailable('deactivated')).toBe(true)
+    expect(isModuleStateUnavailable('uninstalling')).toBe(true)
+    expect(isModuleStateUnavailable('uninstalled')).toBe(true)
+    expect(isModuleStateUnavailable(null)).toBe(false)
   })
 })
 
@@ -134,6 +169,40 @@ describe('module registries', () => {
       execute: () => new Promise(resolve => setTimeout(() => resolve('done'), 50))
     })
     await expect(registry.run('slow', {}, undefined)).rejects.toThrow('Module tool timed out: slow')
+  })
+
+  it('enforces output size limits and in-process rate limits', async () => {
+    const registry = new ToolRegistry<{ userId: number }>()
+    registry.register({
+      id: 'big',
+      schema: {},
+      outputLimitBytes: 10,
+      authorize: () => true,
+      execute: () => ({ payload: 'x'.repeat(100) })
+    })
+    await expect(registry.run('big', {}, { userId: 1 })).rejects.toThrow('Module tool output exceeds 10 bytes: big')
+
+    let runs = 0
+    registry.register({
+      id: 'limited',
+      schema: {},
+      rateLimit: { max: 2, windowMs: 60_000 },
+      authorize: () => true,
+      execute: () => ++runs
+    })
+    await expect(registry.run('limited', {}, { userId: 1 })).resolves.toBe(1)
+    await expect(registry.run('limited', {}, { userId: 1 })).resolves.toBe(2)
+    await expect(registry.run('limited', {}, { userId: 1 })).rejects.toThrow('Module tool rate limit exceeded: limited')
+    await expect(registry.run('limited', {}, { userId: 2 })).resolves.toBe(3)
+  })
+
+  it('refuses to execute when the caller signal is aborted', async () => {
+    const registry = new ToolRegistry<{ signal?: AbortSignal }>()
+    const controller = new AbortController()
+    controller.abort()
+    registry.register({ id: 'cancelled', schema: {}, authorize: () => true, execute: () => 'nope' })
+    await expect(registry.run('cancelled', {}, { signal: controller.signal }))
+      .rejects.toThrow('Module tool cancelled: cancelled')
   })
 
   it('denies tool execution when the authorization callback throws', async () => {

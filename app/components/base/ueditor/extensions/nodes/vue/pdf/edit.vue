@@ -43,6 +43,7 @@ async function onFileChange(e) {
     try {
         const formData = new FormData()
         formData.append('files', file)
+        formData.append('visibility', 'public')
         const res = await $fetch('/api/files/upload', {
             method: 'POST',
             body: formData,

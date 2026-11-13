@@ -22,6 +22,7 @@ import {
   type OrganizationContext
 } from '../core/authContext'
 import { writeAudit } from '../core/audit'
+import { getTableMeta } from './dashboard/tables'
 
 export {
   ADMIN_ONLY_TABLES,
@@ -187,7 +188,11 @@ export async function requireDashboardAccess(event: H3Event, table?: string, act
       organizationId: ctx.organization?.id,
       tenantId: ctx.organization?.tenantId
     },
-    { table: table ?? '', action }
+    {
+      table: table ?? '',
+      action,
+      permissions: table ? getTableMeta(table)?.permissions : undefined
+    }
   )
   if (decision.allowed) return ctx
 

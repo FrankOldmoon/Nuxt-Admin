@@ -1,0 +1,88 @@
+name: CI
+
+# Validation pipeline for pull requests and main.
+#
+# Blocking steps: migration snapshot validation, release migrations, the full
+# Vitest suite against a real PostgreSQL service, and the production build.
+#
+# `lint` and `typecheck` are intentionally non-blocking: the repository has a
+# documented, pre-existing style/type debt that predates the current
+# architecture work. Keeping them visible (continue-on-error) prevents those
+# historical errors from hiding real regressions without falsely claiming the
+# checks pass. See docs/architecture/UPGRADE_PROGRESS.md (Phase 7).
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/nuxt_ai
+      SESSION_SECRET: ci-session-secret-not-for-production
+      NUXT_PUBLIC_SITE_URL: http://localhost:3000
+      BLOG_ENABLED: 'true'
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nuxt_ai
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nuxt_ai"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.18.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Non-blocking on purpose: historical style debt, not a pass signal.
+      - name: Lint (legacy baseline, non-blocking)
+        run: pnpm lint
+        continue-on-error: true
+
+      # Non-blocking on purpose: historical type errors outside this work.
+      - name: Typecheck (legacy baseline, non-blocking)
+        run: pnpm typecheck
+        continue-on-error: true
+
+      - name: Validate database migration snapshots
+        run: pnpm exec drizzle-kit check
+
+      - name: Apply database migrations
+        run: pnpm db:migrate:release
+
+      - name: Tests (unit + integration + e2e, real PostgreSQL)
+        run: pnpm test
+
+      - name: Production build
+        run: pnpm build

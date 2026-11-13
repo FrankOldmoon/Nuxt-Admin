@@ -35,6 +35,33 @@ export function isUserOnline(userId: number): boolean {
   return !!peers && peers.size > 0
 }
 
+// Remote instances that currently report this user as connected.
+const remotePresence = new Map<number, Set<string>>()
+
+/** Track presence announcements from other application instances. */
+export function markRemotePresence(userId: number, instanceId: string, online: boolean): void {
+  if (!online) {
+    const instances = remotePresence.get(userId)
+    if (!instances) return
+    instances.delete(instanceId)
+    if (instances.size === 0) remotePresence.delete(userId)
+    return
+  }
+  const instances = remotePresence.get(userId) ?? new Set<string>()
+  instances.add(instanceId)
+  remotePresence.set(userId, instances)
+}
+
+/** Online on this instance or on any other instance that announced presence. */
+export function isUserOnlineAnywhere(userId: number): boolean {
+  return isUserOnline(userId) || (remotePresence.get(userId)?.size ?? 0) > 0
+}
+
+/** Test helper: drop all remote presence bookkeeping. */
+export function clearRemotePresence(): void {
+  remotePresence.clear()
+}
+
 /** Send a JSON message to all peers of a given user. Returns the number of peers reached. */
 export function sendToUser(userId: number, data: unknown): number {
   const peers = registry.get(userId)

@@ -81,6 +81,7 @@ export const auditLogs = pgTable(
     actorIdx: index('audit_logs_actor_created_idx').on(table.actorUserId, table.createdAt),
     resourceIdx: index('audit_logs_resource_record_idx').on(table.resource, table.recordId),
     organizationIdx: index('audit_logs_organization_created_idx').on(table.organizationId, table.createdAt),
+    tenantIdx: index('audit_logs_tenant_created_idx').on(table.tenantId, table.createdAt),
     tenantFk: foreignKey({ columns: [table.tenantId], foreignColumns: [tenants.id] }).onDelete('set null').onUpdate('cascade'),
     organizationFk: foreignKey({ columns: [table.organizationId], foreignColumns: [organizations.id] }).onDelete('set null').onUpdate('cascade')
   })
@@ -103,6 +104,111 @@ export const moduleStates = pgTable(
 )
 
 export type ModuleState = typeof moduleStates.$inferSelect
+
+/**
+ * Agent execution record. One row per conversation task; token usage and cost
+ * are filled when the model returns. Prompt content is never stored here.
+ */
+export const agentExecutions = pgTable(
+  'agent_executions',
+  {
+    id: serial('id').primaryKey(),
+    agentId: varchar('agent_id', { length: 80 }).notNull().default('agent'),
+    userId: integer('user_id').notNull(),
+    tenantId: integer('tenant_id'),
+    organizationId: integer('organization_id'),
+    sessionId: varchar('session_id', { length: 120 }),
+    taskId: varchar('task_id', { length: 120 }),
+    modelId: varchar('model_id', { length: 120 }),
+    providerId: varchar('provider_id', { length: 80 }),
+    /** running | pending_approval | completed | failed | cancelled */
+    status: varchar('status', { length: 30 }).notNull().default('running'),
+    promptTokens: integer('prompt_tokens'),
+    completionTokens: integer('completion_tokens'),
+    totalTokens: integer('total_tokens'),
+    costUsd: doublePrecision('cost_usd'),
+    error: text('error'),
+    metadata: jsonb('metadata'),
+    startedAt: timestamp('started_at', { withTimezone: true }).defaultNow().notNull(),
+    completedAt: timestamp('completed_at', { withTimezone: true })
+  },
+  table => ({
+    userIdx: index('agent_executions_user_started_idx').on(table.userId, table.startedAt),
+    organizationIdx: index('agent_executions_org_started_idx').on(table.organizationId, table.startedAt),
+    statusIdx: index('agent_executions_status_idx').on(table.status)
+  })
+)
+
+/** One row per tool invocation, including denied/failed attempts. */
+export const agentToolCalls = pgTable(
+  'agent_tool_calls',
+  {
+    id: serial('id').primaryKey(),
+    executionId: integer('execution_id').notNull(),
+    moduleId: varchar('module_id', { length: 80 }),
+    toolId: varchar('tool_id', { length: 160 }).notNull(),
+    callId: varchar('call_id', { length: 160 }).notNull(),
+    /** success | failure | denied */
+    status: varchar('status', { length: 20 }).notNull(),
+    riskLevel: varchar('risk_level', { length: 20 }),
+    arguments: jsonb('arguments'),
+    resultSize: integer('result_size'),
+    durationMs: integer('duration_ms'),
+    error: text('error'),
+    startedAt: timestamp('started_at', { withTimezone: true }).defaultNow().notNull(),
+    completedAt: timestamp('completed_at', { withTimezone: true })
+  },
+  table => ({
+    executionIdx: index('agent_tool_calls_execution_idx').on(table.executionId),
+    toolIdx: index('agent_tool_calls_tool_idx').on(table.toolId)
+  })
+)
+
+/**
+ * Human approval bound to an exact ordered batch of tool calls and their
+ * validated arguments (`argumentsHash`).
+ */
+export const agentApprovals = pgTable(
+  'agent_approvals',
+  {
+    id: serial('id').primaryKey(),
+    batchId: varchar('batch_id', { length: 64 }).notNull(),
+    executionId: integer('execution_id').notNull(),
+    userId: integer('user_id').notNull(),
+    tenantId: integer('tenant_id'),
+    organizationId: integer('organization_id'),
+    calls: jsonb('calls').notNull(),
+    argumentsHash: varchar('arguments_hash', { length: 64 }).notNull(),
+    /** pending | approved | rejected | executing | completed | failed | expired | cancelled */
+    status: varchar('status', { length: 20 }).notNull().default('pending'),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    decidedBy: integer('decided_by'),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    batchIdx: uniqueIndex('agent_approvals_batch_idx').on(table.batchId),
+    userStatusIdx: index('agent_approvals_user_status_idx').on(table.userId, table.status)
+  })
+)
+
+/** Agent-generated file references; files themselves stay in the Core file service. */
+export const agentArtifacts = pgTable(
+  'agent_artifacts',
+  {
+    id: serial('id').primaryKey(),
+    executionId: integer('execution_id').notNull(),
+    fileId: integer('file_id').notNull(),
+    kind: varchar('kind', { length: 40 }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull()
+  },
+  table => ({
+    executionFileIdx: uniqueIndex('agent_artifacts_execution_file_idx').on(table.executionId, table.fileId),
+    executionIdx: index('agent_artifacts_execution_idx').on(table.executionId)
+  })
+)
 
 export const roles = pgTable(
   'roles',
@@ -371,6 +477,10 @@ export const files = pgTable(
     size: integer('size').default(0).notNull(),
     path: varchar('path', { length: 500 }).notNull(),
     storage: varchar('storage', { length: 20 }).default('local').notNull(),
+    /** `public` files are servable by path; `private` require auth/owner/signed URL. */
+    visibility: varchar('visibility', { length: 10 }).default('private').notNull(),
+    organizationId: integer('organization_id'),
+    tenantId: integer('tenant_id'),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
     createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
@@ -380,7 +490,10 @@ export const files = pgTable(
       .onDelete('cascade')
       .onUpdate('cascade'),
     hashIdx: uniqueIndex('files_hash_idx').on(table.hash),
-    userIdx: index('files_user_id_idx').on(table.userId)
+    userIdx: index('files_user_id_idx').on(table.userId),
+    organizationIdx: index('files_organization_idx').on(table.organizationId),
+    tenantIdx: index('files_tenant_idx').on(table.tenantId),
+    visibilityIdx: index('files_visibility_idx').on(table.visibility)
   })
 )
 

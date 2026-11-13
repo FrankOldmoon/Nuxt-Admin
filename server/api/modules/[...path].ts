@@ -4,7 +4,10 @@
 import { createError, getMethod, getQuery, getRouterParam, readBody } from 'h3'
 import { requireUser } from '~~/server/utils/auth'
 import { ModuleForbiddenError } from '~~/server/core/moduleSdk'
+import { isModuleStateUnavailable } from '~~/server/core/moduleGuards'
 import { moduleApiRouter, registerEnabledModuleServices } from '~~/server/utils/moduleRuntime'
+import { db } from '~~/server/database'
+import { findModuleState } from '~~/server/database/moduleStates'
 
 export default defineEventHandler(async (event) => {
   await registerEnabledModuleServices()
@@ -20,6 +23,17 @@ export default defineEventHandler(async (event) => {
 
   const path = getRouterParam(event, 'path') ?? ''
   const method = getMethod(event)
+
+  // Runtime availability gate: a module disabled from Module Management is
+  // registered (build-time) but must not serve requests until re-enabled.
+  const moduleId = path.split('/')[0]
+  if (moduleId) {
+    const state = await findModuleState(db, moduleId)
+    if (isModuleStateUnavailable(state?.state)) {
+      throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: `Module is disabled: ${moduleId}` })
+    }
+  }
+
   const input = method === 'GET' || method === 'HEAD' ? getQuery(event) : await readBody(event) ?? {}
 
   try {

@@ -1,4 +1,5 @@
-import { ModuleApiRouter, ToolRegistry, UiRegistry, resolveModules } from '../core/moduleSdk'
+import { ModuleApiRouter, ToolRegistry, UiRegistry } from '../core/moduleSdk'
+import { resolveModuleCatalog } from '../core/moduleCatalog'
 import { MODULE_DEFINITIONS, resolveEnabledModuleIds } from '../../modules.catalog'
 
 /** Minimal actor shape; each module narrows it in its own definitions. */
@@ -25,7 +26,7 @@ export async function registerEnabledModuleServices(): Promise<void> {
   if (registered) return
   registered = true
 
-  const resolved = resolveModules(MODULE_DEFINITIONS, resolveEnabledModuleIds())
+  const resolved = resolveModuleCatalog(MODULE_DEFINITIONS, resolveEnabledModuleIds())
   for (const module of resolved.modules) {
     await module.register?.({
       moduleId: module.id,

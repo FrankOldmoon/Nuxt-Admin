@@ -19,6 +19,7 @@ import {
   sheetRowsToObjects,
   rowsToSheetRows,
   castForDbInsert,
+  resolveContextColumns,
 } from '../../../server/utils/dashboard/crudService'
 import type { TableMeta, FieldMeta } from '~/types/dashboard'
 
@@ -158,6 +159,32 @@ describe('dashboard: crudService pure helpers', () => {
     expect(out['userId']).toBe(7)
     expect(out['version']).toBe(99)
     expect(out['isPublic']).toBe(true)                  // '1' coerced to true
+  })
+})
+
+describe('dashboard: context column resolution', () => {
+  const base = buildSampleMeta()
+
+  it('derives conventional columns from the scope flags', () => {
+    expect(resolveContextColumns(base)).toEqual({ organization: undefined, tenant: undefined })
+    const scoped: TableMeta = {
+      ...base,
+      features: { ...base.features, organizationScoped: true, tenantScoped: true },
+    }
+    expect(resolveContextColumns(scoped)).toEqual({ organization: 'organizationId', tenant: 'tenantId' })
+  })
+
+  it('prefers explicit contextColumns over flag defaults', () => {
+    const custom: TableMeta = {
+      ...base,
+      features: {
+        ...base.features,
+        organizationScoped: true,
+        tenantScoped: true,
+        contextColumns: { organization: 'org_id', tenant: 'tenant_id' },
+      },
+    }
+    expect(resolveContextColumns(custom)).toEqual({ organization: 'org_id', tenant: 'tenant_id' })
   })
 })
 

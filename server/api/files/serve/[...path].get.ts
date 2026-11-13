@@ -6,10 +6,7 @@ export default defineEventHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'File path is required' })
   }
 
-  const file = await findFileByPath(rawPath)
-  if (!file) {
-    throw createError({ statusCode: 404, statusMessage: 'Not Found', message: 'File not found' })
-  }
+  const file = await authorizeFileRequest(event, rawPath)
 
   const mimeType = file.mimeType || 'application/octet-stream'
   const disposition = isPreviewable(file.mimeType)

@@ -7,7 +7,7 @@ import { canUseExample, requireOrganization } from '../../../../modules/example/
 describe('module catalog', () => {
   it('keeps the default list in the catalog and treats an empty value as disabled', () => {
     expect(parseEnabledModuleIds(undefined)).toEqual([])
-    expect(resolveEnabledModuleIds(undefined)).toEqual(['example', 'sis-demo'])
+    expect(resolveEnabledModuleIds(undefined)).toEqual(['example'])
     expect(parseEnabledModuleIds('')).toEqual([])
     expect(parseEnabledModuleIds('example example')).toEqual(['example'])
   })

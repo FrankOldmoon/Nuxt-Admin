@@ -1,7 +1,7 @@
 import { eq, desc, count, or, and, ne, isNull, sql } from 'drizzle-orm'
 import { db } from './db'
 import { privateMessages, users } from '../database/schema'
-import { sendToUser } from './wsRegistry'
+import { publishToUser } from './realtime'
 
 export type MessageRow = typeof privateMessages.$inferSelect
 
@@ -40,7 +40,7 @@ export async function sendPrivateMessage(input: {
   if (!row) throw new Error('Failed to send message')
 
   // Push to the recipient in real-time
-  sendToUser(input.receiverId, {
+  await publishToUser(input.receiverId, {
     type: 'message:new',
     data: {
       id: row.id,
@@ -53,7 +53,7 @@ export async function sendPrivateMessage(input: {
   })
 
   // Also echo back to the sender (for multi-tab sync)
-  sendToUser(input.senderId, {
+  await publishToUser(input.senderId, {
     type: 'message:sent',
     data: {
       id: row.id,
@@ -230,7 +230,7 @@ export async function markMessagesRead(userId: number, peerId: number): Promise<
 
   // Notify the sender that their messages were read
   if (result.length > 0) {
-    sendToUser(peerId, {
+    await publishToUser(peerId, {
       type: 'message:read',
       data: { peerId: userId, readCount: result.length }
     })

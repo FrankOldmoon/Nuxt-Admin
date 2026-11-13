@@ -1,5 +1,8 @@
 # 改进审计：任务书 vs 真实代码
 
+> **Historical**：Phase 0 审计。当前状态以
+> [architecture/IMPLEMENTATION_AUDIT.md](./architecture/IMPLEMENTATION_AUDIT.md) 为准。
+
 > Phase 0 产出。逐条核对《Nuxt-Admin vNext》任务书，结论以当前 `main` 代码为准。
 > 状态：✅ 已具备 / 🟡 部分具备 / ❌ 缺失。
 

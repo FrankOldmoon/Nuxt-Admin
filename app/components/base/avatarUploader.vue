@@ -108,6 +108,8 @@ async function uploadAvatar(croppedBlob: Blob) {
     // 2. Reuse /api/files/upload to store the avatar file (with hash dedup)
     const formData = new FormData()
     formData.append('files', fileToUpload)
+    // Avatars are rendered to other signed-in users, so they must be public.
+    formData.append('visibility', 'public')
     const uploadRes = await $fetch<{ files: UploadResult[] }>('/api/files/upload', {
       method: 'POST',
       body: formData

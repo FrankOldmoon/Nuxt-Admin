@@ -1,5 +1,5 @@
-import type { Database } from '~~/server/database'
-import { auditLogs } from '~~/server/database/schema'
+import type { Database } from '../database'
+import { auditLogs } from '../database/schema'
 
 /** Executor shared by the pool and a transaction so audit writes stay atomic. */
 export type AuditExecutor = Pick<Database, 'insert'>

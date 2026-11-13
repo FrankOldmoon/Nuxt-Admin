@@ -6,7 +6,8 @@ import { configs as configsTable, roles as rolesTable } from '../database/schema
 import { eq } from 'drizzle-orm'
 import * as mainSchema from '../database/schema'
 import { registerDrizzleSchema } from '../utils/dashboard/tables'
-import { resolveModules, runModuleLifecycle } from '../core/moduleSdk'
+import { runModuleLifecycle } from '../core/moduleSdk'
+import { resolveModuleCatalog } from '../core/moduleCatalog'
 import { MODULE_DEFINITIONS, resolveEnabledModuleIds } from '../../modules.catalog'
 import { applyModuleMigrations } from '../database/moduleMigrations'
 import { findModuleState, recordModuleState } from '../database/moduleStates'
@@ -17,7 +18,8 @@ const DEFAULT_DASHBOARD_MENU = [
   { table: 'files', label: 'Files', icon: 'i-lucide-folder-open', order: 30 },
   { table: 'notifications', label: 'Notifications', icon: 'i-lucide-bell-ring', order: 40 },
   { table: 'templates', label: 'Templates', icon: 'i-lucide-file-text', order: 50 },
-  { table: 'configs', label: 'System Config', icon: 'i-lucide-settings-2', order: 60 }
+  { table: 'configs', label: 'System Config', icon: 'i-lucide-settings-2', order: 60 },
+  { table: 'modules', label: 'Modules', icon: 'i-lucide-boxes', order: 65, url: '/dashboard/modules' }
 ]
 
 export default defineNitroPlugin(async () => {
@@ -51,7 +53,7 @@ export default defineNitroPlugin(async () => {
       })
       // Dev-only convenience: run module migrations through the same
       // orchestrator used by the release entry point.
-      const resolved = resolveModules(MODULE_DEFINITIONS, resolveEnabledModuleIds())
+      const resolved = resolveModuleCatalog(MODULE_DEFINITIONS, resolveEnabledModuleIds())
       await runModuleLifecycle(resolved.modules, resolved.enabledIds, 'onRegister')
       await runModuleLifecycle(resolved.modules, resolved.enabledIds, 'onEnable')
       try {

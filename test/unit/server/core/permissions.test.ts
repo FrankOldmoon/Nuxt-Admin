@@ -30,6 +30,14 @@ describe('authorize', () => {
       .toEqual({ allowed: false, reason: 'action-denied' })
   })
 
+  it('accepts canonical module resource permissions', () => {
+    const permissions = { read: 'sis.students.read', create: 'sis.students.create' }
+    const ctx = { userId: 1, roleName: 'teacher', permissions: ['sis.students.read'] }
+    expect(authorize(ctx, { table: 'students', action: 'read', permissions }).allowed).toBe(true)
+    expect(authorize(ctx, { table: 'students', action: 'create', permissions }))
+      .toEqual({ allowed: false, reason: 'action-denied' })
+  })
+
   it('denies when the role has no permissions at all', () => {
     expect(authorize({ userId: 1, permissions: [] }, { table: '' }))
       .toEqual({ allowed: false, reason: 'no-access' })

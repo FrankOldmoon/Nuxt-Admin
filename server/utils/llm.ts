@@ -1,4 +1,5 @@
-import type { AgentMessage, AgentModelTurn, AgentToolCall } from '../core/agent'
+import type { AgentMessage, AgentModelTurn } from '../core/agent'
+import { ModelGateway, createOpenAiCompatibleProvider } from '../core/modelGateway'
 
 /**
  * Shared LLM call logic: config reading and SSE parsing kept consistent with server/api/llm/ws.ts.
@@ -152,8 +153,8 @@ export async function runLlmChatSync(req: ChatRequest): Promise<string> {
 }
 
 /**
- * One non-streaming assistant turn for tool calling. Returns the assistant
- * text plus any OpenAI-style tool calls; the agent loop decides what to run.
+ * One non-streaming assistant turn for tool calling, executed through the
+ * provider-independent Model Gateway (timeout, retry, usage accounting).
  */
 export async function runLlmChatTurn(req: TurnRequest): Promise<AgentModelTurn> {
   const cfg = await loadLlmConfig()
@@ -165,50 +166,36 @@ export async function runLlmChatTurn(req: TurnRequest): Promise<AgentModelTurn> 
   if (!hasSystem && cfg.systemPrompt) {
     messages.unshift({ role: 'system', content: cfg.systemPrompt })
   }
-  const body = {
-    model: req.model || cfg.model,
-    messages,
-    temperature: req.temperature ?? cfg.temperature,
-    max_tokens: req.maxTokens ?? cfg.maxTokens,
-    stream: false,
-    ...(req.tools?.length ? { tools: req.tools, tool_choice: 'auto' } : {})
-  }
-  const url = `${cfg.baseUrl.replace(/\/$/, '')}/chat/completions`
-  const upstream = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${cfg.apiKey}`
-    },
-    body: JSON.stringify(body)
-  })
-  if (!upstream.ok) {
-    const errText = await upstream.text()
-    throw new Error(`Upstream API error (${upstream.status}): ${errText}`)
-  }
 
-  const json = await upstream.json() as { choices?: Array<{ message?: Record<string, unknown> }> }
-  const message = json.choices?.[0]?.message ?? {}
-  const content = typeof message.content === 'string' ? message.content : ''
-  const rawCalls = Array.isArray(message.tool_calls) ? message.tool_calls : []
-
-  const toolCalls: AgentToolCall[] = []
-  for (const raw of rawCalls) {
-    if (!raw || typeof raw !== 'object') continue
-    const call = raw as Record<string, unknown>
-    const fn = call.function as Record<string, unknown> | undefined
-    if (typeof call.id !== 'string' || typeof fn?.name !== 'string') continue
-    toolCalls.push({
-      id: call.id,
-      type: 'function',
-      function: {
-        name: fn.name,
-        arguments: typeof fn.arguments === 'string' ? fn.arguments : '{}'
+  const model = req.model || cfg.model
+  const gateway = new ModelGateway({
+    providers: [createOpenAiCompatibleProvider({ baseUrl: cfg.baseUrl, apiKey: cfg.apiKey })],
+    retries: Number(process.env.LLM_RETRIES ?? 1),
+    timeoutMs: Number(process.env.LLM_TIMEOUT_MS ?? 60_000),
+    pricing: {
+      [model]: {
+        promptPer1kUsd: Number(process.env.LLM_PRICE_PROMPT_PER_1K ?? 0),
+        completionPer1kUsd: Number(process.env.LLM_PRICE_COMPLETION_PER_1K ?? 0)
       }
-    })
-  }
+    }
+  })
 
-  return { content, toolCalls }
+  const completion = await gateway.complete({
+    messages,
+    tools: req.tools,
+    model,
+    temperature: req.temperature ?? cfg.temperature,
+    maxTokens: req.maxTokens ?? cfg.maxTokens
+  })
+
+  return {
+    content: completion.content,
+    toolCalls: completion.toolCalls ?? [],
+    usage: completion.usage,
+    costUsd: completion.costUsd,
+    model: completion.model,
+    provider: completion.provider
+  }
 }
 
 /**

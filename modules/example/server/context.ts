@@ -1,5 +1,4 @@
-import { permMatches, type TableAction } from '../../../server/core/permissions'
-import { ModuleForbiddenError } from '../../../server/core/moduleSdk'
+import { ModuleForbiddenError, permMatches, type TableAction } from '../../../server/sdk'
 
 /** Actor passed to every module API/tool execution after re-authentication. */
 export interface ModuleActor {

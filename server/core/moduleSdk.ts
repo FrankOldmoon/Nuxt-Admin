@@ -17,6 +17,14 @@ export interface ModuleManifest {
   dependencies: readonly string[]
   /** Optional semver ranges keyed by dependency ID (e.g. `{ core: '^1.2.0' }`). */
   dependencyRanges?: Readonly<Record<string, string>>
+  /** Module API contract version; must match `MODULE_API_VERSION`. */
+  apiVersion?: string
+  /** Host compatibility ranges (e.g. `{ core: '^1.0.0' }`). */
+  compatibility?: { readonly core?: string }
+  /** Declared capability flags; values must be booleans. */
+  capabilities?: Readonly<Record<string, boolean>>
+  /** Whether migrations are applied globally or per tenant. */
+  migrationScope?: 'global' | 'tenant'
   /** Permission entries owned by the module (e.g. `example:read`). */
   permissions: readonly string[]
   /** Navigation entries merged into the dashboard menu by the host. */
@@ -36,6 +44,12 @@ export type ModuleSchema = object | ((value: unknown) => boolean)
 export interface ModuleMigration {
   /** Stable ID recorded in `__module_migrations`; never reuse or rename. */
   id: string
+  /**
+   * Author-declared revision marker. Bump it whenever the migration body
+   * changes so modified historical migrations are detected. Hashed with the
+   * ID (never the function source, which varies between transpilers).
+   */
+  checksum: string
   /** Apply the migration. Receives a pg client so DDL is transactional. */
   up: (executor: unknown) => void | Promise<void>
 }
@@ -123,8 +137,16 @@ export interface ToolRegistration<Context = unknown, Result = unknown> {
   inputJsonSchema?: Record<string, unknown>
   /** Confirmation policy for commands. Defaults to `confirm` for commands. */
   approval?: 'none' | 'confirm' | 'second-person'
+  /** Assessed risk; medium/high commands always require human approval. */
+  riskLevel?: 'low' | 'medium' | 'high'
+  /** Force human approval even for read-only operations. */
+  requiresApproval?: boolean
   /** Hard execution timeout; 0/undefined means no timeout. */
   timeoutMs?: number
+  /** Maximum serialized result size in bytes (default 1 MiB). */
+  outputLimitBytes?: number
+  /** In-process rate limit per tool + caller. */
+  rateLimit?: { max: number, windowMs: number }
 }
 
 export interface ToolDefinition<Context = unknown, Result = unknown> extends ToolRegistration<Context, Result> {
@@ -219,6 +241,8 @@ export class ApiRegistry<Context = unknown> extends ModuleRegistry<ApiRegistrati
 }
 
 export class ToolRegistry<Context = unknown> extends ModuleRegistry<ToolRegistration<Context>> {
+  private readonly rateBuckets = new Map<string, { count: number, resetAt: number }>()
+
   override register(entry: ToolRegistration<Context>): void {
     assertPresent(entry.schema, 'schema')
     assertFunction(entry.execute, 'execute')
@@ -240,11 +264,43 @@ export class ToolRegistry<Context = unknown> extends ModuleRegistry<ToolRegistra
       throw new Error(`Module tool authorization denied: ${id}`, { cause: error })
     }
 
-    return await withTimeout(
+    const signal = (context as { signal?: AbortSignal } | undefined)?.signal
+    if (signal?.aborted) throw new Error(`Module tool cancelled: ${id}`)
+    this.enforceRateLimit(tool, context)
+
+    const result = await withTimeout(
       Promise.resolve(tool.execute(input, context)) as Promise<Result>,
       tool.timeoutMs,
       `Module tool timed out: ${id}`
     )
+
+    const limit = tool.outputLimitBytes ?? 1024 * 1024
+    let serialized: string
+    try {
+      serialized = JSON.stringify(result ?? null) ?? 'null'
+    } catch {
+      serialized = ''
+    }
+    if (serialized.length > limit) {
+      throw new Error(`Module tool output exceeds ${limit} bytes: ${id}`)
+    }
+    return result
+  }
+
+  private enforceRateLimit(tool: ToolRegistration<Context>, context: Context): void {
+    if (!tool.rateLimit) return
+    const userId = (context as { userId?: number } | undefined)?.userId ?? 'anonymous'
+    const key = `${tool.id}:${userId}`
+    const now = Date.now()
+    const bucket = this.rateBuckets.get(key)
+    if (!bucket || bucket.resetAt <= now) {
+      this.rateBuckets.set(key, { count: 1, resetAt: now + tool.rateLimit.windowMs })
+      return
+    }
+    if (bucket.count >= tool.rateLimit.max) {
+      throw new Error(`Module tool rate limit exceeded: ${tool.id}`)
+    }
+    bucket.count++
   }
 }
 

@@ -17,6 +17,7 @@ import type {
   TableMetaWithOptions
 } from '~/types/dashboard'
 import { getRegisteredTable, discoverManyToManyForTable } from './tables'
+import { runTableValidator } from './tableValidators'
 import { db, schema } from '~~/server/utils/db'
 import { resolveFileNamesByPath } from '~~/server/utils/files'
 import {
@@ -411,9 +412,9 @@ async function writeCrudAudit(
     actorUserId: actor?.userId,
     tenantId: actor?.tenantId,
     organizationId: actor?.organizationId,
-    moduleId: 'core',
+    moduleId: meta.moduleId ?? 'core',
     action,
-    resource: meta.table,
+    resource: meta.resource ?? meta.table,
     recordId: recordId ?? null,
     before,
     after,
@@ -482,6 +483,89 @@ function scopeContext(actor: DataScopeActor) {
     organizationId: actor.organizationId,
     tenantId: actor.tenantId,
     departmentId: actor.departmentId
+  }
+}
+
+/**
+ * Resolve server-owned ownership columns. Explicit `contextColumns` win; the
+ * `organizationScoped` / `tenantScoped` flags enable the conventional
+ * `organizationId` / `tenantId` columns without repeating the mapping.
+ */
+export function resolveContextColumns(meta: TableMeta): { organization?: string, tenant?: string } {
+  const explicit = meta.features.contextColumns ?? {}
+  return {
+    organization: explicit.organization ?? (meta.features.organizationScoped ? 'organizationId' : undefined),
+    tenant: explicit.tenant ?? (meta.features.tenantScoped ? 'tenantId' : undefined)
+  }
+}
+
+/**
+ * Reject relation payloads that point at rows owned by another organization or
+ * tenant. Only targets that are themselves scoped are checked; global lookup
+ * tables (users, categories, …) stay unrestricted.
+ *
+ * Applies to `relation` and `many-to-many` fields on create/update/import.
+ */
+export async function assertRelationScope(
+  meta: TableMeta,
+  payload: Record<string, unknown>,
+  actor?: DataScopeActor
+): Promise<void> {
+  if (!actor) return
+  for (const field of meta.fields) {
+    if (!field.relation) continue
+    const raw = payload[field.key]
+    if (raw === undefined || raw === null || raw === '') continue
+    const targetMeta = getRegisteredTable(field.relation.table)?.meta
+    if (!targetMeta) continue
+    const targetScope = resolveContextColumns(targetMeta)
+    if (!targetScope.organization && !targetScope.tenant) continue
+
+    const ids = (Array.isArray(raw) ? raw : [raw])
+      .filter(value => value !== null && value !== undefined && value !== '')
+    if (ids.length === 0) continue
+
+    let targetTbl: PgTableWithColumns<any>
+    try {
+      targetTbl = resolveTable(targetMeta)
+    } catch {
+      continue
+    }
+    const idCol = col(targetTbl, 'id')
+    const orgCol = targetScope.organization ? col(targetTbl, targetScope.organization) : undefined
+    const tenantCol = targetScope.tenant ? col(targetTbl, targetScope.tenant) : undefined
+    const selection: Record<string, PgColumn> = { id: idCol }
+    if (orgCol) selection.org = orgCol
+    if (tenantCol) selection.tenant = tenantCol
+
+    const rows = await db.select(selection).from(targetTbl).where(inArray(idCol as any, ids as any[]))
+    const byId = new Map(rows.map(row => [String((row as Record<string, unknown>).id), row as Record<string, unknown>]))
+    for (const id of ids) {
+      const row = byId.get(String(id))
+      if (!row) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: 'Bad Request',
+          message: `Invalid relation for ${field.key}: ${field.relation.table}#${String(id)} does not exist`
+        })
+      }
+      if (orgCol && Number(row.org) !== actor.organizationId) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: 'Bad Request',
+          message: `Cross-organization relation rejected for ${field.key}`
+        })
+      }
+      // Legacy rows may predate tenant backfill (tenant_id NULL); the
+      // organization check still applies, so only compare when both are set.
+      if (tenantCol && actor.tenantId != null && row.tenant != null && Number(row.tenant) !== actor.tenantId) {
+        throw createError({
+          statusCode: 400,
+          statusMessage: 'Bad Request',
+          message: `Cross-tenant relation rejected for ${field.key}`
+        })
+      }
+    }
   }
 }
 
@@ -570,9 +654,9 @@ export async function getById<T = Record<string, unknown>>(meta: TableMeta, id: 
   const row = (rows[0] as Record<string, unknown> | undefined) ?? null
   if (!row) return null as T | null
   const m2m = meta.fields.filter(f => f.type === 'many-to-many')
-  for (const f of m2m) {
+  await Promise.all(m2m.map(async (f) => {
     row[f.key] = await loadManyToManyIds(meta, f.key, id)
-  }
+  }))
   return hideUnreadableFields(meta, actor, row) as unknown as T
 }
 
@@ -611,7 +695,24 @@ export async function insertRow(meta: TableMeta, payload: Record<string, unknown
       payload[resolution.column] = resolution.value
     }
   }
+  // Tenant/organization ownership is always injected from authenticated context.
+  const contextColumns = resolveContextColumns(meta)
+  if (contextColumns?.organization) {
+    if (!actor.organizationId) {
+      throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: 'An active organization is required' })
+    }
+    payload[contextColumns.organization] = actor.organizationId
+  }
+  if (contextColumns?.tenant) {
+    if (!actor.tenantId) {
+      throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: 'A tenant context is required' })
+    }
+    payload[contextColumns.tenant] = actor.tenantId
+  }
+
   throwOnInvalid(meta, payload, 'create')
+  await assertRelationScope(meta, payload, actor)
+  await runTableValidator(meta.table, payload, { operation: 'create', actor })
   const row = await db.transaction(async (tx) => {
     const [inserted] = await tx.insert(tbl).values(castForDbInsert(meta, payload, new Date())).returning()
     if (!inserted) throw createError({ statusCode: 500, message: 'Failed to insert row' })
@@ -860,8 +961,14 @@ export async function seedTable(
 export async function updateRow(meta: TableMeta, id: number | string, payload: Record<string, unknown>, actor?: DataScopeActor): Promise<Record<string, unknown> | null> {
   const tbl = resolveTable(meta)
   const idCol = col(tbl, 'id')
+  // Context-owned columns can never be moved by the browser.
+  const contextColumns = resolveContextColumns(meta)
+  if (contextColumns.organization) delete payload[contextColumns.organization]
+  if (contextColumns.tenant) delete payload[contextColumns.tenant]
   assertWritableFields(meta, actor, payload)
   throwOnInvalid(meta, payload, 'update')
+  await assertRelationScope(meta, payload, actor)
+  await runTableValidator(meta.table, payload, { operation: 'update', actor, recordId: id })
   const now = new Date()
   const set = castForDbUpdate(meta, payload, now)
   const where = await applyDataScope(meta, tbl, actor, eq(idCol, id as any))
@@ -933,6 +1040,12 @@ async function addVersionSnapshot(
  */
 export function castForDbInsert(meta: TableMeta, payload: Record<string, unknown>, now: Date, nullMissing = true): Record<string, unknown> {
   const out: Record<string, unknown> = {}
+  // Context-owned columns are injected server-side and may not be declared as
+  // visible form fields, so copy them explicitly.
+  const contextColumns = resolveContextColumns(meta)
+  for (const key of [contextColumns.organization, contextColumns.tenant]) {
+    if (key && payload[key] !== undefined) out[key] = Number(payload[key])
+  }
   for (const f of meta.fields) {
     if (!f.showInForm || !f.editable) continue
     if (f.type === 'many-to-many') continue
@@ -1208,6 +1321,9 @@ export async function applyBatch(meta: TableMeta, action: 'soft-delete' | 'resto
   })
 }
 
+/** Hard cap for relation dropdown option lists (prevents unbounded scans). */
+const RELATION_OPTION_LIMIT = 500
+
 /**
  * Load option lists for `relation` / `select` fields so the frontend can
  * render dropdowns without additional requests.
@@ -1254,8 +1370,8 @@ export async function loadRelationOptions(meta: TableMeta, actor?: DataScopeActo
         const valueCol = col(otherTbl, f.relation.valueKey)
         const selection = db.select({ label: labelCol, value: valueCol }).from(otherTbl)
         const rows = relationScope
-          ? await selection.where(relationScope).orderBy(asc(valueCol))
-          : await selection.orderBy(asc(valueCol))
+          ? await selection.where(relationScope).orderBy(asc(valueCol)).limit(RELATION_OPTION_LIMIT)
+          : await selection.orderBy(asc(valueCol)).limit(RELATION_OPTION_LIMIT)
         out[f.key] = (rows as Array<{ label: unknown, value: unknown }>)
           .map(r => ({ label: String(r.label ?? ''), value: r.value as (string | number | null) }))
       } catch {

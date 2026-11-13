@@ -12,7 +12,9 @@
  *      "temperature": 0.7,      // optional override
  *      "maxTokens": 2048,       // optional override
  *      "useTools": true,        // optional; default true
- *      "confirm": { "id": "...", "approved": true }  // resume a pending command
+ *      "sessionId": "...",      // optional execution grouping
+ *      "taskId": "...",         // optional execution grouping
+ *      "confirm": { "id": "...", "approved": true }  // resume a persisted approval
  *    }
  *  Response:
  *    { "content": "...", "status": "completed", "ui"?: ..., "pending"?: ... }
@@ -26,14 +28,25 @@ import {
   extractUiDirective,
   runAgentLoop,
   type AgentAuditEvent,
+  type AgentLoopResult,
   type AgentMessage,
   type AgentModel,
-  type AgentToolCall,
   type AgentToolDescriptor
 } from '~~/server/core/agent'
+import type { ApprovalCall } from '~~/server/core/agentApproval'
 import { writeAudit } from '~~/server/core/audit'
 import { db } from '~~/server/database'
 import { moduleTools, moduleUi, registerEnabledModuleServices } from '~~/server/utils/moduleRuntime'
+import {
+  createAgentApproval,
+  decideAgentApproval,
+  findAgentExecution,
+  finishAgentExecution,
+  markAgentApprovalStatus,
+  recordAgentToolCall,
+  startAgentExecution,
+  updateAgentExecutionMetadata
+} from '~~/server/utils/agentStore'
 import { runLlmChatSync, runLlmChatTurn } from '~~/server/utils/llm'
 
 interface ChatMessage {
@@ -47,26 +60,16 @@ interface ChatRequest {
   temperature?: number
   maxTokens?: number
   useTools?: boolean
+  sessionId?: string
+  taskId?: string
+  agentId?: string
   confirm?: { id?: string, approved?: boolean }
 }
 
-interface PendingConfirmation {
-  actorUserId: number
+interface SuspendedExecution {
   messages: AgentMessage[]
-  calls: AgentToolCall[]
   tools: AgentToolDescriptor[]
-  options: { model?: string, temperature?: number, maxTokens?: number }
-  createdAt: number
-}
-
-const PENDING_TTL_MS = 10 * 60 * 1000
-const pendingConfirmations = new Map<string, PendingConfirmation>()
-
-function prunePending(): void {
-  const cutoff = Date.now() - PENDING_TTL_MS
-  for (const [id, record] of pendingConfirmations) {
-    if (record.createdAt < cutoff) pendingConfirmations.delete(id)
-  }
+  useTools: boolean
 }
 
 function toOpenAiTools(tools: AgentToolDescriptor[]) {
@@ -78,6 +81,14 @@ function toOpenAiTools(tools: AgentToolDescriptor[]) {
       parameters: tool.parameters
     }
   }))
+}
+
+function parseCallArguments(raw: string): unknown {
+  try {
+    return raw ? JSON.parse(raw) as unknown : {}
+  } catch {
+    return {}
+  }
 }
 
 export default defineEventHandler(async (event) => {
@@ -110,6 +121,11 @@ export default defineEventHandler(async (event) => {
   }
 
   const permissions = ctx.permissions ?? []
+  const recordActor = {
+    userId: user.id,
+    tenantId: ctx.organization?.tenantId ?? null,
+    organizationId: ctx.organization?.id ?? null
+  }
   const actor = {
     userId: user.id,
     roleName: ctx.role?.name,
@@ -122,54 +138,131 @@ export default defineEventHandler(async (event) => {
   await registerEnabledModuleServices()
   const tools = body.useTools === false ? [] : describeAgentTools(moduleTools as never, permissions)
 
-  const audit = async (entry: AgentAuditEvent) => {
-    await writeAudit(db, {
-      actorUserId: user.id,
-      tenantId: ctx.organization?.tenantId,
-      organizationId: ctx.organization?.id,
-      moduleId: 'agent',
-      action: `tool.${entry.outcome}`,
-      resource: 'agent_tool',
-      recordId: entry.callId,
-      after: { toolId: entry.toolId, error: entry.error ?? null },
-      outcome: entry.outcome === 'success' ? 'success' : 'failure',
-      source: 'llm-chat'
+  let executionId = 0
+  let executionClosed = false
+  if (!confirming) {
+    executionId = await startAgentExecution({
+      ...recordActor,
+      agentId: body.agentId ?? 'agent',
+      sessionId: body.sessionId ?? null,
+      taskId: body.taskId ?? null,
+      modelId: body.model ?? null,
+      metadata: { useTools: body.useTools !== false }
     })
   }
 
-  const model: AgentModel = async (messages, descriptors) => await runLlmChatTurn({
-    messages,
-    tools: toOpenAiTools(descriptors),
-    model: body.model,
-    temperature: body.temperature,
-    maxTokens: body.maxTokens
-  })
+  const audit = async (entry: AgentAuditEvent) => {
+    try {
+      await recordAgentToolCall({
+        executionId,
+        moduleId: entry.moduleId ?? null,
+        toolId: entry.toolId,
+        callId: entry.callId,
+        status: entry.outcome,
+        riskLevel: entry.riskLevel ?? null,
+        args: entry.args,
+        resultSize: entry.resultSize ?? null,
+        durationMs: entry.durationMs ?? null,
+        error: entry.error ?? null
+      })
+    } catch {
+      // Persistence must never break the conversation.
+    }
+    try {
+      await writeAudit(db, {
+        actorUserId: user.id,
+        tenantId: ctx.organization?.tenantId,
+        organizationId: ctx.organization?.id,
+        moduleId: 'agent',
+        action: `tool.${entry.outcome}`,
+        resource: 'agent_tool',
+        recordId: entry.callId,
+        after: {
+          toolId: entry.toolId,
+          moduleId: entry.moduleId ?? null,
+          riskLevel: entry.riskLevel ?? null,
+          error: entry.error ?? null
+        },
+        outcome: entry.outcome === 'success' ? 'success' : 'failure',
+        source: 'llm-chat'
+      })
+    } catch {
+      // Best-effort audit.
+    }
+  }
+
+  let lastModel: string | undefined = body.model
+  let lastProvider: string | undefined
+  const model: AgentModel = async (messages, descriptors) => {
+    const turn = await runLlmChatTurn({
+      messages,
+      tools: toOpenAiTools(descriptors),
+      model: body.model,
+      temperature: body.temperature,
+      maxTokens: body.maxTokens
+    })
+    lastModel = turn.model ?? lastModel
+    lastProvider = turn.provider ?? lastProvider
+    return turn
+  }
+
+  const closeExecution = async (result: AgentLoopResult, status: 'completed' | 'failed' | 'pending_approval') => {
+    if (executionClosed) return
+    executionClosed = true
+    await finishAgentExecution(executionId, {
+      status,
+      usage: result.usage,
+      costUsd: result.costUsd,
+      error: result.status === 'failed' ? result.error : undefined,
+      modelId: lastModel ?? null,
+      providerId: lastProvider ?? null
+    })
+  }
 
   try {
-    // 3a. Confirmation resume path (in-memory pending store).
+    // 3a. Confirmation resume path (persisted approval batch).
     if (confirming) {
-      prunePending()
-      const record = pendingConfirmations.get(body.confirm!.id!)
-      if (!record || record.actorUserId !== user.id) {
-        throw createError({ statusCode: 404, message: 'Pending confirmation not found or expired' })
-      }
-      pendingConfirmations.delete(body.confirm!.id!)
-      const ids = record.calls.map(call => call.id)
+      const batchId = body.confirm!.id!
       const approved = body.confirm!.approved === true
-      const result = await runAgentLoop({
-        model,
-        registry: moduleTools as never,
-        context: actor,
-        messages: record.messages,
-        tools: record.tools,
-        pendingCalls: record.calls,
-        confirmations: {
-          approved: new Set(approved ? ids : []),
-          rejected: new Set(approved ? [] : ids)
-        },
-        audit
-      })
-      return finalize(result, record.options)
+      const approval = await decideAgentApproval({ batchId, approved, actor: recordActor })
+      executionId = approval.executionId
+      const execution = await findAgentExecution(approval.executionId)
+      const suspended = (execution?.metadata as { suspend?: SuspendedExecution } | null)?.suspend
+      if (!suspended) {
+        throw createError({ statusCode: 409, message: 'Approval context has expired; start a new request' })
+      }
+
+      const calls = (approval.calls as unknown as ApprovalCall[]).map(call => ({
+        id: call.callId,
+        type: 'function' as const,
+        function: { name: call.toolId, arguments: JSON.stringify(call.arguments) }
+      }))
+      const ids = calls.map(call => call.id)
+      if (approved) await markAgentApprovalStatus(batchId, 'executing')
+
+      let result: AgentLoopResult
+      try {
+        result = await runAgentLoop({
+          model,
+          registry: moduleTools as never,
+          context: actor,
+          messages: suspended.messages,
+          tools: suspended.tools ?? tools,
+          pendingCalls: calls,
+          confirmations: {
+            approved: new Set(approved ? ids : []),
+            rejected: new Set(approved ? [] : ids)
+          },
+          audit
+        })
+      } catch (error) {
+        if (approved) await markAgentApprovalStatus(batchId, 'failed')
+        throw error
+      }
+      if (approved) {
+        await markAgentApprovalStatus(batchId, result.status === 'failed' ? 'failed' : 'completed')
+      }
+      return await finalize(result)
     }
 
     // 3b. No registered tools → keep the original plain completion path.
@@ -180,6 +273,8 @@ export default defineEventHandler(async (event) => {
         temperature: body.temperature,
         maxTokens: body.maxTokens
       })
+      executionClosed = true
+      await finishAgentExecution(executionId, { status: 'completed', modelId: body.model ?? null })
       return { content, status: 'completed', toolCalls: 0 }
     }
 
@@ -191,40 +286,46 @@ export default defineEventHandler(async (event) => {
       tools,
       audit
     })
-    return finalize(result, {
-      model: body.model,
-      temperature: body.temperature,
-      maxTokens: body.maxTokens
-    })
+    return await finalize(result)
   } catch (e: unknown) {
+    if (executionId && !executionClosed) {
+      executionClosed = true
+      const message = e instanceof Error ? e.message : String(e)
+      await finishAgentExecution(executionId, { status: 'failed', error: message }).catch(() => {})
+    }
     if (e && typeof e === 'object' && 'statusCode' in e) throw e
     const msg = e instanceof Error ? e.message : String(e)
     throw createError({ statusCode: 502, message: msg })
   }
 
-  function finalize(
-    result: Awaited<ReturnType<typeof runAgentLoop>>,
-    options: PendingConfirmation['options']
-  ) {
+  async function finalize(result: AgentLoopResult) {
     if (result.status === 'failed') {
+      await closeExecution(result, 'failed')
       throw createError({ statusCode: 502, message: result.error })
     }
     if (result.status === 'pending_confirmation') {
-      const id = randomUUID()
-      pendingConfirmations.set(id, {
-        actorUserId: user.id,
-        messages: result.messages,
-        calls: result.pending,
-        tools,
-        options,
-        createdAt: Date.now()
+      const batchId = randomUUID()
+      const calls: ApprovalCall[] = result.pending.map(call => ({
+        callId: call.id,
+        toolId: call.function.name,
+        arguments: parseCallArguments(call.function.arguments)
+      }))
+      await createAgentApproval({
+        batchId,
+        executionId,
+        ...recordActor,
+        calls
       })
+      await updateAgentExecutionMetadata(executionId, {
+        suspend: { messages: result.messages, tools, useTools: body.useTools !== false }
+      })
+      await closeExecution(result, 'pending_approval')
       return {
         content: result.content,
         status: 'pending_confirmation' as const,
         toolCalls: result.toolCalls,
         pending: {
-          id,
+          id: batchId,
           calls: result.pending.map(call => ({
             id: call.id,
             name: call.function.name,
@@ -235,6 +336,7 @@ export default defineEventHandler(async (event) => {
     }
 
     const extraction = extractUiDirective(result.content, moduleUi)
+    await closeExecution(result, 'completed')
     return {
       // Keep a valid ```ui block so the existing client renderer keeps working;
       // invalid/unknown blocks are stripped and reported instead.

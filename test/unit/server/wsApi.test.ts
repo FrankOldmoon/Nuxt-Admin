@@ -19,6 +19,9 @@ const h = vi.hoisted(() => {
     registerPeer: vi.fn(),
     unregisterPeer: vi.fn(),
     isUserOnline: vi.fn(() => false),
+    isUserOnlineAnywhere: vi.fn(() => false),
+    announcePresence: vi.fn(async () => {}),
+    broadcastToAll: vi.fn(),
     sendToUser: vi.fn(),
     getContactUserIds: vi.fn(async () => [] as number[]),
     countUnreadNotifications: vi.fn(async () => 0),
@@ -76,7 +79,8 @@ function sent(peer: any) {
 beforeEach(() => {
   for (const fn of [
     h.verifySessionToken, h.findUserById, h.findRoleById,
-    h.registerPeer, h.unregisterPeer, h.isUserOnline, h.sendToUser,
+    h.registerPeer, h.unregisterPeer, h.isUserOnline, h.isUserOnlineAnywhere,
+    h.announcePresence, h.broadcastToAll, h.sendToUser,
     h.getContactUserIds, h.countUnreadNotifications, h.markNotificationRead,
     h.markAllNotificationsRead, h.countUnreadMessages, h.markMessagesRead,
     h.sendPrivateMessage
@@ -84,6 +88,8 @@ beforeEach(() => {
     fn.mockReset()
   }
   h.isUserOnline.mockImplementation(() => false)
+  h.isUserOnlineAnywhere.mockImplementation(() => false)
+  h.announcePresence.mockImplementation(async () => {})
   h.getContactUserIds.mockImplementation(async () => [])
   h.countUnreadNotifications.mockImplementation(async () => 0)
   h.markNotificationRead.mockImplementation(async () => {})
@@ -177,9 +183,7 @@ describe('open connection establishment', () => {
     const peer = makePeer(5)
     await handler.open(peer)
     expect(h.getContactUserIds).toHaveBeenCalledWith(5)
-    expect(h.sendToUser).toHaveBeenCalledTimes(2)
-    expect(h.sendToUser).toHaveBeenCalledWith(2, { type: 'presence:update', data: { userId: 5, online: true } })
-    expect(h.sendToUser).toHaveBeenCalledWith(3, { type: 'presence:update', data: { userId: 5, online: true } })
+    expect(h.announcePresence).toHaveBeenCalledWith(5, true, [2, 3])
   })
 })
 
@@ -367,16 +371,16 @@ describe('close/error connection teardown', () => {
     expect(h.unregisterPeer).toHaveBeenCalledWith(5, peer)
     // broadcastPresence is async, so wait for the microtask queue to drain
     await new Promise((r) => setTimeout(r, 0))
-    expect(h.sendToUser).toHaveBeenCalledWith(2, { type: 'presence:update', data: { userId: 5, online: false } })
+    expect(h.announcePresence).toHaveBeenCalledWith(5, false, [2])
   })
 
   it('does not broadcast offline on close when other connections remain', async () => {
-    h.isUserOnline.mockImplementation(() => true)
+    h.isUserOnlineAnywhere.mockImplementation(() => true)
     const peer = makePeer(5)
     handler.close(peer)
     await new Promise((r) => setTimeout(r, 0))
     expect(h.unregisterPeer).toHaveBeenCalledWith(5, peer)
-    expect(h.sendToUser).not.toHaveBeenCalled()
+    expect(h.announcePresence).not.toHaveBeenCalled()
   })
 
   it('close without userId does no cleanup', async () => {
@@ -391,6 +395,6 @@ describe('close/error connection teardown', () => {
     handler.error(peer, new Error('boom'))
     expect(h.unregisterPeer).toHaveBeenCalledWith(5, peer)
     await new Promise((r) => setTimeout(r, 0))
-    expect(h.sendToUser).toHaveBeenCalledWith(2, { type: 'presence:update', data: { userId: 5, online: false } })
+    expect(h.announcePresence).toHaveBeenCalledWith(5, false, [2])
   })
 })

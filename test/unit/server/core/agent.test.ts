@@ -99,7 +99,52 @@ describe('runAgentLoop', () => {
       expect(result.toolCalls).toBe(1)
     }
     expect(secondRound.some(message => message.role === 'tool' && message.tool_call_id === 'c1')).toBe(true)
-    expect(audits).toEqual([{ toolId: 'echo', callId: 'c1', outcome: 'success' }])
+    expect(audits).toHaveLength(1)
+    expect(audits[0]).toMatchObject({ toolId: 'echo', callId: 'c1', outcome: 'success' })
+    expect(audits[0]?.args).toEqual({ v: 1 })
+    expect(typeof audits[0]?.durationMs).toBe('number')
+  })
+
+  it('requires approval for high-risk tools even when read-only', async () => {
+    const registry = new ToolRegistry<TestActor>()
+    registry.register({
+      id: 'reports.export',
+      schema: {},
+      operation: 'query',
+      riskLevel: 'high',
+      authorize: () => true,
+      execute: () => ({ ok: true })
+    })
+    const result = await runAgentLoop({
+      model: scriptedModel([{ content: '', toolCalls: [call('r1', 'reports.export')] }]),
+      registry: registry as never,
+      context: actor,
+      messages: [{ role: 'user', content: 'export' }],
+      tools: toolsFor(registry)
+    })
+    expect(result.status).toBe('pending_confirmation')
+  })
+
+  it('accumulates model usage and cost across rounds', async () => {
+    const { registry } = makeRegistry()
+    const result = await runAgentLoop({
+      model: scriptedModel([
+        {
+          content: '',
+          toolCalls: [call('c1', 'echo')],
+          usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 },
+          costUsd: 0.001
+        },
+        { content: 'done', usage: { promptTokens: 4, completionTokens: 2, totalTokens: 6 }, costUsd: 0.0005 }
+      ]),
+      registry: registry as never,
+      context: actor,
+      messages: [{ role: 'user', content: 'x' }],
+      tools: toolsFor(registry)
+    })
+    expect(result.status).toBe('completed')
+    expect(result.usage).toEqual({ promptTokens: 14, completionTokens: 7, totalTokens: 21 })
+    expect(result.costUsd).toBeCloseTo(0.0015)
   })
 
   it('returns unknown tools to the model as recoverable errors', async () => {

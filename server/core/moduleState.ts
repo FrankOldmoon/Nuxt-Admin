@@ -1,5 +1,14 @@
 /** Lifecycle states persisted in `module_states`. */
-export type ModuleLifecycleState = 'discovered' | 'validated' | 'installed' | 'migrated' | 'active' | 'deactivated' | 'failed'
+export type ModuleLifecycleState
+  = | 'discovered'
+    | 'validated'
+    | 'installed'
+    | 'migrated'
+    | 'active'
+    | 'deactivated'
+    | 'uninstalling'
+    | 'uninstalled'
+    | 'failed'
 
 const TRANSITIONS: Record<ModuleLifecycleState, readonly ModuleLifecycleState[]> = {
   discovered: ['validated', 'failed'],
@@ -7,7 +16,11 @@ const TRANSITIONS: Record<ModuleLifecycleState, readonly ModuleLifecycleState[]>
   installed: ['migrated', 'failed'],
   migrated: ['active', 'failed'],
   active: ['deactivated', 'failed'],
-  deactivated: ['active', 'failed'],
+  deactivated: ['active', 'uninstalling', 'failed'],
+  // Uninstall is a two-step transition so a crash leaves a retryable state.
+  uninstalling: ['uninstalled', 'failed'],
+  // Terminal: re-installing requires a fresh install flow, not a silent flip.
+  uninstalled: [],
   failed: ['validated']
 }
 

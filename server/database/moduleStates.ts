@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import type { Database } from './index'
 import { moduleStates } from './schema'
 import { writeAudit } from '../core/audit'
-import type { ModuleLifecycleState } from '../core/moduleState'
+import { assertTransition, type ModuleLifecycleState } from '../core/moduleState'
 
 export interface ModuleStateEntry {
   moduleId: string
@@ -15,9 +15,20 @@ export interface ModuleStateEntry {
 /**
  * Persist a module's lifecycle state and append an audit row in the same
  * transaction, so a failed transition cannot be silently reported as success.
+ * Transitions are enforced against the persisted state: re-writing the same
+ * state is an idempotent no-op, a `failed` module may be retried, and terminal
+ * states (e.g. `active`) cannot regress (e.g. back to `migrated`).
  */
 export async function recordModuleState(db: Database, entry: ModuleStateEntry): Promise<void> {
   await db.transaction(async (tx) => {
+    const [current] = await tx.select({ state: moduleStates.state })
+      .from(moduleStates)
+      .where(eq(moduleStates.moduleId, entry.moduleId))
+      .limit(1)
+    if (current && current.state !== entry.state && current.state !== 'failed') {
+      assertTransition(current.state as ModuleLifecycleState, entry.state)
+    }
+
     await tx.insert(moduleStates)
       .values({
         moduleId: entry.moduleId,

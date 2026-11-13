@@ -3,6 +3,9 @@ import {
   registerPeer,
   unregisterPeer,
   isUserOnline,
+  isUserOnlineAnywhere,
+  markRemotePresence,
+  clearRemotePresence,
   sendToUser,
   broadcastToAll,
   getOnlineUserIds,
@@ -39,6 +42,7 @@ function reg(userId: number, peer: WSPeer) {
 afterEach(() => {
   for (const [uid, peer] of registered) unregisterPeer(uid, peer)
   registered.length = 0
+  clearRemotePresence()
 })
 
 describe('registerPeer / isUserOnline', () => {
@@ -152,5 +156,33 @@ describe('getOnlineUserIds', () => {
     const ids = getOnlineUserIds()
     expect(ids).toContain(11)
     expect(ids).toContain(12)
+  })
+})
+
+describe('cross-instance presence', () => {
+  it('tracks presence announced by other instances', () => {
+    expect(isUserOnlineAnywhere(21)).toBe(false)
+    markRemotePresence(21, 'instance-b', true)
+    expect(isUserOnline(21)).toBe(false)
+    expect(isUserOnlineAnywhere(21)).toBe(true)
+
+    markRemotePresence(21, 'instance-b', false)
+    expect(isUserOnlineAnywhere(21)).toBe(false)
+  })
+
+  it('stays online while any instance still reports the user', () => {
+    markRemotePresence(22, 'instance-b', true)
+    markRemotePresence(22, 'instance-c', true)
+    markRemotePresence(22, 'instance-b', false)
+    expect(isUserOnlineAnywhere(22)).toBe(true)
+    markRemotePresence(22, 'instance-c', false)
+    expect(isUserOnlineAnywhere(22)).toBe(false)
+  })
+
+  it('combines local peers with remote presence', () => {
+    reg(23, makePeer('p'))
+    markRemotePresence(23, 'instance-b', true)
+    unregisterPeer(23, registered.find(([uid]) => uid === 23)![1])
+    expect(isUserOnlineAnywhere(23)).toBe(true)
   })
 })

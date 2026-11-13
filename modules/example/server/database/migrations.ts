@@ -1,4 +1,4 @@
-import type { ModuleMigration } from '../../../../server/core/moduleSdk'
+import type { ModuleMigration } from '../../../../server/sdk'
 
 /** Minimal executor shape for raw SQL migrations (pg client or pool). */
 interface SqlExecutor {
@@ -12,6 +12,7 @@ interface SqlExecutor {
 export const exampleMigrations: ModuleMigration[] = [
   {
     id: 'example:001-create-notes',
+    checksum: '1',
     async up(executor) {
       const client = executor as SqlExecutor
       await client.query(`

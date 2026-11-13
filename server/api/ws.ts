@@ -9,7 +9,7 @@ const SEND_WINDOW = 60_000
 function underSendRateLimit(userId: number): boolean {
   const now = Date.now()
   const timestamps = sendBuckets.get(userId) ?? []
-  const valid = timestamps.filter((t) => now - t < SEND_WINDOW)
+  const valid = timestamps.filter(t => now - t < SEND_WINDOW)
   if (valid.length >= MAX_MESSAGES_PER_MINUTE) {
     sendBuckets.set(userId, valid)
     return false
@@ -21,17 +21,23 @@ function underSendRateLimit(userId: number): boolean {
 function cleanSendBuckets() {
   const now = Date.now()
   for (const [uid, ts] of sendBuckets) {
-    if (ts.every((t) => now - t >= SEND_WINDOW)) sendBuckets.delete(uid)
+    if (ts.every(t => now - t >= SEND_WINDOW)) sendBuckets.delete(uid)
   }
 }
 setInterval(cleanSendBuckets, SEND_WINDOW).unref?.()
 
 async function broadcastPresence(userId: number, online: boolean): Promise<void> {
   const contactIds = await getContactUserIds(userId)
-  for (const cid of contactIds) {
-    sendToUser(cid, { type: 'presence:update', data: { userId, online } })
-  }
+  await announcePresence(userId, online, contactIds)
 }
+
+// Local keepalive: lets clients detect dead connections and lets the server
+// clean up peers whose socket died silently. Cross-instance traffic is not
+// involved (ping is local-only).
+const presencePing = setInterval(() => {
+  broadcastToAll({ type: 'ping', data: { ts: Date.now() } })
+}, 30_000)
+presencePing.unref?.()
 
 function parseSessionToken(cookieHeader: string | null): string | undefined {
   if (!cookieHeader) return undefined
@@ -192,7 +198,7 @@ export default defineWebSocketHandler({
     const userId = ctx?.userId
     if (userId) {
       unregisterPeer(userId, peer as unknown as WSPeer)
-      if (!isUserOnline(userId)) {
+      if (!isUserOnlineAnywhere(userId)) {
         broadcastPresence(userId, false).catch(() => {})
       }
     }
@@ -204,7 +210,7 @@ export default defineWebSocketHandler({
     if (userId) {
       unregisterPeer(userId, peer as unknown as WSPeer)
       // Mirror close behavior — also broadcast offline when error causes disconnect
-      if (!isUserOnline(userId)) {
+      if (!isUserOnlineAnywhere(userId)) {
         broadcastPresence(userId, false).catch(() => {})
       }
     }

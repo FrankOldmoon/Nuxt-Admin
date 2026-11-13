@@ -1,8 +1,8 @@
 # Nuxt Admin
 
-A general-purpose admin framework built on **Nuxt 4 + Nuxt UI**. The core highlight is the **metadata-driven generic CRUD**: define a single Drizzle table and automatically get a complete back-office experience — list, form, detail, filters, sorting, import/export, soft delete — without writing any pages or API endpoints for that table. Clear **modular extension points** are also provided, so business sub-modules (e.g. question banks, teaching) can plug in easily.
+A general-purpose admin framework built on **Nuxt 4 + Nuxt UI**. The core highlight is the **metadata-driven generic CRUD**: define a single Drizzle table and automatically get a complete back-office experience — list, form, detail, filters, sorting, import/export, soft delete — without writing any pages or API endpoints for that table. Business modules plug in through a versioned **Module SDK** (`server/sdk`), a single static catalog (`modules.catalog.ts`), persisted lifecycle states and module-owned migrations.
 
-> This repository is the **admin base**; other business modules (teaching, question banks, etc.) plug in through the interfaces described in the "Modular Extensions" section (`registerDrizzleSchema` / `registerDashboardTable`).
+> This repository is the **admin base**. Business modules live under `modules/<id>/` (or in their own repositories) and connect only through the public SDK contract. See [docs/architecture/SYSTEM_ARCHITECTURE.md](docs/architecture/SYSTEM_ARCHITECTURE.md).
 
 ---
 
@@ -23,6 +23,15 @@ A general-purpose admin framework built on **Nuxt 4 + Nuxt UI**. The core highli
 ---
 
 ## Core Features
+
+### Platform Architecture (vNext)
+- **Server-side authorization context**: `AuthContext` is built from the session, active organization membership and effective role; clients never supply tenant/organization/role as authorization evidence.
+- **Multi-tenancy**: `tenants → organizations → departments → organization_memberships`; generic CRUD injects `organization_id` / `tenant_id`, rejects cross-organization relations and uses scoped unique indexes.
+- **Module SDK**: `server/sdk` is the only contract modules may import; `modules.catalog.ts` is the single catalog; manifests validate ID/version/API compatibility/permissions/navigation/migrations.
+- **Module lifecycle**: `discovered → validated → installed → migrated → active ⇄ deactivated → uninstalling → uninstalled`, persisted in `module_states` with audit rows, dependency guards, module-owned migrations and a management UI at `/dashboard/modules`.
+- **SIS/SMS module (external)**: the school information system lives in its own repository [`Nuxt-Extend-SMS`](https://github.com/FrankOldmoon/Nuxt-Extend-SMS); clone it into `modules/sis-demo` and register it in `modules.catalog.ts` to enable. The main repository no longer bundles SIS code.
+- **Agent foundation**: Model Gateway (OpenAI-compatible adapter, timeout, retry, fallback, cost), hardened tool pipeline (permission re-check, rate limit, timeout, cancellation, output cap), persisted executions/tool calls/approvals/artifacts and hash-bound human approvals.
+- **Realtime**: single `/api/ws` gateway with cross-instance messaging/presence via PostgreSQL `LISTEN/NOTIFY`; see [docs/architecture/PRODUCTION.md](docs/architecture/PRODUCTION.md).
 
 ### Authentication & User Center
 - Register / login / logout / forgot password / reset password / email verification, with a public-registration switch (`configs`).
@@ -136,33 +145,43 @@ Upload (configurable size / MIME whitelist), local storage, download/serve, per-
 │   ├── layouts/            # dashboard, default
 │   ├── middleware/         # auth, guest, admin
 │   ├── pages/              # login/register/forgot|reset-password/profile/messages/notifications;
-│   │                       # dashboard/index, dashboard/[table], users, files, templates
+│   │                       # dashboard/index, dashboard/[table], dashboard/modules, dashboard/users, dashboard/files
 │   ├── types/  utils/  app.config.ts  app.vue
 │
 ├── server/                 # Server (Nitro + Drizzle)
 │   ├── api/
-│   │   ├── auth/           # login/register/logout/me/change password/change profile/email verify/reset password/oauth (providers·login·callback)
+│   │   ├── auth/           # login/register/logout/me/change password/change profile/email verify/reset password/oauth
 │   │   ├── config/         # System config (index/public/put)
 │   │   ├── dashboard/
 │   │   │   ├── meta/       # Table metadata (list / single table, incl. custom flags, menu)
-│   │   │   ├── data/       # Generic CRUD dispatcher + per-table custom logic dispatched via tableOverrides
-│   │   │   └── templates/  # Feature-switch read/write for the templates demo (customization ladder)
-│   │   ├── files/          # upload / download / serve
-│   │   ├── llm/            # chat (POST), ws (streaming)
+│   │   │   ├── data/       # Generic CRUD dispatcher + per-table custom logic via tableOverrides
+│   │   │   ├── modules/    # Module catalog + validate/enable/disable/uninstall
+│   │   │   └── templates/  # Feature-switch read/write for the templates demo
+│   │   ├── files/          # upload / download / serve (visibility + signed URLs)
+│   │   ├── llm/            # chat (POST, tool loop), ws (streaming)
+│   │   ├── modules/        # /api/modules/<id>/** dispatcher (lifecycle gate)
 │   │   ├── notifications/  # inbox, unread count, mark read, create
 │   │   ├── messages/       # contacts, history, unread count, search
+│   │   ├── health.get.ts   # health check
 │   │   └── ws.ts           # WebSocket gateway (notifications/messages/presence/LLM)
-│   ├── database/           # schema / migrate / seed / ensure (auto database creation)
+│   ├── core/               # Platform core: authContext, permissions, dataScope, fieldPolicy, audit,
+│   │                       #   fileAccess, moduleSdk/catalog/manifest/state/guards, realtimeBus,
+│   │                       #   modelGateway, agent, agentApproval
+│   ├── sdk/                # Public Module SDK (the only entry modules may import)
+│   ├── database/           # schema / migrations / migrate / seed / ensure; module migrations & states
 │   ├── utils/              # auth, session, tokens, users, files, mail, notifications, messages, llm, oauth,
-│   │                       # rateLimit, password(Reset), email-verification, fileStorage, configs, pagination;
-│   │                       # dashboard/: crudService, tables (auto-discovery + registry), tableOverrides (customization registry)
-│   └── plugins/  database.ts
+│   │                       # rateLimit, password(Reset), email-verification, fileStorage, configs, pagination,
+│   │                       # realtime, agentStore, moduleRuntime;
+│   │                       # dashboard/: crudService, tables (auto-discovery + registry), tableOverrides, tableValidators
+│   └── plugins/            # database.ts, modules.ts
 │
-├── extends/<your-layer>/      # (optional) Business modules, plugged in as Nuxt layers via registerDashboardTable / registerDrizzleSchema
-├── modules/<name>/            # (optional) Independently hosted decoupled modules; clone here and mount with <NAME>_ENABLED=true in .env
-│                               #   nav (navigation site) / doc (multi-doc site) are built-in examples
-├── i18n/locales/           # en.json / zh.json
-├── test/                   # e2e (API), unit (app/server), nuxt (component/composable/page), helpers
+├── modules/                # Bundled business modules (external modules can be cloned here too)
+│   └── example/            # Reference module (org-scoped notes, API/Tool/UI, module migration)
+├── extends/blog/           # Official upstream Nuxt layer (blog)
+├── modules.catalog.ts      # Single module catalog (the only file that knows module IDs)
+├── docs/                   # architecture / development / ADRs
+├── i18n/locales/           # en / zh-CN / zh-TW / ja / ko / fr / es / de / ar
+├── test/                   # e2e (API), unit (app/server/modules), nuxt (component/composable/page), helpers
 ├── drizzle.config.ts  nuxt.config.ts  vitest.config.ts  ecosystem.config.cjs  .env.example
 ```
 
@@ -170,7 +189,7 @@ Upload (configurable size / MIME whitelist), local storage, download/serve, per-
 
 ## Quick Start
 
-Prerequisites: Node.js 18+, pnpm, PostgreSQL.
+Prerequisites: Node.js 20+, pnpm 11, PostgreSQL 14+.
 
 ```bash
 # 1. Install dependencies
@@ -181,13 +200,11 @@ cp .env.example .env
 #    Edit .env, set at least DATABASE_URL and SESSION_SECRET
 #    SESSION_SECRET suggestion: openssl rand -hex 32
 
-# 3. Prepare the database
-pnpm db:generate   # generate migrations from schema (skippable if migrations already exist)
-pnpm db:migrate    # apply migrations, create tables automatically
+# 3. Prepare the database (base + module + blog migrations)
+pnpm db:generate        # only needed after changing server/database/schema.ts
+pnpm db:migrate:release
 
-# 4. (optional) Seed data: admin/admin@example.com user, roles, default configs, test users
-node -e "import('./server/database/index.ts')"  # or let the app auto ensure+seed on first startup
-#    Simpler: in dev mode the app automatically ensures the database exists and tries to migrate/seed
+# 4. Start development (auto-creates the DB, migrates, seeds on boot)
 pnpm dev
 
 # 5. Build / preview
@@ -195,7 +212,7 @@ pnpm build
 pnpm preview
 ```
 
-> Note: `server/database/ensure.ts` can create the target database automatically; whether migrations run automatically at startup is controlled by `AUTO_MIGRATE=true`. In production, running `pnpm db:migrate` explicitly in the release pipeline is recommended.
+> Note: `server/database/ensure.ts` can create the target database automatically. In development (`NODE_ENV !== 'production'`) the app runs base migrations, module lifecycle, module migrations and seed on startup. Production instances never migrate on boot — run `pnpm db:migrate:release` once in the release pipeline. `AUTO_MIGRATE` is no longer used.
 
 **Default admin account** (created by the seed script): username `admin`, password `Admin@123`, email `admin@example.com`.
 
@@ -209,7 +226,8 @@ pnpm preview
 | `pnpm build` / `preview` | Build / preview the production bundle |
 | `pnpm lint` / `typecheck` | Lint / type check |
 | `pnpm db:generate / migrate / push / studio` | Drizzle Kit migrations and database management |
-| `pnpm test` / `test:watch` / `test:coverage` | Run the test suite |
+| `pnpm db:migrate:release` | Release entry: base + module + blog migrations (`server/database/migrate.ts`) |
+| `pnpm test` / `test:watch` / `test:coverage` | Run the test suite (integration tests use a real PostgreSQL) |
 | `pnpm server` | Run the built output (with `--env-file`) |
 | `pnpm pm` | Start production with PM2 (see `ecosystem.config.cjs`) |
 
@@ -217,62 +235,66 @@ pnpm preview
 
 ## Deployment
 
-- A single instance can also run under PM2; see `ecosystem.config.cjs` (listens on 0.0.0.0:80 by default, adjustable via `nitro_port`).
-- Whether to set `AUTO_MIGRATE` in production depends on your deployment strategy; always set a strong random `SESSION_SECRET`.
-- The npm script `server` reads environment variables via `--env-file-if-exists=.env`, which makes PM2 injection convenient.
+- Run `pnpm db:migrate:release` once before starting new instances; production instances never migrate on boot.
+- A single instance can run under PM2; see `ecosystem.config.cjs` (listens on 0.0.0.0:80 by default, adjustable via `nitro_port`).
+- Multi-instance deployments must set `REALTIME_DRIVER=postgres`; see [docs/architecture/PRODUCTION.md](docs/architecture/PRODUCTION.md).
+- Always set strong random `SESSION_SECRET` and `FILE_SIGNING_SECRET`; `GET /api/health` exposes readiness without secrets.
+- Full guide: [docs/development/DEPLOYMENT.md](docs/development/DEPLOYMENT.md).
 
 ---
 
 ## Modular Extensions
 
-Through the registration functions exposed by `server/utils/dashboard/tables.ts`, business modules can plug **their own tables and services** into the generic system at Nitro startup:
+Business modules live under `modules/<id>/` and connect only through the public SDK (`server/sdk`):
 
-- `registerDrizzleSchema(schema)`: registers the module's Drizzle schema into the auto-discovery pool; any `pgTable` becomes immediately available.
-- `registerDashboardTable(reg, { menuOrder })`: explicitly registers a table's `TableMeta` (field order / labels / types / validation / relations can be overridden); passing `menuOrder` also adds it to the default sidebar menu, while omitting it keeps module-internal tables out of the main menu.
-- `registerDrizzleSchema` + the Drizzle pivot convention: many-to-many relations are detected automatically and virtual fields injected.
-- Full custom page logic: mark `custom: true` and map a component in `CUSTOM_PAGE_MAP` inside `[table].vue` (e.g. `configs` → `configsPage.vue`).
-- When reusing the generic page (`custom: false`), light customization is available via the `#toolbar` / `#form-override` / `#detail-override` slots and the `transformPayload` hook, or point `apiBase` at the module's own generic CRUD namespace. Field-level display/storage transforms work the same way: declare a `getter` / `setter` key on `FieldMeta` and register the transform functions in the module's frontend.
-
-Module APIs only need `requireUser` / `requireAdmin` to reuse the host project's session, RBAC, notifications/direct-messaging/WebSocket and other infrastructure.
+- `modules.catalog.ts` is the single catalog: `MODULE_DEFINITIONS`, `AVAILABLE_MODULE_IDS`, `DEFAULT_ENABLED_MODULE_IDS`.
+- `ModuleDefinition` declares `id`, semver `version`, `apiVersion`, `compatibility.core`, permissions, navigation, database tables, API/Tool/UI registrations and migrations.
+- `register(context)` registers module APIs (`/api/modules/<id>/**`), Agent tools, UI descriptors and generic CRUD metadata.
+- Generic CRUD metadata can be registered through `registerDashboardTable` (moduleId/resource/permissions/contextColumns); business validation through `registerTableValidator`; custom data scopes through `registerDataScopeResolver`.
+- Modules must not import `server/core/**` or `server/utils/**`; `test/unit/server/core/moduleDecoupling.test.ts` enforces the boundary.
+- Build-time enablement uses `ENABLED_MODULES`; runtime state (`active`/`deactivated`/`uninstalled`) is managed at `/dashboard/modules`.
 
 ---
 
-## Built-in Extension Modules (`modules/`)
+## Bundled Module (`modules/`)
 
-Besides the hardcoded `extends/blog` example, this repository mounts **independently hosted** decoupled modules on demand via **`.env` switches**. Each module is its own standalone Git repository — clone it into `modules/<name>/` and flip the corresponding switch in `.env` to hook it in with one line (`nuxt.config.ts` automatically scans `modules/` and mounts any directory with `<NAME>_ENABLED=true`), no host source changes needed. Two are currently built in:
+| Module | Description | Enable |
+| --- | --- | --- |
+| `modules/example` | Reference module: org-scoped notes, API/Tool/UI registrations, module migration, lifecycle tests | default (`ENABLED_MODULES` includes `example`) |
 
-| Module | Description | Home route | Switch (host `.env`) |
-| --- | --- | --- | --- |
-| `modules/nav` | Navigation site (image-based links + catalog management, `layout:false` full-screen landing page) | `/` (replaces the original home page) | `NAV_ENABLED=true` |
-| `modules/doc` | Multi-doc site (categories → documents → three-level sections, drag-and-drop editing + global header nav sync) | `/doc` | `DOC_ENABLED=true` |
+### External school module
 
-**They are not standalone apps — none has its own `package.json`; they only run on top of the host project.** All integration steps happen inside the host project:
+The SIS/SMS module is maintained in [`Nuxt-Extend-SMS`](https://github.com/FrankOldmoon/Nuxt-Extend-SMS). It is not bundled here:
 
 ```bash
-# 1. (one-time) Clone the module repo into the host project
-git clone <your-module-repo> modules/<name>
-
-# 2. Enable it in the host project's .env (the module auto-mounts at nitro startup)
-echo "<NAME>_ENABLED=true" >> .env
-
-# 3. Start with the host project (the module auto-migrates tables, registers CRUD, merges its menu)
-pnpm dev
+git clone https://github.com/FrankOldmoon/Nuxt-Extend-SMS.git modules/sis-demo
+# register it in modules.catalog.ts, then:
+ENABLED_MODULES=example,sis-demo pnpm build
+pnpm db:migrate:release
 ```
 
-> Also supported: pass a space/comma-separated list of layer paths via the `EXTENDS_MODULES` environment variable; results are deduplicated and merged with the `modules/` auto-discovery.
+Modules are not standalone apps: they run inside the host Nitro process as Nuxt layers plus server code. Add a module in three steps:
 
-Module boot flow: `registerDrizzleSchema` makes tables discoverable → idempotent migrations create tables → `registerDashboardTable` registers them into the generic CRUD and sidebar menu → empty tables are auto-seeded → the `dashboard.menu` whitelist is merged (doc also rebuilds the global header navigation). See each module's own README (bilingual) for details.
+```bash
+# 1. Put the module in modules/<id>/ (clone / submodule / local folder)
+# 2. Register it in modules.catalog.ts (one import + one entry)
+# 3. Enable it at build time
+ENABLED_MODULES=example,my-module pnpm build
+```
+
+Module boot flow: catalog validation → dependency ordering → lifecycle callbacks → module migrations (advisory lock + checksums) → API/Tool/UI/CRUD registration → `module_states = migrated` → admin activation. See [docs/architecture/MODULE_ARCHITECTURE.md](docs/architecture/MODULE_ARCHITECTURE.md), [MODULE_LIFECYCLE.md](docs/architecture/MODULE_LIFECYCLE.md) and [docs/development/CREATE_MODULE.md](docs/development/CREATE_MODULE.md).
 
 ---
 
 ## Testing
 
 ```bash
-pnpm test            # full test run
+pnpm test            # full suite (unit + integration + e2e, real PostgreSQL)
+pnpm test:watch      # watch mode
 pnpm test:coverage   # coverage
 ```
 
-Test coverage: server (auth, session, tokens, users, files, notifications, messages, mail, rateLimit, pagination, password & reset, WS & WS registry, dashboard auto-discovery & generic CRUD, file storage, LLM WS), frontend (composables, utils, components, pages), and API end-to-end.
+Coverage includes server core (authorization, data scope, audit, modules, migrations, files, realtime, agent), the bundled example module, dashboard generic CRUD, frontend composables/components/pages and API e2e. Current baseline: **64 test files / 619 tests**. CI (`.github/workflows/ci.yml`) runs migration checks, the full suite against PostgreSQL 16 and a production build on every PR; lint/typecheck are visible but non-blocking legacy debt.
 
 ---
 
@@ -280,16 +302,40 @@ Test coverage: server (auth, session, tokens, users, files, notifications, messa
 
 | Variable | Description |
 | --- | --- |
-| `DATABASE_URL` | PostgreSQL connection string (e.g. `postgres://user:pass@host:5432/db`) |
-| `AUTO_MIGRATE` | Whether to run migrations automatically at startup (off by default) |
-| `SESSION_SECRET` | Session signing secret, required; use a long random string |
+| `DATABASE_URL` | PostgreSQL connection string |
+| `SESSION_SECRET` | Session signing secret, required |
+| `FILE_SIGNING_SECRET` | HMAC secret for private-file signed URLs (falls back to `NUXT_SESSION_PASSWORD`) |
 | `NUXT_PUBLIC_SITE_URL` | Public site URL |
+| `ENABLED_MODULES` | Build-time enabled module IDs (space/comma separated) |
+| `REALTIME_DRIVER` | `memory` (default) or `postgres` (required for multi-instance) |
+| `REALTIME_CHANNEL` | PostgreSQL NOTIFY channel (default `app_realtime`) |
 | `DB_POOL_MAX` / `DB_POOL_IDLE_TIMEOUT` / `DB_POOL_CONNECT_TIMEOUT` | Connection pool tuning (optional) |
+| `BLOG_ENABLED` | Set `false` to skip the blog Nuxt layer |
 
-> Site title, email SMTP, upload limits, security TTL and LLM parameters are all managed in the dashboard's "System Config" — no code changes needed.
+> Site title, email SMTP, upload limits, security TTL and LLM parameters are managed in System Config — no code changes needed.
 
 ---
 
-## Project Status & Suggested Extensions
+## Documentation
 
-The current base is feature-complete and well tested. Already built in: OAuth2 third-party login (GitHub / Google / Microsoft), WeChat Pay & Stripe payments, time-based membership subscriptions, analytics integrations (GA4 / Google Ads / Baidu Tongji), LLM connectivity testing, dynamic overview stats, pg_trgm full-text indexes, last-login info display. Future directions: field/role-level permissions, dashboard stat charts, dark mode, data backup & restore, and more.
+| Topic | Document |
+| --- | --- |
+| System architecture | [docs/architecture/SYSTEM_ARCHITECTURE.md](docs/architecture/SYSTEM_ARCHITECTURE.md) |
+| Core services | [docs/architecture/CORE_SERVICES.md](docs/architecture/CORE_SERVICES.md) |
+| Authorization | [docs/architecture/AUTHORIZATION.md](docs/architecture/AUTHORIZATION.md) |
+| Multi-tenancy | [docs/architecture/MULTI_TENANCY.md](docs/architecture/MULTI_TENANCY.md) |
+| Module architecture / lifecycle | [MODULE_ARCHITECTURE.md](docs/architecture/MODULE_ARCHITECTURE.md) / [MODULE_LIFECYCLE.md](docs/architecture/MODULE_LIFECYCLE.md) |
+| Database migrations | [docs/architecture/DATABASE_MIGRATIONS.md](docs/architecture/DATABASE_MIGRATIONS.md) |
+| Agent architecture | [docs/architecture/AGENT_ARCHITECTURE.md](docs/architecture/AGENT_ARCHITECTURE.md) |
+| Development guides | [docs/development/](docs/development/) |
+| Architecture decisions | [docs/decisions/ADRs/](docs/decisions/ADRs/README.md) |
+| Implementation audit / progress | [IMPLEMENTATION_AUDIT.md](docs/architecture/IMPLEMENTATION_AUDIT.md) / [UPGRADE_PROGRESS.md](docs/architecture/UPGRADE_PROGRESS.md) |
+| Production / realtime | [docs/architecture/PRODUCTION.md](docs/architecture/PRODUCTION.md) |
+
+---
+
+## Project Status
+
+The admin base is feature-complete for the architecture upgrade (Phases 0–7). Implemented: server-side authorization and multi-tenancy, generic CRUD isolation, file visibility/signed URLs, Module SDK and lifecycle management, Agent gateway/tools/approvals/execution records, and multi-instance realtime via PostgreSQL. The SIS/SMS domain lives in the external [Nuxt-Extend-SMS](https://github.com/FrankOldmoon/Nuxt-Extend-SMS) module.
+
+Known gaps (tracked in [UPGRADE_PROGRESS.md](docs/architecture/UPGRADE_PROGRESS.md)): Agent native Anthropic adapter and module extraction, record retention jobs, Redis/object-storage adapters, global rate limiting, and the pre-existing lint/type debt. SIS timetable/attendance/assessment/reporting gaps are tracked in the external module repository.

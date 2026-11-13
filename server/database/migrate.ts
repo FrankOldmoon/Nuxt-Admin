@@ -2,7 +2,8 @@ import 'dotenv/config'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { Pool } from 'pg'
 import { drizzle } from 'drizzle-orm/node-postgres'
-import { resolveModules, runModuleLifecycle } from '../core/moduleSdk'
+import { runModuleLifecycle } from '../core/moduleSdk'
+import { resolveModuleCatalog } from '../core/moduleCatalog'
 import { MODULE_DEFINITIONS, resolveEnabledModuleIds } from '../../modules.catalog'
 import { schema } from './index'
 import { applyModuleMigrations } from './moduleMigrations'
@@ -17,11 +18,18 @@ async function main() {
   const connectionString = process.env.DATABASE_URL
   if (!connectionString) throw new Error('DATABASE_URL is required')
 
-  const resolved = resolveModules(MODULE_DEFINITIONS, resolveEnabledModuleIds())
+  const resolved = resolveModuleCatalog(MODULE_DEFINITIONS, resolveEnabledModuleIds())
   const pool = new Pool({ connectionString })
   const db = drizzle(pool, { schema })
   try {
-    await migrate(db, { migrationsFolder: './server/database/migrations' })
+    await migrate(db, {
+      migrationsFolder: './server/database/migrations',
+      // Must match drizzle.config.ts and the dev boot plugin, otherwise the
+      // release entry and dev mode keep separate migration histories and
+      // re-apply migrations that already exist.
+      migrationsSchema: 'public',
+      migrationsTable: '__drizzle_migrations'
+    })
     await runModuleLifecycle(resolved.modules, resolved.enabledIds, 'onRegister')
     await runModuleLifecycle(resolved.modules, resolved.enabledIds, 'onEnable')
     try {

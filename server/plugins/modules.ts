@@ -1,4 +1,4 @@
-import { resolveModules } from '../core/moduleSdk'
+import { resolveModuleCatalog } from '../core/moduleCatalog'
 import { MODULE_DEFINITIONS, resolveEnabledModuleIds } from '../../modules.catalog'
 import { db } from '../database'
 import { recordModuleState } from '../database/moduleStates'
@@ -10,7 +10,7 @@ import { registerEnabledModuleServices } from '../utils/moduleRuntime'
  * so a broken module never looks successfully activated.
  */
 export default defineNitroPlugin(async () => {
-  const resolved = resolveModules(MODULE_DEFINITIONS, resolveEnabledModuleIds())
+  const resolved = resolveModuleCatalog(MODULE_DEFINITIONS, resolveEnabledModuleIds())
 
   try {
     await registerEnabledModuleServices()

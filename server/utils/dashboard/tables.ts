@@ -759,7 +759,10 @@ const TABLES: RegisteredTable[] = [
         softDelete: true,
         search: ['filename', 'originalName', 'mimeType'],
         defaultSort: { field: 'createdAt', order: 'desc' },
-        dataScope: { ownerColumn: 'userId' }
+        dataScope: { ownerColumn: 'userId' },
+        organizationScoped: true,
+        tenantScoped: true,
+        contextColumns: { organization: 'organizationId', tenant: 'tenantId' }
       },
       custom: false
     },
@@ -938,6 +941,8 @@ export const DEFAULT_MENU: Array<{
   label: string
   icon: string
   order: number
+  /** Optional explicit route for standalone (non-CRUD) pages. */
+  url?: string
 }> = [
   { table: 'roles', label: 'Roles', icon: 'i-lucide-shield', order: 10 },
   { table: 'users', label: 'Users', icon: 'i-lucide-users', order: 20 },
@@ -948,7 +953,8 @@ export const DEFAULT_MENU: Array<{
   { table: 'creditTransactions', label: 'Credits', icon: 'i-lucide-coins', order: 48 },
   { table: 'oauthClients', label: 'OAuth Clients', icon: 'i-lucide-key-round', order: 47 },
   { table: 'templates', label: 'Templates', icon: 'i-lucide-file-text', order: 50 },
-  { table: 'configs', label: 'System Config', icon: 'i-lucide-settings-2', order: 60 }
+  { table: 'configs', label: 'System Config', icon: 'i-lucide-settings-2', order: 60 },
+  { table: 'modules', label: 'Modules', icon: 'i-lucide-boxes', order: 65, url: '/dashboard/modules' }
 ]
 
 // ========================================================================

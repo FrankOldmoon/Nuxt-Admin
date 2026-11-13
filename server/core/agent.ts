@@ -1,3 +1,4 @@
+import type { ModelUsage } from './modelGateway'
 import type { ToolDefinition, ToolRegistry } from './moduleSdk'
 
 /** Minimal lookup shape so any UiRegistry<Props, Result> can be passed. */
@@ -23,6 +24,10 @@ export interface AgentMessage {
 export interface AgentModelTurn {
   content: string
   toolCalls?: AgentToolCall[]
+  usage?: ModelUsage
+  costUsd?: number
+  model?: string
+  provider?: string
 }
 
 export interface AgentToolDescriptor {
@@ -31,6 +36,9 @@ export interface AgentToolDescriptor {
   parameters: Record<string, unknown>
   operation: 'query' | 'command'
   approval: 'none' | 'confirm' | 'second-person'
+  riskLevel: 'low' | 'medium' | 'high'
+  requiresApproval: boolean
+  moduleId?: string
 }
 
 export type AgentModel = (messages: AgentMessage[], tools: AgentToolDescriptor[]) => Promise<AgentModelTurn>
@@ -40,6 +48,11 @@ export interface AgentAuditEvent {
   callId: string
   outcome: 'success' | 'failure' | 'denied'
   error?: string
+  moduleId?: string
+  riskLevel?: 'low' | 'medium' | 'high'
+  args?: unknown
+  resultSize?: number
+  durationMs?: number
 }
 
 export interface AgentLoopOptions {
@@ -62,6 +75,8 @@ export interface AgentCompleted {
   content: string
   messages: AgentMessage[]
   toolCalls: number
+  usage?: ModelUsage
+  costUsd?: number
 }
 
 export interface AgentPendingConfirmation {
@@ -70,6 +85,8 @@ export interface AgentPendingConfirmation {
   pending: AgentToolCall[]
   messages: AgentMessage[]
   toolCalls: number
+  usage?: ModelUsage
+  costUsd?: number
 }
 
 export interface AgentFailed {
@@ -77,6 +94,8 @@ export interface AgentFailed {
   error: string
   messages: AgentMessage[]
   toolCalls: number
+  usage?: ModelUsage
+  costUsd?: number
 }
 
 export type AgentLoopResult = AgentCompleted | AgentPendingConfirmation | AgentFailed
@@ -91,7 +110,10 @@ function toolMessage(call: AgentToolCall, payload: unknown): AgentMessage {
 }
 
 function needsConfirmation(descriptor: AgentToolDescriptor | undefined): boolean {
-  return !!descriptor && descriptor.operation === 'command' && descriptor.approval !== 'none'
+  if (!descriptor) return false
+  if (descriptor.requiresApproval) return true
+  if (descriptor.riskLevel === 'high' || descriptor.riskLevel === 'medium') return true
+  return descriptor.operation === 'command' && descriptor.approval !== 'none'
 }
 
 /** Describe registered tools for the model, filtering by caller permission. */
@@ -102,13 +124,20 @@ export function describeAgentTools(
   const admin = permissions.includes('*')
   return registry.list()
     .filter(tool => !tool.permission || admin || permissions.includes(tool.permission))
-    .map(tool => ({
-      name: tool.id,
-      description: (tool as Partial<ToolDefinition>).description ?? tool.id,
-      parameters: tool.inputJsonSchema ?? { type: 'object', properties: {} },
-      operation: tool.operation ?? 'query',
-      approval: tool.approval ?? (tool.operation === 'command' ? 'confirm' : 'none')
-    }))
+    .map((tool) => {
+      const definition = tool as Partial<ToolDefinition>
+      const riskLevel = definition.riskLevel ?? (tool.operation === 'command' ? 'medium' : 'low')
+      return {
+        name: tool.id,
+        description: definition.description ?? tool.id,
+        parameters: tool.inputJsonSchema ?? { type: 'object', properties: {} },
+        operation: tool.operation ?? 'query',
+        approval: tool.approval ?? (tool.operation === 'command' ? 'confirm' : 'none'),
+        riskLevel,
+        requiresApproval: definition.requiresApproval ?? riskLevel === 'high',
+        moduleId: definition.moduleId
+      }
+    })
 }
 
 /**
@@ -127,6 +156,20 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   const approved = options.confirmations?.approved ?? new Set<string>()
   const rejected = options.confirmations?.rejected ?? new Set<string>()
   let toolCalls = 0
+  const usage: ModelUsage = {}
+  let hasUsage = false
+  let costUsd = 0
+  const addUsage = (next?: ModelUsage) => {
+    if (!next) return
+    hasUsage = true
+    usage.promptTokens = (usage.promptTokens ?? 0) + (next.promptTokens ?? 0)
+    usage.completionTokens = (usage.completionTokens ?? 0) + (next.completionTokens ?? 0)
+    usage.totalTokens = (usage.totalTokens ?? 0) + (next.totalTokens ?? 0)
+  }
+  const usageFields = () => ({
+    ...(hasUsage ? { usage } : {}),
+    ...(costUsd > 0 ? { costUsd } : {})
+  })
 
   const audit = async (event: AgentAuditEvent) => {
     try {
@@ -156,9 +199,12 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
           status: 'failed',
           error: error instanceof Error ? error.message : String(error),
           messages,
-          toolCalls
+          toolCalls,
+          ...usageFields()
         }
       }
+      addUsage(turn.usage)
+      costUsd += turn.costUsd ?? 0
       content = turn.content
       calls = turn.toolCalls ?? []
       messages.push({
@@ -167,7 +213,7 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         ...(calls.length > 0 ? { tool_calls: calls } : {})
       })
       if (calls.length === 0) {
-        return { status: 'completed', content, messages, toolCalls }
+        return { status: 'completed', content, messages, toolCalls, ...usageFields() }
       }
     }
 
@@ -184,14 +230,15 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         content,
         pending,
         messages,
-        toolCalls
+        toolCalls,
+        ...usageFields()
       }
     }
 
     for (const call of calls) {
       toolCalls++
       if (toolCalls > maxToolCalls) {
-        return { status: 'failed', error: `Tool call limit exceeded (${maxToolCalls})`, messages, toolCalls }
+        return { status: 'failed', error: `Tool call limit exceeded (${maxToolCalls})`, messages, toolCalls, ...usageFields() }
       }
 
       const descriptor = options.tools.find(tool => tool.name === call.function.name)
@@ -202,7 +249,14 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       }
       if (needsConfirmation(descriptor) && rejected.has(call.id)) {
         messages.push(toolMessage(call, { error: 'User rejected this command' }))
-        await audit({ toolId: descriptor.name, callId: call.id, outcome: 'denied', error: 'user-rejected' })
+        await audit({
+          toolId: descriptor.name,
+          callId: call.id,
+          outcome: 'denied',
+          error: 'user-rejected',
+          moduleId: descriptor.moduleId,
+          riskLevel: descriptor.riskLevel
+        })
         continue
       }
 
@@ -211,23 +265,57 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
         args = parseArguments(call.function.arguments)
       } catch (error) {
         messages.push(toolMessage(call, { error: error instanceof Error ? error.message : String(error) }))
-        await audit({ toolId: descriptor.name, callId: call.id, outcome: 'failure', error: 'invalid-arguments' })
+        await audit({
+          toolId: descriptor.name,
+          callId: call.id,
+          outcome: 'failure',
+          error: 'invalid-arguments',
+          moduleId: descriptor.moduleId,
+          riskLevel: descriptor.riskLevel
+        })
         continue
       }
 
+      const startedAt = Date.now()
       try {
         const result = await options.registry.run(descriptor.name, args, options.context)
         messages.push(toolMessage(call, result ?? null))
-        await audit({ toolId: descriptor.name, callId: call.id, outcome: 'success' })
+        await audit({
+          toolId: descriptor.name,
+          callId: call.id,
+          outcome: 'success',
+          moduleId: descriptor.moduleId,
+          riskLevel: descriptor.riskLevel,
+          args,
+          resultSize: safeSize(result),
+          durationMs: Date.now() - startedAt
+        })
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
         messages.push(toolMessage(call, { error: message }))
-        await audit({ toolId: descriptor.name, callId: call.id, outcome: 'failure', error: message })
+        await audit({
+          toolId: descriptor.name,
+          callId: call.id,
+          outcome: 'failure',
+          error: message,
+          moduleId: descriptor.moduleId,
+          riskLevel: descriptor.riskLevel,
+          args,
+          durationMs: Date.now() - startedAt
+        })
       }
     }
   }
 
-  return { status: 'failed', error: `Max tool rounds exceeded (${maxRounds})`, messages, toolCalls }
+  return { status: 'failed', error: `Max tool rounds exceeded (${maxRounds})`, messages, toolCalls, ...usageFields() }
+}
+
+function safeSize(value: unknown): number | undefined {
+  try {
+    return JSON.stringify(value ?? null)?.length ?? 0
+  } catch {
+    return undefined
+  }
 }
 
 function parseArguments(raw: string): unknown {

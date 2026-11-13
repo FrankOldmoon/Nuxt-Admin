@@ -20,20 +20,39 @@ async function setCaptchaEnabled(value: string): Promise<void> {
 // boots (so its config cache loads the disabled value) and restore it afterwards.
 await setCaptchaEnabled('false')
 
+/** The shared test DB may predate recent schema migrations; bootstrap file columns. */
+async function ensureFileColumns(): Promise<void> {
+  const client = new Client({ connectionString: DB_URL })
+  await client.connect()
+  try {
+    await client.query(`ALTER TABLE files ADD COLUMN IF NOT EXISTS visibility varchar(10) DEFAULT 'public' NOT NULL`)
+    await client.query(`ALTER TABLE files ALTER COLUMN visibility SET DEFAULT 'private'`)
+    await client.query(`ALTER TABLE files ADD COLUMN IF NOT EXISTS organization_id integer`)
+    await client.query(`ALTER TABLE files ADD COLUMN IF NOT EXISTS tenant_id integer`)
+  } finally {
+    await client.end()
+  }
+}
+await ensureFileColumns()
+
 describe('API integration tests (reusing the nuxt_ai database)', async () => {
   await setup({ server: { port: 3001 } })
 
   afterAll(() => setCaptchaEnabled('true'))
 
-  /** Log in as the seed admin and return the session cookie */
+  /** Log in as the seed admin and return the session cookie.
+   *  Memoized because the login endpoint rate-limits (5 attempts / 15 min). */
+  let adminCookie: string | null = null
   async function loginAsAdmin(): Promise<string> {
+    if (adminCookie) return adminCookie
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ identifier: 'admin@example.com', password: 'Admin@123' })
     })
     const setCookie = res.headers.get('set-cookie') || ''
-    return setCookie.split(';')[0]
+    adminCookie = setCookie.split(';')[0]
+    return adminCookie
   }
 
   it('GET / is reachable', async () => {
@@ -97,6 +116,78 @@ describe('API integration tests (reusing the nuxt_ai database)', async () => {
       await expect($fetch(`/api/dashboard/data/${table}`, { headers: { cookie } }))
         .rejects.toMatchObject({ statusCode: 404 })
     }
+  })
+
+  it('enforces file visibility, private authorization and path safety', async () => {
+    const cookie = await loginAsAdmin()
+    const me = await fetch('/api/auth/me', { headers: { cookie } })
+    expect(me.status).toBe(200)
+    const upload = async (visibility?: 'public' | 'private') => {
+      const form = new FormData()
+      const marker = `secret-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      form.append('files', new Blob([marker], { type: 'text/plain' }), 'note.txt')
+      if (visibility) form.append('visibility', visibility)
+      const res = await fetch('/api/files/upload', {
+        method: 'POST',
+        body: form,
+        headers: { cookie }
+      })
+      const json = await res.json() as { files: Array<{ path: string }> }
+      expect(res.status, JSON.stringify(json)).toBe(200)
+      return { path: json.files[0]!.path, marker }
+    }
+    const encodePath = (path: string) => path.split('/').map(encodeURIComponent).join('/')
+
+    const priv = await upload()
+    await expect($fetch(`/api/files/serve/${encodePath(priv.path)}`))
+      .rejects.toMatchObject({ statusCode: 401 })
+    const authed = await $fetch<string>(`/api/files/serve/${encodePath(priv.path)}`, { headers: { cookie } })
+    expect(authed).toContain(priv.marker)
+
+    const pub = await upload('public')
+    const anonymous = await $fetch<string>(`/api/files/serve/${encodePath(pub.path)}`)
+    expect(anonymous).toContain(pub.marker)
+
+    await expect($fetch(`/api/files/serve/${encodeURIComponent('../../etc/passwd')}`))
+      .rejects.toMatchObject({ statusCode: 404 })
+  })
+
+  it('GET /api/dashboard/modules requires admin and lists the module catalog', async () => {
+    await expect($fetch('/api/dashboard/modules')).rejects.toMatchObject({ statusCode: 401 })
+
+    const cookie = await loginAsAdmin()
+    const data = await $fetch<{
+      validation: { ok: boolean, error: string | null }
+      modules: Array<{ id: string, state: { state: string } | null }>
+    }>('/api/dashboard/modules', { headers: { cookie } })
+
+    expect(data.validation.ok).toBe(true)
+    expect(data.modules.map(module => module.id)).toEqual(expect.arrayContaining(['example']))
+    for (const module of data.modules) {
+      expect(['active', 'deactivated']).toContain(module.state?.state)
+    }
+  })
+
+  it('rejects generic import/export for custom tables', async () => {
+    const cookie = await loginAsAdmin()
+    await expect($fetch('/api/dashboard/data/configs/export', { headers: { cookie } }))
+      .rejects.toMatchObject({ statusCode: 405 })
+    await expect($fetch('/api/dashboard/data/configs/import', {
+      method: 'POST',
+      headers: { cookie },
+      body: { rows: [['key', 'value']] }
+    })).rejects.toMatchObject({ statusCode: 405 })
+  })
+
+  it('GET /api/health reports database and realtime status', async () => {
+    const health = await $fetch<{
+      status: string
+      checks: { database: string }
+      realtime: { driver: string }
+    }>('/api/health')
+    expect(health.status).toBe('ok')
+    expect(health.checks.database).toBe('ok')
+    expect(['memory', 'postgres']).toContain(health.realtime.driver)
   })
 
   it('POST /api/auth/register follows the allowRegistration config', async () => {

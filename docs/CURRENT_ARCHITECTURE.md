@@ -1,7 +1,10 @@
 # 当前架构（vNext Phase 0 复核）
 
-> 本文件是《Nuxt-Admin vNext 实施任务书》Phase 0 产出，描述**当前工作区真实代码**。
-> 根目录同名文件为上一轮审计存档，如与本文件冲突以本文件为准。
+> **Deprecated**：本文件是 Phase 0 的历史快照，仅用于追溯。当前真实架构请阅读
+> [architecture/SYSTEM_ARCHITECTURE.md](./architecture/SYSTEM_ARCHITECTURE.md)。
+> 根目录同名文件为更早的审计存档，同样不再维护。
+
+> 本文件是《Nuxt-Admin vNext 实施任务书》Phase 0 产出，描述**当时的工作区代码**。
 > 复核基线：`main` @ `350aa99`（Phase 1 Core 骨架已合入）。
 
 ## 1. 技术栈与运行形态

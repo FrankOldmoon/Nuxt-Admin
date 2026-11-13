@@ -1,5 +1,9 @@
 # 实施计划（vNext）
 
+> **Historical**：Phase 0 的计划文档。实际完成状态以
+> [architecture/UPGRADE_PROGRESS.md](./architecture/UPGRADE_PROGRESS.md) 与
+> [architecture/IMPLEMENTATION_AUDIT.md](./architecture/IMPLEMENTATION_AUDIT.md) 为准。
+
 > Phase 0 产出。执行顺序严格按任务书：Phase 0 → 1 → 2 → 3 → 4 → 5。
 > 每个 Phase 结束时必须通过 `pnpm typecheck`、`pnpm test`、`pnpm build`，并汇报改动文件、测试结果、剩余问题。
 > 现有 Phase 1 Core 骨架（权限/审计/字段策略/模块 SDK/组织模型）已存在，以下任务以**加固与补齐**为主，不重写。

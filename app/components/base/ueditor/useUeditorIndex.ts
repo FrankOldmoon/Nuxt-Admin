@@ -56,6 +56,8 @@ export function useUeditorIndex(props: any, json: any) {
 
             const formData = new FormData()
             formData.append('files', processedFile)
+            // Content embedded in public articles must be publicly servable.
+            formData.append('visibility', 'public')
             const res: any = await $fetch('/api/files/upload', {
                 method: 'POST',
                 body: formData,

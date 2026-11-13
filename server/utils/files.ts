@@ -111,6 +111,9 @@ export async function createFileRecord(userId: number, input: {
   size?: number
   path: string
   storage?: string
+  visibility?: 'public' | 'private'
+  organizationId?: number | null
+  tenantId?: number | null
 }): Promise<FileRow> {
   const [row] = await db.insert(files).values({
     userId,
@@ -120,7 +123,10 @@ export async function createFileRecord(userId: number, input: {
     mimeType: input.mimeType ?? null,
     size: input.size ?? 0,
     path: input.path,
-    storage: input.storage ?? 'local'
+    storage: input.storage ?? 'local',
+    visibility: input.visibility ?? 'private',
+    organizationId: input.organizationId ?? null,
+    tenantId: input.tenantId ?? null
   }).returning()
   if (!row) throw new Error('Failed to create file record')
   return row
@@ -133,6 +139,7 @@ export async function updateFileRecord(id: number, input: {
   size?: number
   path?: string
   storage?: string
+  visibility?: 'public' | 'private'
 }): Promise<FileRow | null> {
   const sets: Partial<typeof files.$inferInsert> = {}
   if (input.filename !== undefined) sets.filename = input.filename
@@ -141,6 +148,7 @@ export async function updateFileRecord(id: number, input: {
   if (input.size !== undefined) sets.size = input.size
   if (input.path !== undefined) sets.path = input.path
   if (input.storage !== undefined) sets.storage = input.storage
+  if (input.visibility !== undefined) sets.visibility = input.visibility
   if (Object.keys(sets).length === 0) {
     return await findFileById(id)
   }
@@ -183,6 +191,9 @@ export function toPublicFile(f: FileRow) {
     size: f.size,
     path: f.path,
     storage: f.storage,
+    visibility: f.visibility,
+    organizationId: f.organizationId,
+    tenantId: f.tenantId,
     deletedAt: f.deletedAt,
     createdAt: f.createdAt,
     updatedAt: f.updatedAt

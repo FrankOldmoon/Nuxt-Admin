@@ -86,19 +86,39 @@ describe('example notes organization isolation (database)', () => {
     expect(result.rowCount).toBe(0)
   })
 
-  it('persists the module lifecycle state and audits the transition', async () => {
+  it('persists the module lifecycle state, enforces transitions and audits them', async () => {
+    const moduleId = 'itest-example-lifecycle'
     await recordModuleState(db, {
-      moduleId: 'example',
+      moduleId,
       version: '1.0.0',
       state: 'migrated',
       source: 'integration-test'
     })
-    expect((await findModuleState(db, 'example'))?.state).toBe('migrated')
+    expect((await findModuleState(db, moduleId))?.state).toBe('migrated')
+
+    await recordModuleState(db, {
+      moduleId,
+      version: '1.0.0',
+      state: 'active',
+      source: 'integration-test'
+    })
+    expect((await findModuleState(db, moduleId))?.state).toBe('active')
+    await expect(recordModuleState(db, {
+      moduleId,
+      version: '1.0.0',
+      state: 'migrated',
+      source: 'integration-test'
+    })).rejects.toThrow('Invalid module lifecycle transition: active -> migrated')
 
     const audit = await pool.query(
-      `SELECT action, resource FROM audit_logs WHERE module_id = 'example' AND resource = 'module_states'`
+      `SELECT action, resource FROM audit_logs WHERE module_id = $1 AND resource = 'module_states'`,
+      [moduleId]
     )
     expect(audit.rows).toContainEqual({ action: 'module.migrated', resource: 'module_states' })
+    expect(audit.rows).toContainEqual({ action: 'module.active', resource: 'module_states' })
+
+    await pool.query('DELETE FROM module_states WHERE module_id = $1', [moduleId])
+    await pool.query('DELETE FROM audit_logs WHERE module_id = $1', [moduleId])
   })
 
   it('writes a create audit row for the same organization', async () => {

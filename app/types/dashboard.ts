@@ -128,6 +128,22 @@ export interface TableFeatures {
   /** Whether the row "detail" action is available (defaults to true) */
   detail?: boolean
   /**
+   * Columns injected from authenticated server context on create and ignored
+   * on update. Values sent by the browser are never trusted.
+   */
+  contextColumns?: { organization?: string, tenant?: string }
+  /**
+   * Declares that rows belong to one organization. When true and
+   * `contextColumns.organization` is omitted, the default column `organizationId`
+   * is used (injected on create, validated for relations).
+   */
+  organizationScoped?: boolean
+  /**
+   * Declares that rows belong to one tenant. When true and
+   * `contextColumns.tenant` is omitted, the default column `tenantId` is used.
+   */
+  tenantScoped?: boolean
+  /**
    * Row-level data scoping. `scope` wins over the legacy role-level
    * `dataScope` value (`all` / `self`). `global` still requires an explicit
    * `*` / `global` permission; missing columns or context deny access.
@@ -164,6 +180,15 @@ export interface TableFeatures {
 export interface TableMeta {
   /** Unique logical identifier — used in URL ?table=... and route names */
   table: string
+  /** Owning module for audit attribution (defaults to `core`). */
+  moduleId?: string
+  /** Logical resource name in audit/permission records (defaults to `table`). */
+  resource?: string
+  /**
+   * Canonical resource permissions (e.g. `sis.students.read`). When set, the
+   * matching permission is accepted in addition to legacy table permissions.
+   */
+  permissions?: Partial<Record<'read' | 'create' | 'update' | 'delete', string>>
   /**
    * Generic CRUD exposure. Only `generic-crud` / `custom` tables can be
    * reached through `/api/dashboard/data/[table]`. Missing or `internal`

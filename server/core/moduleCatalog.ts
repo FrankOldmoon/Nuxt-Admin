@@ -1,4 +1,6 @@
-import type { ModuleDefinition } from './moduleSdk'
+import type { ModuleDefinition, ResolvedModules, ModuleManifest } from './moduleSdk'
+import { resolveModules } from './moduleSdk'
+import { validateModuleManifests, validateModuleMigrationMetadata } from './moduleManifest'
 
 /**
  * Parse `ENABLED_MODULES` (space/comma separated), de-duplicated.
@@ -28,4 +30,15 @@ export function checkEnabledModules<T extends ModuleDefinition>(
   enabledIds: readonly string[]
 ): void {
   validateEnabledIds(definitions.map(module => module.id), enabledIds)
+}
+
+/** Single validation + dependency resolution pipeline for boot and migrations. */
+export function resolveModuleCatalog<T extends ModuleDefinition>(
+  definitions: readonly T[],
+  enabledIds: readonly string[]
+): ResolvedModules<T> {
+  validateModuleManifests(definitions as readonly ModuleManifest[])
+  validateModuleMigrationMetadata(definitions)
+  validateEnabledIds(definitions.map(module => module.id), enabledIds)
+  return resolveModules(definitions, enabledIds)
 }

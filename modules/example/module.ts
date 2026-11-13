@@ -3,7 +3,7 @@ import type {
   ModuleDefinition,
   ToolRegistry,
   UiRegistry
-} from '../../server/core/moduleSdk'
+} from '../../server/sdk'
 import type { ModuleActor } from './server/context'
 import { exampleMigrations } from './server/database/migrations'
 
@@ -11,6 +11,9 @@ export const exampleModule: ModuleDefinition = {
   id: 'example',
   name: 'Example Module',
   version: '1.0.0',
+  apiVersion: '1',
+  compatibility: { core: '^1.0.0' },
+  migrationScope: 'global',
   dependencies: [],
   permissions: ['example:read', 'example:create'],
   navigation: [{ id: 'example', label: 'Example', to: '/example' }],

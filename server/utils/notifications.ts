@@ -1,7 +1,7 @@
 import { eq, desc, count, and, isNull, notExists, sql, or } from 'drizzle-orm'
 import { db } from './db'
 import { notifications, notificationReads, users } from '../database/schema'
-import { broadcastToAll, sendToUser } from './wsRegistry'
+import { publishToAll, publishToUser } from './realtime'
 
 export type NotificationRow = typeof notifications.$inferSelect
 
@@ -35,11 +35,11 @@ export async function createNotification(input: {
   if (row.targetUserIds && row.targetUserIds.length > 0) {
     // Send only to targeted users
     for (const uid of row.targetUserIds) {
-      sendToUser(uid, payload)
+      await publishToUser(uid, payload)
     }
   } else {
     // Broadcast to all connected users
-    broadcastToAll(payload)
+    await publishToAll(payload)
   }
 
   return row

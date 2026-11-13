@@ -27,6 +27,9 @@ export default defineEventHandler(async (event) => {
   const actor = await requireDashboardAccess(event, table, 'read')
   const meta = getExposedTableMeta(table)
   if (!meta) throw createError({ statusCode: 404, message: `Unknown table: ${table}` })
+  if (meta.custom) {
+    throw createError({ statusCode: 405, message: `Custom table "${table}" cannot be exported via generic API` })
+  }
 
   const query = getQuery(event) as Record<string, unknown>
   const { search, filters, sort } = parsePageQuery(query, meta)
