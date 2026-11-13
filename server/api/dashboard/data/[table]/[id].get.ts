@@ -1,7 +1,7 @@
 // GET /api/dashboard/data/[table]/[id]
 import { createError, getRouterParams } from 'h3'
 import { requireDashboardAccess } from '~~/server/utils/auth'
-import { getTableMeta } from '~~/server/utils/dashboard/tables'
+import { getExposedTableMeta } from '~~/server/utils/dashboard/tables'
 import { getTableHandler } from '~~/server/utils/dashboard/tableOverrides'
 import { getById, toDataScopeActor, enrichFileFields } from '~~/server/utils/dashboard/crudService'
 
@@ -11,7 +11,7 @@ export default defineEventHandler(async (event) => {
   if (handler?.getOne) return handler.getOne(event)
 
   const actor = await requireDashboardAccess(event, params.table, 'read')
-  const meta = getTableMeta(params.table)
+  const meta = getExposedTableMeta(params.table)
   if (!meta) throw createError({ statusCode: 404, message: `Unknown table: ${params.table}` })
   if (meta.custom) {
     throw createError({ statusCode: 405, message: `Custom table "${params.table}" not allowed via generic API` })

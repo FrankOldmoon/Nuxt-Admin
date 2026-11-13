@@ -37,13 +37,15 @@ import {
   notIlike,
   or,
   sql,
-  asc
+  asc,
+  type SQL
 } from 'drizzle-orm'
 import type { PgTableWithColumns, PgColumn } from 'drizzle-orm/pg-core'
 import { createError } from 'h3'
 import type { Database } from '~~/server/database'
 import { writeAudit } from '~~/server/core/audit'
-import { deniedWriteFields, hiddenFieldsFor, withoutHiddenFields } from '~~/server/core/fieldPolicy'
+import { applyReadPolicy, deniedWriteFields } from '~~/server/core/fieldPolicy'
+import { dataScopeDenialMessage, resolveTableDataScope } from '~~/server/core/dataScope'
 
 /** Minimal executor shared by the pool and a transaction so writes can be atomic. */
 type CrudExecutor = Pick<Database, 'insert' | 'delete'>
@@ -390,8 +392,10 @@ export interface DataScopeActor {
   userId: number
   roleName: string
   dataScope: string
+  permissions?: string[]
   organizationId?: number
   tenantId?: number
+  departmentId?: number | null
 }
 
 async function writeCrudAudit(
@@ -421,24 +425,32 @@ async function writeCrudAudit(
  *  context; returns undefined when there is no role (no restriction). */
 export function toDataScopeActor(ctx: {
   user: { id: number }
-  role: { name: string, dataScope?: string | null } | null
+  role: { name: string, dataScope?: string | null, permissions?: unknown } | null
   organization?: { id: number, tenantId: number } | null
+  departmentId?: number | null
+  permissions?: readonly string[] | null
 }): DataScopeActor | undefined {
   if (!ctx.role) return undefined
+  const rolePermissions = Array.isArray(ctx.role.permissions)
+    ? ctx.role.permissions.filter((entry): entry is string => typeof entry === 'string')
+    : []
   return {
     userId: ctx.user.id,
     roleName: ctx.role.name,
     dataScope: ctx.role.dataScope || 'all',
+    permissions: ctx.permissions ? [...ctx.permissions] : rolePermissions,
     organizationId: ctx.organization?.id,
-    tenantId: ctx.organization?.tenantId
+    tenantId: ctx.organization?.tenantId,
+    departmentId: ctx.departmentId ?? null
   }
 }
 
 /**
- * Build the row-level data-scope WHERE condition:
- * - admin / dataScope='all' / dataScope not configured -> undefined (no restriction)
- * - 'self' -> ownerColumn = current user (or userTable -> id = current user)
- * Returns undefined when the role applies no row-level restriction on this table.
+ * Build the row-level data-scope WHERE condition.
+ *
+ * Delegates to `resolveDataScope()` and rejects every unresolved case —
+ * missing context, missing column mapping, unsupported scope, or `global`
+ * without an explicit `*` / `global` permission.
  */
 async function buildDataScopeWhere(
   meta: TableMeta,
@@ -448,19 +460,29 @@ async function buildDataScopeWhere(
   if (!actor) {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: 'A permission context is required for dashboard data access' })
   }
-  if (actor.roleName === 'admin') return undefined
-  const scope = actor.dataScope || 'all'
-  if (scope === 'all') return undefined
-  if (scope !== 'self') {
-    throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: `Unsupported data scope: ${scope}` })
+  const resolution = await resolveTableDataScope(meta.features.dataScope, scopeContext(actor), { table: meta.table })
+  if (!resolution.allowed) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Forbidden',
+      message: `${dataScopeDenialMessage(resolution.reason)} (table ${meta.table})`
+    })
   }
+  if (resolution.scope === 'global') return undefined
+  if (resolution.values) return inArray(col(tbl, resolution.column), resolution.values as never[])
+  return eq(col(tbl, resolution.column), resolution.value)
+}
 
-  const ds = meta.features.dataScope
-  if (ds?.userTable) return eq(col(tbl, 'id'), actor.userId)
-  if (!ds?.ownerColumn) {
-    throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: `Table ${meta.table} has no owner mapping for self scope` })
+function scopeContext(actor: DataScopeActor) {
+  return {
+    userId: actor.userId,
+    roleName: actor.roleName,
+    dataScope: actor.dataScope,
+    permissions: actor.permissions,
+    organizationId: actor.organizationId,
+    tenantId: actor.tenantId,
+    departmentId: actor.departmentId
   }
-  return eq(col(tbl, ds.ownerColumn), actor.userId)
 }
 
 /** Merge the caller's where with the data-scope condition (undefined means unrestricted). */
@@ -480,7 +502,11 @@ async function applyDataScope(
 /** Reject writes to fields the role is not allowed to manage. */
 function assertWritableFields(meta: TableMeta, actor: DataScopeActor | undefined, payload: Record<string, unknown>): void {
   if (!actor) return
-  const [denied] = deniedWriteFields(actor.roleName, meta.features.fieldPolicy, payload)
+  const [denied] = deniedWriteFields(
+    { roleName: actor.roleName, permissions: actor.permissions },
+    meta.features.fieldPolicy,
+    payload
+  )
   if (denied) {
     throw createError({
       statusCode: 403,
@@ -490,14 +516,14 @@ function assertWritableFields(meta: TableMeta, actor: DataScopeActor | undefined
   }
 }
 
-/** Remove fields the role must not read from a single row. */
+/** Hide or mask fields the role must not read from a single row. */
 function hideUnreadableFields<T extends Record<string, unknown>>(
   meta: TableMeta,
   actor: DataScopeActor | undefined,
   row: T
 ): T {
   if (!actor) return row
-  return withoutHiddenFields(row, hiddenFieldsFor(actor.roleName, meta.features.fieldPolicy))
+  return applyReadPolicy({ roleName: actor.roleName, permissions: actor.permissions }, meta.features.fieldPolicy, row)
 }
 
 // ------- public API -------
@@ -527,10 +553,9 @@ export async function listTableData<T = Record<string, unknown>>(
   ] as const)
 
   const total = Number(countRows[0]?.value ?? 0)
-  const hidden = actor ? hiddenFieldsFor(actor.roleName, meta.features.fieldPolicy) : new Set<string>()
-  const visibleRows = hidden.size === 0
-    ? rows as T[]
-    : rows.map(row => withoutHiddenFields(row as Record<string, unknown>, hidden)) as T[]
+  const visibleRows = actor
+    ? rows.map(row => hideUnreadableFields(meta, actor, row as Record<string, unknown>)) as T[]
+    : rows as T[]
   return { rows: visibleRows, total }
 }
 
@@ -559,16 +584,32 @@ export async function insertRow(meta: TableMeta, payload: Record<string, unknown
     throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: 'A permission context is required for dashboard data access' })
   }
   assertWritableFields(meta, actor, payload)
-  if (actor.roleName !== 'admin' && actor.dataScope === 'self') {
-    const scope = meta.features.dataScope
-    if (scope?.userTable) {
+  // Enforce the resolved scope on create: owner/assignee/department/org/tenant
+  // columns are always derived from the server context, never from the body.
+  const resolution = await resolveTableDataScope(meta.features.dataScope, scopeContext(actor), { table: meta.table })
+  if (!resolution.allowed) {
+    throw createError({
+      statusCode: 403,
+      statusMessage: 'Forbidden',
+      message: `${dataScopeDenialMessage(resolution.reason)} (table ${meta.table})`
+    })
+  }
+  if (resolution.scope !== 'global') {
+    if (resolution.scope === 'own' && meta.features.dataScope?.userTable) {
       throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: `Creating rows in ${meta.table} is not allowed with self scope` })
     }
-    if (!scope?.ownerColumn) {
-      throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: `Table ${meta.table} has no owner mapping for self scope` })
+    col(tbl, resolution.column)
+    if (resolution.values) {
+      const provided = payload[resolution.column]
+      if (provided === undefined) {
+        if (resolution.values.length === 1) payload[resolution.column] = resolution.values[0]
+        else throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: `Writing to ${meta.table} requires an explicit ${resolution.column}` })
+      } else if (!resolution.values.includes(provided as string | number)) {
+        throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: `No write access to ${resolution.column}=${String(provided)}` })
+      }
+    } else {
+      payload[resolution.column] = resolution.value
     }
-    col(tbl, scope.ownerColumn)
-    payload[scope.ownerColumn] = actor.userId
   }
   throwOnInvalid(meta, payload, 'create')
   const row = await db.transaction(async (tx) => {
@@ -801,7 +842,7 @@ export async function seedTable(
     }
   }
 
-  const options = relationOptions ?? await loadRelationOptions(meta)
+  const options = relationOptions ?? await loadRelationOptions(meta, actor)
 
   // When the table has an owner column (e.g. posts.authorId), always assign it
   // to the seeding actor so seeded rows have an owner — never a null author.
@@ -1167,9 +1208,15 @@ export async function applyBatch(meta: TableMeta, action: 'soft-delete' | 'resto
   })
 }
 
-/** Load option lists for `relation` / `select` fields so the frontend can
- *  render dropdowns without additional requests. */
-export async function loadRelationOptions(meta: TableMeta): Promise<Record<string, FieldOption[]>> {
+/**
+ * Load option lists for `relation` / `select` fields so the frontend can
+ * render dropdowns without additional requests.
+ *
+ * When an actor is provided, each related table is filtered by its own
+ * resolved data scope; unauthorized relations yield an empty list rather
+ * than leaking IDs/labels across organizations or tenants.
+ */
+export async function loadRelationOptions(meta: TableMeta, actor?: DataScopeActor): Promise<Record<string, FieldOption[]>> {
   const out: Record<string, FieldOption[]> = {}
   const relations = meta.fields.filter((f): f is FieldMeta & { relation: NonNullable<FieldMeta['relation']> } => !!f.relation)
   await Promise.all(
@@ -1180,12 +1227,37 @@ export async function loadRelationOptions(meta: TableMeta): Promise<Record<strin
         return
       }
       const otherTbl = reg.getTable(schema as unknown as Record<string, unknown>) as PgTableWithColumns<any> | undefined
-      if (!otherTbl) { out[f.key] = []; return }
+      if (!otherTbl) {
+        out[f.key] = []
+        return
+      }
+      let relationScope: SQL | undefined
+      // Only scoped resources get a relation filter; unscoped lookup tables
+      // (categories, plans, …) keep their existing option lists.
+      if (actor && reg.meta.features.dataScope) {
+        const resolution = await resolveTableDataScope(reg.meta.features.dataScope, scopeContext(actor), {
+          table: reg.meta.table,
+          action: 'read'
+        })
+        if (!resolution.allowed) {
+          out[f.key] = []
+          return
+        }
+        if (resolution.scope !== 'global') {
+          relationScope = resolution.values
+            ? inArray(col(otherTbl, resolution.column), resolution.values as never[])
+            : eq(col(otherTbl, resolution.column), resolution.value)
+        }
+      }
       try {
         const labelCol = col(otherTbl, f.relation.labelKey)
         const valueCol = col(otherTbl, f.relation.valueKey)
-        const rows = await db.select({ label: labelCol, value: valueCol }).from(otherTbl).orderBy(asc(valueCol)) as Array<{ label: unknown, value: unknown }>
-        out[f.key] = rows.map(r => ({ label: String(r.label ?? ''), value: r.value as (string | number | null) }))
+        const selection = db.select({ label: labelCol, value: valueCol }).from(otherTbl)
+        const rows = relationScope
+          ? await selection.where(relationScope).orderBy(asc(valueCol))
+          : await selection.orderBy(asc(valueCol))
+        out[f.key] = (rows as Array<{ label: unknown, value: unknown }>)
+          .map(r => ({ label: String(r.label ?? ''), value: r.value as (string | number | null) }))
       } catch {
         out[f.key] = []
       }

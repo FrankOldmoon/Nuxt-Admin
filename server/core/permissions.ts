@@ -5,7 +5,37 @@
  */
 
 /** Sensitive tables accessible only to admins (users/roles/configs, etc.). */
-export const ADMIN_ONLY_TABLES = new Set(['roles', 'users', 'files', 'configs'])
+export const ADMIN_ONLY_TABLES = new Set([
+  'roles',
+  'users',
+  'files',
+  'configs',
+  // Internal tables are normally unreachable through generic CRUD; keeping
+  // them here is defense-in-depth if one is ever exposed by mistake.
+  'tokens',
+  'sessions',
+  'auditLogs',
+  'audit_logs',
+  'tenants',
+  'organizations',
+  'organizationMemberships',
+  'organization_memberships',
+  'departments',
+  'privateMessages',
+  'private_messages',
+  'oauthAccounts',
+  'oauth_accounts',
+  'oauthAuthorizationCodes',
+  'oauth_authorization_codes',
+  'oauthAccessTokens',
+  'oauth_access_tokens',
+  'oauthRefreshTokens',
+  'oauth_refresh_tokens',
+  'wxUsers',
+  'wx_users',
+  'wxSessions',
+  'wx_sessions'
+])
 
 /** Fine-grained operations: read=view/export, create=add/import, update=edit, delete=remove/batch */
 export type TableAction = 'read' | 'create' | 'update' | 'delete'

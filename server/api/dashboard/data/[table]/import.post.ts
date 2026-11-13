@@ -3,7 +3,7 @@
 // inserts each row into the target table via the shared crudService.
 import { createError } from 'h3'
 import { requireDashboardAccess } from '~~/server/utils/auth'
-import { getTableMeta } from '~~/server/utils/dashboard/tables'
+import { getExposedTableMeta } from '~~/server/utils/dashboard/tables'
 import { getTableHandler } from '~~/server/utils/dashboard/tableOverrides'
 import { importSheetRows, toDataScopeActor } from '~~/server/utils/dashboard/crudService'
 
@@ -14,7 +14,7 @@ export default defineEventHandler(async (event) => {
   if (handler?.import) return handler.import(event)
 
   const actor = await requireDashboardAccess(event, table, 'create')
-  const meta = getTableMeta(table)
+  const meta = getExposedTableMeta(table)
   if (!meta) throw createError({ statusCode: 404, message: `Unknown table: ${table}` })
 
   const body = await readBody<{ rows?: string[][] }>(event)

@@ -3,9 +3,10 @@ import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import { Pool } from 'pg'
 import { drizzle } from 'drizzle-orm/node-postgres'
 import { resolveModules, runModuleLifecycle } from '../core/moduleSdk'
-import { MODULE_DEFINITIONS, parseEnabledModuleIds } from '../core/moduleCatalog'
+import { MODULE_DEFINITIONS, resolveEnabledModuleIds } from '../../modules.catalog'
 import { schema } from './index'
 import { applyModuleMigrations } from './moduleMigrations'
+import { findModuleState, recordModuleState } from './moduleStates'
 import { runBlogMigrations } from '../../extends/blog/server/database/migrate'
 
 /**
@@ -16,14 +17,38 @@ async function main() {
   const connectionString = process.env.DATABASE_URL
   if (!connectionString) throw new Error('DATABASE_URL is required')
 
-  const resolved = resolveModules(MODULE_DEFINITIONS, parseEnabledModuleIds())
+  const resolved = resolveModules(MODULE_DEFINITIONS, resolveEnabledModuleIds())
   const pool = new Pool({ connectionString })
   const db = drizzle(pool, { schema })
   try {
     await migrate(db, { migrationsFolder: './server/database/migrations' })
     await runModuleLifecycle(resolved.modules, resolved.enabledIds, 'onRegister')
     await runModuleLifecycle(resolved.modules, resolved.enabledIds, 'onEnable')
-    await applyModuleMigrations(pool, resolved.modules)
+    try {
+      await applyModuleMigrations(pool, resolved.modules)
+      for (const module of resolved.modules) {
+        const current = await findModuleState(db, module.id)
+        if (current?.state === 'active' || current?.state === 'deactivated') continue
+        await recordModuleState(db, {
+          moduleId: module.id,
+          version: module.version,
+          state: 'migrated',
+          source: 'release-migration'
+        })
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      for (const module of resolved.modules) {
+        await recordModuleState(db, {
+          moduleId: module.id,
+          version: module.version,
+          state: 'failed',
+          error: message,
+          source: 'release-migration'
+        }).catch(() => {})
+      }
+      throw error
+    }
     if (process.env.BLOG_ENABLED !== 'false') {
       await runBlogMigrations(pool)
     }

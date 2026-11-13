@@ -4,7 +4,7 @@
 //   - ?format=json: returns the raw matching rows as a JSON array
 import { createError } from 'h3'
 import { requireDashboardAccess } from '~~/server/utils/auth'
-import { getTableMeta } from '~~/server/utils/dashboard/tables'
+import { getExposedTableMeta } from '~~/server/utils/dashboard/tables'
 import {
   listTableData,
   loadRelationOptions,
@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
   const table = getRouterParam(event, 'table')
   if (!table) throw createError({ statusCode: 400, message: 'Missing table' })
   const actor = await requireDashboardAccess(event, table, 'read')
-  const meta = getTableMeta(table)
+  const meta = getExposedTableMeta(table)
   if (!meta) throw createError({ statusCode: 404, message: `Unknown table: ${table}` })
 
   const query = getQuery(event) as Record<string, unknown>
@@ -68,7 +68,7 @@ export default defineEventHandler(async (event) => {
     return rows
   }
 
-  const options = await loadRelationOptions(meta)
+  const options = await loadRelationOptions(meta, scopeActor)
   const { headers, sheet } = rowsToSheetRows(meta, rows as Record<string, unknown>[], options)
 
   const lines: string[] = [headers.map(csvEscape).join(',')]

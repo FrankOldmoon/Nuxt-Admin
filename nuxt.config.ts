@@ -1,6 +1,7 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
 import { existsSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
+import { AVAILABLE_MODULE_IDS, DEFAULT_ENABLED_MODULE_IDS } from './modules.catalog'
 
 /**
  * Optional Nuxt layers are enabled via the environment. Supported sources:
@@ -20,14 +21,14 @@ const ENV_EXTENDS = (process.env.EXTENDS_MODULES || '')
   .filter(line => line.startsWith('./') || line.startsWith('~/') || line.startsWith('/'))
 
 const ENABLED_MODULE_IDS = new Set(
-  (process.env.ENABLED_MODULES ?? 'example')
+  (process.env.ENABLED_MODULES ?? DEFAULT_ENABLED_MODULE_IDS.join(','))
     .split(/[\s,]+/)
     .map(id => id.trim())
     .filter(Boolean)
 )
-const AVAILABLE_MODULE_IDS = new Set(['example'])
+const AVAILABLE_IDS = new Set(AVAILABLE_MODULE_IDS)
 for (const id of ENABLED_MODULE_IDS) {
-  if (!AVAILABLE_MODULE_IDS.has(id)) throw new Error(`Unknown enabled module: ${id}`)
+  if (!AVAILABLE_IDS.has(id)) throw new Error(`Unknown enabled module: ${id}`)
 }
 
 // Nuxt layer inclusion is resolved at build time; runtime toggles cannot unload its routes.

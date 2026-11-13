@@ -2,7 +2,7 @@ import type { H3Event } from 'h3'
 import { createError, getHeader } from 'h3'
 import { readSessionToken, setSessionCookie, clearSessionCookie } from './session'
 import { createSessionToken, verifySessionToken, deleteSessionToken } from './tokens'
-import { findUserById, findRoleById, type UserRow, type RoleRow } from './users'
+import { findUserById, findRoleById, type RoleRow } from './users'
 import { and, eq } from 'drizzle-orm'
 import { db } from './db'
 import { organizationMemberships, organizations } from '../database/schema'
@@ -15,6 +15,13 @@ import {
   roleHasDashboardAccess,
   type TableAction
 } from '../core/permissions'
+import {
+  effectiveRoleId,
+  permissionsOf,
+  type AuthContext,
+  type OrganizationContext
+} from '../core/authContext'
+import { writeAudit } from '../core/audit'
 
 export {
   ADMIN_ONLY_TABLES,
@@ -24,23 +31,46 @@ export {
   roleCanTableAction,
   roleHasDashboardAccess
 }
-export type { TableAction }
+export type { AuthContext, OrganizationContext, TableAction }
 
-export interface AuthContext {
-  user: UserRow
-  role: RoleRow | null
-  organization?: { id: number, tenantId: number } | null
+const MEMBERSHIP_SELECTION = {
+  id: organizations.id,
+  tenantId: organizations.tenantId,
+  membershipId: organizationMemberships.id,
+  roleId: organizationMemberships.roleId,
+  departmentId: organizationMemberships.departmentId
 }
 
-export async function getOrganizationContext(event: H3Event, userId: number): Promise<{ id: number, tenantId: number } | null> {
+async function findActiveMemberships(userId: number, limit: number): Promise<OrganizationContext[]> {
+  return await db.select(MEMBERSHIP_SELECTION)
+    .from(organizationMemberships)
+    .innerJoin(organizations, eq(organizationMemberships.organizationId, organizations.id))
+    .where(and(
+      eq(organizationMemberships.userId, userId),
+      eq(organizationMemberships.status, 'active')
+    ))
+    .orderBy(organizationMemberships.id)
+    .limit(limit)
+}
+
+/**
+ * Resolve the organization scope from server-validated memberships.
+ * - An explicit organization ID (context/header) must match an active membership.
+ * - Without one, a user with exactly one active membership is auto-scoped to it.
+ * - Multiple memberships require an explicit selection; zero means no scope.
+ */
+export async function getOrganizationContext(event: H3Event, userId: number): Promise<OrganizationContext | null> {
   const requestedId = event.context?.organizationId ?? event.context?.orgId ?? getHeader(event, 'x-organization-id')
-  if (requestedId === undefined || requestedId === null || requestedId === '') return null
+  if (requestedId === undefined || requestedId === null || requestedId === '') {
+    const memberships = await findActiveMemberships(userId, 2)
+    return memberships.length === 1 ? memberships[0]! : null
+  }
   const organizationId = Number(requestedId)
   if (!Number.isSafeInteger(organizationId) || organizationId <= 0) {
     throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'Invalid organization context' })
   }
 
-  const [membership] = await db.select({ id: organizations.id, tenantId: organizations.tenantId })
+  const [membership] = await db.select(MEMBERSHIP_SELECTION)
     .from(organizationMemberships)
     .innerJoin(organizations, eq(organizationMemberships.organizationId, organizations.id))
     .where(and(
@@ -73,9 +103,20 @@ export async function getSessionUser(event: H3Event): Promise<AuthContext | null
   if (!userId) return null
   const user = await findUserById(userId)
   if (!user || !user.isActive || user.deletedAt) return null
-  const role = await findRoleById(user.roleId)
   const organization = await getOrganizationContext(event, user.id)
-  return { user, role, organization }
+  // Membership role is authoritative inside an organization; the user's global
+  // role is only a fallback when no membership role is configured.
+  const roleId = effectiveRoleId(user.roleId, organization?.roleId)
+  const role = roleId === user.roleId ? await findRoleById(user.roleId) : await findRoleById(roleId)
+  return {
+    user,
+    role,
+    organization,
+    tenantId: organization?.tenantId ?? null,
+    membershipId: organization?.membershipId ?? null,
+    departmentId: organization?.departmentId ?? null,
+    permissions: permissionsOf(role)
+  }
 }
 
 // Logout: delete token + clear cookie
@@ -99,6 +140,28 @@ export async function requireAdmin(event: H3Event): Promise<AuthContext> {
     throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: 'Admin privileges required' })
   }
   return ctx
+}
+
+/** Canonical entry point for business modules. */
+export async function getAuthContext(event: H3Event): Promise<AuthContext> {
+  return await requireUser(event)
+}
+
+/** The current active organization, or 403 when the request has none. */
+export async function getActiveOrganization(event: H3Event): Promise<OrganizationContext> {
+  const ctx = await requireUser(event)
+  if (!ctx.organization) {
+    throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: 'An active organization is required' })
+  }
+  return ctx.organization
+}
+
+export function getEffectiveRole(ctx: AuthContext): RoleRow | null {
+  return ctx.role
+}
+
+export function getEffectivePermissions(ctx: AuthContext): string[] {
+  return ctx.permissions
 }
 
 export function isAdmin(ctx: AuthContext): boolean {
@@ -133,5 +196,18 @@ export async function requireDashboardAccess(event: H3Event, table?: string, act
     : decision.reason === 'no-access'
       ? 'No dashboard access'
       : action ? `No '${action}' access to table: ${table}` : `No access to table: ${table}`
+
+  // Best-effort denied-access audit; never block the 403 response.
+  await writeAudit(db, {
+    actorUserId: ctx.user.id,
+    tenantId: ctx.organization?.tenantId,
+    organizationId: ctx.organization?.id,
+    action: 'access.denied',
+    resource: table ?? 'dashboard',
+    after: { reason: decision.reason, action: action ?? null },
+    outcome: 'failure',
+    source: 'dashboard-rbac'
+  }).catch(() => {})
+
   throw createError({ statusCode: 403, statusMessage: 'Forbidden', message })
 }

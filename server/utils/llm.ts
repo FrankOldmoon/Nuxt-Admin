@@ -1,3 +1,5 @@
+import type { AgentMessage, AgentModelTurn, AgentToolCall } from '../core/agent'
+
 /**
  * Shared LLM call logic: config reading and SSE parsing kept consistent with server/api/llm/ws.ts.
  * - loadLlmConfig: read all LLM-related configs table fields in one pass
@@ -16,6 +18,14 @@ interface ChatMessage {
 
 interface ChatRequest {
   messages: ChatMessage[]
+  model?: string
+  temperature?: number
+  maxTokens?: number
+}
+
+interface TurnRequest {
+  messages: AgentMessage[]
+  tools?: unknown[]
   model?: string
   temperature?: number
   maxTokens?: number
@@ -139,6 +149,66 @@ export async function runLlmChatSync(req: ChatRequest): Promise<string> {
     }
   }
   return fullContent
+}
+
+/**
+ * One non-streaming assistant turn for tool calling. Returns the assistant
+ * text plus any OpenAI-style tool calls; the agent loop decides what to run.
+ */
+export async function runLlmChatTurn(req: TurnRequest): Promise<AgentModelTurn> {
+  const cfg = await loadLlmConfig()
+  if (!cfg.apiKey) {
+    throw new Error('LLM API key is not configured (set LLM_API_KEY in .env or llm.apiKey in configs)')
+  }
+  const messages: AgentMessage[] = [...req.messages]
+  const hasSystem = messages.some(message => message.role === 'system')
+  if (!hasSystem && cfg.systemPrompt) {
+    messages.unshift({ role: 'system', content: cfg.systemPrompt })
+  }
+  const body = {
+    model: req.model || cfg.model,
+    messages,
+    temperature: req.temperature ?? cfg.temperature,
+    max_tokens: req.maxTokens ?? cfg.maxTokens,
+    stream: false,
+    ...(req.tools?.length ? { tools: req.tools, tool_choice: 'auto' } : {})
+  }
+  const url = `${cfg.baseUrl.replace(/\/$/, '')}/chat/completions`
+  const upstream = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${cfg.apiKey}`
+    },
+    body: JSON.stringify(body)
+  })
+  if (!upstream.ok) {
+    const errText = await upstream.text()
+    throw new Error(`Upstream API error (${upstream.status}): ${errText}`)
+  }
+
+  const json = await upstream.json() as { choices?: Array<{ message?: Record<string, unknown> }> }
+  const message = json.choices?.[0]?.message ?? {}
+  const content = typeof message.content === 'string' ? message.content : ''
+  const rawCalls = Array.isArray(message.tool_calls) ? message.tool_calls : []
+
+  const toolCalls: AgentToolCall[] = []
+  for (const raw of rawCalls) {
+    if (!raw || typeof raw !== 'object') continue
+    const call = raw as Record<string, unknown>
+    const fn = call.function as Record<string, unknown> | undefined
+    if (typeof call.id !== 'string' || typeof fn?.name !== 'string') continue
+    toolCalls.push({
+      id: call.id,
+      type: 'function',
+      function: {
+        name: fn.name,
+        arguments: typeof fn.arguments === 'string' ? fn.arguments : '{}'
+      }
+    })
+  }
+
+  return { content, toolCalls }
 }
 
 /**

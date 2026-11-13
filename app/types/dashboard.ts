@@ -104,6 +104,21 @@ export interface FieldMeta {
   setter?: string
 }
 
+/**
+ * Field-level rule. Either a list of role names allowed for the mode, or an
+ * explicit rule with permissions and masking. Sensitive columns (password /
+ * token / secret) are never readable through generic CRUD even if configured.
+ */
+export type FieldPolicyRule =
+  | string[]
+  | {
+    readable?: boolean
+    writable?: boolean
+    readPermission?: string
+    writePermission?: string
+    mask?: boolean
+  }
+
 export interface TableFeatures {
   /** Soft-delete support via `deletedAt` column */
   softDelete: boolean
@@ -113,12 +128,23 @@ export interface TableFeatures {
   /** Whether the row "detail" action is available (defaults to true) */
   detail?: boolean
   /**
-   * Row-level data scoping (applies to non-admin roles):
-   * - `ownerColumn`: the field holding the row's owner user (e.g. files.userId / notifications.createdBy),
-   *   dataScope=self → only ownerColumn=me.
-   * - `userTable`: applies to the user table itself (self → only me).
+   * Row-level data scoping. `scope` wins over the legacy role-level
+   * `dataScope` value (`all` / `self`). `global` still requires an explicit
+   * `*` / `global` permission; missing columns or context deny access.
    */
-  dataScope?: { ownerColumn?: string; userTable?: boolean }
+  dataScope?: {
+    scope?: 'own' | 'assigned' | 'department' | 'organization' | 'tenant' | 'global'
+    /** Name of a module-registered DataScope resolver (overrides `scope`). */
+    resolver?: string
+    /** Legacy: row owner column for `own` scope. */
+    ownerColumn?: string
+    /** Legacy: applies `own` scope to the users table itself (id = current user). */
+    userTable?: boolean
+    assigneeColumn?: string
+    departmentColumn?: string
+    organizationColumn?: string
+    tenantColumn?: string
+  }
   /**
    * Version history — when set, the generic `update` endpoint automatically
    * snapshots the previous value of the listed fields (into the row's `versions`
@@ -132,12 +158,18 @@ export interface TableFeatures {
    * admins always bypass. Fields without an entry keep table-level behavior.
    * Enforced server-side on list/detail/export and create/update payloads.
    */
-  fieldPolicy?: Record<string, { read?: string[]; write?: string[] }>
+  fieldPolicy?: Record<string, FieldPolicyRule>
 }
 
 export interface TableMeta {
   /** Unique logical identifier — used in URL ?table=... and route names */
   table: string
+  /**
+   * Generic CRUD exposure. Only `generic-crud` / `custom` tables can be
+   * reached through `/api/dashboard/data/[table]`. Missing or `internal`
+   * means the table exists for relations/pivots but is not an API resource.
+   */
+  exposure?: 'generic-crud' | 'custom' | 'internal'
   /** Human readable section name (Chinese) */
   label: string
   /** Iconify icon class */

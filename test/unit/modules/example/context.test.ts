@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { ModuleForbiddenError, resolveModules, ToolRegistry } from '../../../../server/core/moduleSdk'
-import { MODULE_DEFINITIONS, parseEnabledModuleIds } from '../../../../server/core/moduleCatalog'
+import { parseEnabledModuleIds } from '../../../../server/core/moduleCatalog'
+import { MODULE_DEFINITIONS, resolveEnabledModuleIds } from '../../../../modules.catalog'
 import { canUseExample, requireOrganization } from '../../../../modules/example/server/context'
 
 describe('module catalog', () => {
-  it('defaults to the example module and treats an empty value as disabled', () => {
-    expect(parseEnabledModuleIds(undefined)).toEqual(['example'])
+  it('keeps the default list in the catalog and treats an empty value as disabled', () => {
+    expect(parseEnabledModuleIds(undefined)).toEqual([])
+    expect(resolveEnabledModuleIds(undefined)).toEqual(['example', 'sis-demo'])
     expect(parseEnabledModuleIds('')).toEqual([])
     expect(parseEnabledModuleIds('example example')).toEqual(['example'])
   })

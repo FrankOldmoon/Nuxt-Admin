@@ -10,7 +10,7 @@
 
 import { requireUser, isAdmin, roleCanAccessTable, ADMIN_ONLY_TABLES } from '~~/server/utils/auth'
 import { getAllConfigs, getConfigValue } from '~~/server/utils/configs'
-import { getRegisteredTables, DEFAULT_MENU } from '~~/server/utils/dashboard/tables'
+import { getRegisteredTables, isTableExposed, DEFAULT_MENU } from '~~/server/utils/dashboard/tables'
 import type { DashboardMeta, DashboardMenuItem } from '~/types/dashboard'
 
 export default defineEventHandler(async (event): Promise<DashboardMeta> => {
@@ -47,7 +47,9 @@ export default defineEventHandler(async (event): Promise<DashboardMeta> => {
   //   - Otherwise (no config saved yet, or empty list) fall back to
   //     DEFAULT_MENU and show every registered table by default, so the
   //     sidebar is populated out of the box.
-  const registered = getRegisteredTables()
+  // Internal/auto-discovered tables can be cached for relation metadata; the
+  // dashboard UI only lists tables explicitly exposed to generic CRUD.
+  const registered = getRegisteredTables().filter(r => isTableExposed(r.meta))
   const regMetaByTable = new Map(registered.map(r => [r.meta.table, r.meta]))
   const defaultMenuMap = new Map(DEFAULT_MENU.map(m => [m.table, m]))
   const merged: DashboardMenuItem[] = []

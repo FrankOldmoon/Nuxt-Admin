@@ -71,6 +71,13 @@
       "when": 1794535947869,
       "tag": "0009_core_organizations_audit",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794551084278,
+      "tag": "0010_black_prowler",
+      "breakpoints": true
     }
   ]
 }

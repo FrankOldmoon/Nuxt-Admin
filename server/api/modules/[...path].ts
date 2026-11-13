@@ -7,7 +7,7 @@ import { ModuleForbiddenError } from '~~/server/core/moduleSdk'
 import { moduleApiRouter, registerEnabledModuleServices } from '~~/server/utils/moduleRuntime'
 
 export default defineEventHandler(async (event) => {
-  registerEnabledModuleServices()
+  await registerEnabledModuleServices()
 
   const auth = await requireUser(event)
   const actor = {

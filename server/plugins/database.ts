@@ -7,8 +7,9 @@ import { eq } from 'drizzle-orm'
 import * as mainSchema from '../database/schema'
 import { registerDrizzleSchema } from '../utils/dashboard/tables'
 import { resolveModules, runModuleLifecycle } from '../core/moduleSdk'
-import { MODULE_DEFINITIONS, parseEnabledModuleIds } from '../core/moduleCatalog'
+import { MODULE_DEFINITIONS, resolveEnabledModuleIds } from '../../modules.catalog'
 import { applyModuleMigrations } from '../database/moduleMigrations'
+import { findModuleState, recordModuleState } from '../database/moduleStates'
 
 const DEFAULT_DASHBOARD_MENU = [
   { table: 'roles', label: 'Roles', icon: 'i-lucide-shield', order: 10 },
@@ -50,10 +51,34 @@ export default defineNitroPlugin(async () => {
       })
       // Dev-only convenience: run module migrations through the same
       // orchestrator used by the release entry point.
-      const resolved = resolveModules(MODULE_DEFINITIONS, parseEnabledModuleIds())
+      const resolved = resolveModules(MODULE_DEFINITIONS, resolveEnabledModuleIds())
       await runModuleLifecycle(resolved.modules, resolved.enabledIds, 'onRegister')
       await runModuleLifecycle(resolved.modules, resolved.enabledIds, 'onEnable')
-      await applyModuleMigrations(pool, resolved.modules)
+      try {
+        await applyModuleMigrations(pool, resolved.modules)
+        for (const module of resolved.modules) {
+          const current = await findModuleState(db, module.id)
+          if (current?.state === 'active' || current?.state === 'deactivated') continue
+          await recordModuleState(db, {
+            moduleId: module.id,
+            version: module.version,
+            state: 'migrated',
+            source: 'dev-boot'
+          })
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        for (const module of resolved.modules) {
+          await recordModuleState(db, {
+            moduleId: module.id,
+            version: module.version,
+            state: 'failed',
+            error: message,
+            source: 'dev-boot'
+          }).catch(() => {})
+        }
+        throw error
+      }
       console.log('[database] Migrations applied successfully')
     } else {
       console.log('[database] Skipping migrations; run `pnpm db:migrate:release` once before starting production instances')

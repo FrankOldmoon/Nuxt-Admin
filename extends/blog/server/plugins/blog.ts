@@ -56,11 +56,11 @@ export default defineNitroPlugin(async () => {
   // 3. Register the tables into the host CRUD + admin sidebar menu.
   registerDashboardTable(
     { meta: postMeta, getTable: () => blogSchema.posts },
-    { menuOrder: 70 }
+    { menuOrder: 70, exposure: 'generic-crud' }
   )
   registerDashboardTable(
     { meta: categoryMeta, getTable: () => blogSchema.categories },
-    { menuOrder: 80 }
+    { menuOrder: 80, exposure: 'generic-crud' }
   )
 
   // 4. Merge the module's menu entries into the persisted `dashboard.menu`

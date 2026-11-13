@@ -145,6 +145,7 @@ vite.config.ts.timestamp-*
 # Independent local Nuxt modules; keep checked-in modules tracked.
 modules/*
 !modules/example/
+!modules/sis-demo/
 # ...but tests that exercise module code belong to this repo.
 !test/unit/modules/
 .workbuddy

@@ -7,7 +7,7 @@
 // Body: { count?: number }   (default 10, clamped to [1, 100])
 import { createError, getRouterParam, readBody } from 'h3'
 import { requireDashboardAccess } from '~~/server/utils/auth'
-import { getTableMeta } from '~~/server/utils/dashboard/tables'
+import { getExposedTableMeta } from '~~/server/utils/dashboard/tables'
 import { getTableHandler } from '~~/server/utils/dashboard/tableOverrides'
 import { seedTable, toDataScopeActor } from '~~/server/utils/dashboard/crudService'
 
@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
   if (handler?.seed) return handler.seed(event)
 
   const actor = await requireDashboardAccess(event, table, 'create')
-  const meta = getTableMeta(table)
+  const meta = getExposedTableMeta(table)
   if (!meta) throw createError({ statusCode: 404, message: `Unknown table: ${table}` })
   if (meta.custom) {
     throw createError({ statusCode: 405, message: `Custom table "${table}" cannot be seeded via generic API` })

@@ -15,6 +15,8 @@ export interface ModuleManifest {
   version: string
   /** Other module IDs that must be enabled too; ordering is dependency-first. */
   dependencies: readonly string[]
+  /** Optional semver ranges keyed by dependency ID (e.g. `{ core: '^1.2.0' }`). */
+  dependencyRanges?: Readonly<Record<string, string>>
   /** Permission entries owned by the module (e.g. `example:read`). */
   permissions: readonly string[]
   /** Navigation entries merged into the dashboard menu by the host. */
@@ -68,9 +70,22 @@ export interface ModuleLifecycle {
   onDisable?: (context: ModuleLifecycleContext) => void | Promise<void>
 }
 
+/** Services exposed to a module during registration. */
+export interface ModuleRegistrationContext {
+  moduleId: string
+  api: ModuleApiRouter<unknown>
+  tools: ToolRegistry<unknown>
+  ui: UiRegistry<unknown, unknown>
+}
+
 export interface ModuleDefinition extends ModuleManifest {
   lifecycle?: ModuleLifecycle
   migrations?: readonly ModuleMigration[]
+  /**
+   * Register this module's API/tool/UI services. Only called when the module
+   * is enabled at build time; Core never imports module code directly.
+   */
+  register?: (context: ModuleRegistrationContext) => void | Promise<void>
 }
 
 export interface ResolvedModules<T extends ModuleDefinition> {
@@ -98,6 +113,18 @@ export interface ToolRegistration<Context = unknown, Result = unknown> {
   schema: ModuleSchema
   execute: ExecuteCallback<Context, Result>
   authorize?: AuthorizationCallback<Context>
+  /** Declared result schema (validated by the Agent layer in Phase 4). */
+  outputSchema?: ModuleSchema
+  /** Read-only query vs. state-changing command. */
+  operation?: 'query' | 'command'
+  /** Permission entry required by the Agent permission gateway. */
+  permission?: string
+  /** JSON Schema exposed to the model (falls back to an empty object schema). */
+  inputJsonSchema?: Record<string, unknown>
+  /** Confirmation policy for commands. Defaults to `confirm` for commands. */
+  approval?: 'none' | 'confirm' | 'second-person'
+  /** Hard execution timeout; 0/undefined means no timeout. */
+  timeoutMs?: number
 }
 
 export interface ToolDefinition<Context = unknown, Result = unknown> extends ToolRegistration<Context, Result> {
@@ -109,6 +136,8 @@ export interface UiRegistration<Props = unknown, Result = unknown> {
   id: string
   schema: ModuleSchema
   render: (props: Props) => Result
+  /** Fixed component version; checked by `render(id, props, { version })`. */
+  version?: string
 }
 
 export interface UiDefinition<Props = unknown, Result = unknown> extends UiRegistration<Props, Result> {
@@ -211,7 +240,26 @@ export class ToolRegistry<Context = unknown> extends ModuleRegistry<ToolRegistra
       throw new Error(`Module tool authorization denied: ${id}`, { cause: error })
     }
 
-    return await tool.execute(input, context) as Result
+    return await withTimeout(
+      Promise.resolve(tool.execute(input, context)) as Promise<Result>,
+      tool.timeoutMs,
+      `Module tool timed out: ${id}`
+    )
+  }
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number | undefined, message: string): Promise<T> {
+  if (!timeoutMs || timeoutMs <= 0) return await promise
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), timeoutMs)
+      })
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
   }
 }
 
@@ -222,9 +270,12 @@ export class UiRegistry<Props = unknown, Result = unknown> extends ModuleRegistr
     super.register(entry)
   }
 
-  render(id: string, props: Props): Result {
+  render(id: string, props: Props, options?: { version?: string }): Result {
     const component = this.get(id)
     if (!component) throw new Error(`Unknown module UI component: ${id}`)
+    if (component.version && options?.version && component.version !== options.version) {
+      throw new Error(`Module UI component version mismatch: ${id} (expected ${component.version}, got ${options.version})`)
+    }
     assertValidInput(component.schema, props, `module UI component ${id}`)
     return component.render(props) as Result
   }
@@ -265,6 +316,51 @@ export class ModuleApiRouter<Context = unknown> {
   }
 }
 
+type Semver = [number, number, number]
+
+function parseSemver(value: string): Semver | null {
+  const match = /^(\d+)\.(\d+)\.(\d+)(?:[-+][0-9A-Za-z.-]+)?$/.exec(value.trim())
+  if (!match) return null
+  return [Number(match[1]), Number(match[2]), Number(match[3])]
+}
+
+function compareSemver(a: Semver, b: Semver): number {
+  for (let i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return a[i]! - b[i]!
+  }
+  return 0
+}
+
+/**
+ * Minimal semver range support for module dependencies: `*`, exact versions,
+ * `^x.y.z`, `~x.y.z`, `>=x.y.z` and `>x.y.z`. Unparseable ranges deny.
+ */
+export function satisfiesVersionRange(version: string, range?: string | null): boolean {
+  const raw = range?.trim()
+  if (!raw || raw === '*') return true
+  const actual = parseSemver(version)
+  if (!actual) return false
+
+  if (raw.startsWith('^')) {
+    const target = parseSemver(raw.slice(1))
+    return !!target && actual[0] === target[0] && compareSemver(actual, target) >= 0
+  }
+  if (raw.startsWith('~')) {
+    const target = parseSemver(raw.slice(1))
+    return !!target && actual[0] === target[0] && actual[1] === target[1] && compareSemver(actual, target) >= 0
+  }
+  if (raw.startsWith('>=')) {
+    const target = parseSemver(raw.slice(2))
+    return !!target && compareSemver(actual, target) >= 0
+  }
+  if (raw.startsWith('>')) {
+    const target = parseSemver(raw.slice(1))
+    return !!target && compareSemver(actual, target) > 0
+  }
+  const exact = parseSemver(raw)
+  return !!exact && compareSemver(actual, exact) === 0
+}
+
 export function sortModulesByDependencies<T extends ModuleManifest>(modules: readonly T[]): T[] {
   const byId = new Map<string, T>()
   for (const module of modules) {
@@ -278,8 +374,15 @@ export function sortModulesByDependencies<T extends ModuleManifest>(modules: rea
   for (const module of modules) {
     const dependencies = new Set(module.dependencies)
     for (const dependency of dependencies) {
-      if (!byId.has(dependency)) {
+      const dependencyModule = byId.get(dependency)
+      if (!dependencyModule) {
         throw new Error(`Module ${module.id} has missing dependency: ${dependency}`)
+      }
+      const range = module.dependencyRanges?.[dependency]
+      if (range && !satisfiesVersionRange(dependencyModule.version, range)) {
+        throw new Error(
+          `Module ${module.id} requires ${dependency}@${range}, found ${dependencyModule.version}`
+        )
       }
       const dependencyDependents = dependents.get(dependency) ?? []
       dependencyDependents.push(module.id)

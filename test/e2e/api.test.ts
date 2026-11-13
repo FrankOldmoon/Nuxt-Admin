@@ -91,6 +91,14 @@ describe('API integration tests (reusing the nuxt_ai database)', async () => {
     await expect($fetch('/api/dashboard/data/users')).rejects.toMatchObject({ statusCode: 401 })
   })
 
+  it('does not expose internal or auto-discovered tables through generic CRUD', async () => {
+    const cookie = await loginAsAdmin()
+    for (const table of ['tokens', 'audit_logs', 'organizations', 'organization_memberships', 'private_messages', 'notificationReads']) {
+      await expect($fetch(`/api/dashboard/data/${table}`, { headers: { cookie } }))
+        .rejects.toMatchObject({ statusCode: 404 })
+    }
+  })
+
   it('POST /api/auth/register follows the allowRegistration config', async () => {
     const pub = await $fetch<{ configs: Record<string, string> }>('/api/config/public')
     const allowed = pub.configs['site.allowRegistration'] === 'true'

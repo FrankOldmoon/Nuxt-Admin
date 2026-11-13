@@ -1,17 +1,31 @@
 import type { ModuleDefinition } from './moduleSdk'
-import { exampleModule } from '../../modules/example/module'
 
 /**
- * Build-time module catalog. Adding a module means adding it here (release
- * migrations + runtime services) AND whitelisting its layer in nuxt.config.ts.
+ * Parse `ENABLED_MODULES` (space/comma separated), de-duplicated.
+ * An empty string disables all modules; an undefined value yields `[]` so the
+ * catalog (not Core) owns the default enable list.
  */
-export const MODULE_DEFINITIONS: readonly ModuleDefinition[] = [exampleModule]
-
-/** Parse `ENABLED_MODULES` (space/comma separated); empty string disables all. */
-export function parseEnabledModuleIds(value: string | undefined = process.env.ENABLED_MODULES): string[] {
-  const ids = (value ?? 'example')
+export function parseEnabledModuleIds(value: string | undefined): string[] {
+  if (value === undefined) return []
+  const ids = value
     .split(/[\s,]+/)
     .map(id => id.trim())
     .filter(Boolean)
   return [...new Set(ids)]
+}
+
+/** Validate configured IDs against the static catalog. */
+export function validateEnabledIds(availableIds: readonly string[], enabledIds: readonly string[]): void {
+  const available = new Set(availableIds)
+  for (const id of enabledIds) {
+    if (!available.has(id)) throw new Error(`Unknown enabled module: ${id}`)
+  }
+}
+
+/** Convenience wrapper used by boot/migration entry points. */
+export function checkEnabledModules<T extends ModuleDefinition>(
+  definitions: readonly T[],
+  enabledIds: readonly string[]
+): void {
+  validateEnabledIds(definitions.map(module => module.id), enabledIds)
 }

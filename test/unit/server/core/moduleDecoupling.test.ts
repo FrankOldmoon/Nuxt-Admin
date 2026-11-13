@@ -1,0 +1,37 @@
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { describe, expect, it } from 'vitest'
+
+/**
+ * Static guard: Core must not import a concrete business module. The only
+ * seam is the root `modules.catalog.ts`.
+ */
+describe('module catalog decoupling', () => {
+  const coreFiles = [
+    'server/core/moduleSdk.ts',
+    'server/core/moduleCatalog.ts',
+    'server/core/authContext.ts',
+    'server/core/permissions.ts',
+    'server/core/dataScope.ts',
+    'server/core/audit.ts',
+    'server/utils/moduleRuntime.ts',
+    'server/database/migrate.ts',
+    'server/plugins/modules.ts',
+    'server/plugins/database.ts'
+  ]
+
+  it('never imports a concrete module directly', () => {
+    for (const file of coreFiles) {
+      const source = readFileSync(resolve(process.cwd(), file), 'utf8')
+      expect(source, file).not.toMatch(/from\s+['"][^'"]*\/modules\//)
+      expect(source, file).not.toMatch(/from\s+['"]\.\.?\/modules\//)
+    }
+  })
+
+  it('exposes the catalog as the single module list', () => {
+    const source = readFileSync(resolve(process.cwd(), 'modules.catalog.ts'), 'utf8')
+    expect(source).toContain('MODULE_DEFINITIONS')
+    expect(source).toContain('AVAILABLE_MODULE_IDS')
+    expect(source).toContain('DEFAULT_ENABLED_MODULE_IDS')
+  })
+})

@@ -4,7 +4,7 @@
 
 import { createError, getRouterParams, getQuery } from 'h3'
 import { requireDashboardAccess } from '~~/server/utils/auth'
-import { getTableMeta } from '~~/server/utils/dashboard/tables'
+import { getExposedTableMeta } from '~~/server/utils/dashboard/tables'
 import { listTableData, parsePageQuery, toDataScopeActor, enrichFileFields } from '~~/server/utils/dashboard/crudService'
 import { parsePagination, buildPagination } from '~~/server/utils/pagination'
 import { getTableHandler, applyListOverrides } from '~~/server/utils/dashboard/tableOverrides'
@@ -16,7 +16,7 @@ export default defineEventHandler(async (event) => {
   if (handler?.list) return handler.list(event)
 
   const actor = await requireDashboardAccess(event, params.table, 'read')
-  const meta = getTableMeta(params.table)
+  const meta = getExposedTableMeta(params.table)
   if (!meta) throw createError({ statusCode: 404, message: `Unknown table: ${params.table}` })
   if (meta.custom) {
     throw createError({

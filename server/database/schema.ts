@@ -86,6 +86,24 @@ export const auditLogs = pgTable(
   })
 )
 
+/**
+ * Persisted lifecycle state per build-time module. Migration history lives in
+ * `__module_migrations`; this table records install/activate/failure status so
+ * a failed module can never look successfully activated.
+ */
+export const moduleStates = pgTable(
+  'module_states',
+  {
+    moduleId: varchar('module_id', { length: 80 }).primaryKey(),
+    version: varchar('version', { length: 40 }).notNull(),
+    state: varchar('state', { length: 20 }).notNull(),
+    lastError: text('last_error'),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull()
+  }
+)
+
+export type ModuleState = typeof moduleStates.$inferSelect
+
 export const roles = pgTable(
   'roles',
   {

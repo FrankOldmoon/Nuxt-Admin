@@ -6,11 +6,13 @@ import {
   resolveModules,
   runModuleLifecycle,
   runModuleMigrations,
+  satisfiesVersionRange,
   ToolRegistry,
   UiRegistry,
   sortModulesByDependencies,
   type ModuleManifest
 } from '../../../../server/core/moduleSdk'
+import { assertTransition, canTransition } from '../../../../server/core/moduleState'
 
 function moduleManifest(id: string, dependencies: string[] = []): ModuleManifest {
   return {
@@ -55,6 +57,44 @@ describe('sortModulesByDependencies', () => {
       moduleManifest('b', ['a'])
     ])).toThrow('Circular module dependencies: a, b')
   })
+
+  it('rejects incompatible dependency versions', () => {
+    const parent = { ...moduleManifest('parent', ['core']), dependencyRanges: { core: '^2.0.0' } }
+    expect(() => sortModulesByDependencies([parent, moduleManifest('core')]))
+      .toThrow('Module parent requires core@^2.0.0, found 1.0.0')
+  })
+})
+
+describe('satisfiesVersionRange', () => {
+  it('supports wildcard, exact, caret, tilde and comparison ranges', () => {
+    expect(satisfiesVersionRange('1.2.3', undefined)).toBe(true)
+    expect(satisfiesVersionRange('1.2.3', '*')).toBe(true)
+    expect(satisfiesVersionRange('1.2.3', '1.2.3')).toBe(true)
+    expect(satisfiesVersionRange('1.2.3', '1.2.4')).toBe(false)
+    expect(satisfiesVersionRange('1.9.0', '^1.2.0')).toBe(true)
+    expect(satisfiesVersionRange('2.0.0', '^1.2.0')).toBe(false)
+    expect(satisfiesVersionRange('1.2.9', '~1.2.0')).toBe(true)
+    expect(satisfiesVersionRange('1.3.0', '~1.2.0')).toBe(false)
+    expect(satisfiesVersionRange('1.2.3', '>=1.2.0')).toBe(true)
+    expect(satisfiesVersionRange('1.2.3', '>1.2.3')).toBe(false)
+    expect(satisfiesVersionRange('not-a-version', '^1.0.0')).toBe(false)
+    expect(satisfiesVersionRange('1.2.3', 'version-nonsense')).toBe(false)
+  })
+})
+
+describe('module lifecycle transitions', () => {
+  it('allows the documented forward path and denies shortcuts', () => {
+    expect(canTransition('discovered', 'validated')).toBe(true)
+    expect(canTransition('validated', 'installed')).toBe(true)
+    expect(canTransition('installed', 'migrated')).toBe(true)
+    expect(canTransition('migrated', 'active')).toBe(true)
+    expect(canTransition('active', 'deactivated')).toBe(true)
+    expect(canTransition('deactivated', 'active')).toBe(true)
+    expect(canTransition('failed', 'validated')).toBe(true)
+    expect(canTransition('discovered', 'active')).toBe(false)
+    expect(() => assertTransition('discovered', 'active'))
+      .toThrow('Invalid module lifecycle transition: discovered -> active')
+  })
 })
 
 describe('module registries', () => {
@@ -82,6 +122,18 @@ describe('module registries', () => {
     expect(execute).toHaveBeenCalledTimes(1)
     expect(() => registry.register({ id: 'protected', schema: {}, execute })).toThrow('Duplicate module registration ID: protected')
     expect(() => registry.register({ id: 'invalid', schema: {}, execute: undefined } as never)).toThrow('requires execute')
+  })
+
+  it('enforces the declared tool timeout', async () => {
+    const registry = new ToolRegistry()
+    registry.register({
+      id: 'slow',
+      schema: {},
+      timeoutMs: 5,
+      authorize: () => true,
+      execute: () => new Promise(resolve => setTimeout(() => resolve('done'), 50))
+    })
+    await expect(registry.run('slow', {}, undefined)).rejects.toThrow('Module tool timed out: slow')
   })
 
   it('denies tool execution when the authorization callback throws', async () => {
@@ -114,6 +166,14 @@ describe('module registries', () => {
     const strict = new UiRegistry<{ ok: boolean }, string>()
     strict.register({ id: 'strict', schema: { safeParse: (value: unknown) => ({ success: (value as { ok?: boolean }).ok === true }) }, render: () => 'ok' })
     expect(() => strict.render('strict', { ok: false })).toThrow('Invalid input for module UI component strict')
+  })
+
+  it('rejects mismatched UI component versions', () => {
+    const registry = new UiRegistry<Record<string, unknown>, string>()
+    registry.register({ id: 'status', version: '1.0', schema: {}, render: () => 'ok' })
+    expect(registry.render('status', {}, { version: '1.0' })).toBe('ok')
+    expect(() => registry.render('status', {}, { version: '2.0' }))
+      .toThrow('Module UI component version mismatch: status (expected 1.0, got 2.0)')
   })
 })
 

@@ -9,6 +9,8 @@
 import { createError, getQuery, getRouterParam, readBody } from 'h3'
 import type { H3Event } from 'h3'
 import { requireAdmin } from '~~/server/utils/auth'
+import { writeAudit } from '~~/server/core/audit'
+import { db } from '~~/server/database'
 import { parsePagination, buildPagination } from '~~/server/utils/pagination'
 import {
   listUsersPaged, findUserById, findUserByEmail, findUserByUsername,
@@ -127,7 +129,7 @@ const handler: TableCrudHandler = {
   },
 
   async create(event: H3Event) {
-    await requireAdmin(event)
+    const ctx = await requireAdmin(event)
     const body = await readBody<{
       username?: string
       name?: string | null
@@ -172,7 +174,14 @@ const handler: TableCrudHandler = {
 
     const user = await createUser({ username, name, email, telephone, password, roleId })
     const role = await findRoleById(roleId)
-    void role
+    await writeAudit(db, {
+      actorUserId: ctx.user.id,
+      action: 'user.create',
+      resource: 'users',
+      recordId: user.id,
+      after: user,
+      source: 'dashboard-override'
+    }).catch(() => {})
     return { item: toPublicUser(user, role) }
   },
 
@@ -237,6 +246,15 @@ const handler: TableCrudHandler = {
     }
 
     const updated = await findUserById(id)
+    await writeAudit(db, {
+      actorUserId: ctx.user.id,
+      action: body.roleId !== undefined && body.roleId !== existing.roleId ? 'user.role-change' : 'user.update',
+      resource: 'users',
+      recordId: id,
+      before: existing,
+      after: updated,
+      source: 'dashboard-override'
+    }).catch(() => {})
     return { item: updated ? toPublicUser(updated, await resolveRole(updated)) : null }
   },
 
@@ -248,26 +266,38 @@ const handler: TableCrudHandler = {
     if (ids.length === 0) {
       throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'ids array is required' })
     }
+    let affected: number
     switch (action) {
       case 'soft-delete': {
         const safeIds = ids.filter(id => id !== ctx.user.id)
         if (safeIds.length === 0) {
           throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'You cannot delete your own account' })
         }
-        return { ok: true, action, affected: await softDeleteUsers(safeIds) }
+        affected = await softDeleteUsers(safeIds)
+        break
       }
       case 'restore':
-        return { ok: true, action, affected: await restoreUsers(ids) }
+        affected = await restoreUsers(ids)
+        break
       case 'permanent-delete': {
         const safeIds = ids.filter(id => id !== ctx.user.id)
         if (safeIds.length === 0) {
           throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'You cannot delete your own account' })
         }
-        return { ok: true, action, affected: await permanentDeleteUsers(safeIds) }
+        affected = await permanentDeleteUsers(safeIds)
+        break
       }
       default:
         throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: 'Invalid action. Use: soft-delete, restore, or permanent-delete' })
     }
+    await writeAudit(db, {
+      actorUserId: ctx.user.id,
+      action: `user.${action}`,
+      resource: 'users',
+      after: { ids, affected },
+      source: 'dashboard-override'
+    }).catch(() => {})
+    return { ok: true, action, affected }
   },
 
   async import(event: H3Event) {

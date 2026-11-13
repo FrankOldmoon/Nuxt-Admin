@@ -1,51 +1,88 @@
 import { describe, expect, it } from 'vitest'
 import {
+  applyReadPolicy,
   canAccessField,
   deniedWriteFields,
+  filterReadableFields,
+  filterWritableFields,
   hiddenFieldsFor,
-  withoutHiddenFields
+  maskedFieldsFor
 } from '../../../../server/core/fieldPolicy'
 
 const policy = {
-  salary: { read: ['admin', 'hr'], write: ['admin'] },
-  email: { read: ['*'], write: ['admin', 'hr'] }
+  salary: ['admin', 'hr'],
+  email: ['*'],
+  ssn: { readPermission: 'users:ssn', mask: true },
+  notes: { writable: false }
 }
 
-describe('canAccessField', () => {
-  it('lets admins bypass every rule', () => {
-    expect(canAccessField('admin', policy, 'salary', 'write')).toBe(true)
+const admin = { roleName: 'admin', permissions: ['*'] }
+const hr = { roleName: 'hr', permissions: ['users:read', 'users:ssn'] }
+const author = { roleName: 'author', permissions: ['posts:read'] }
+
+describe('canAccessField (role lists)', () => {
+  it('allows admins unless the field is sensitive', () => {
+    expect(canAccessField(admin, policy, 'salary', 'read')).toBe(true)
+    expect(canAccessField(admin, { tokenHash: ['admin'] }, 'tokenHash', 'read')).toBe(false)
   })
 
-  it('allows listed roles and wildcards', () => {
-    expect(canAccessField('hr', policy, 'salary', 'read')).toBe(true)
-    expect(canAccessField('author', policy, 'salary', 'read')).toBe(false)
-    expect(canAccessField('author', policy, 'email', 'read')).toBe(true)
-    expect(canAccessField('author', policy, 'email', 'write')).toBe(false)
-  })
-
-  it('keeps fields without a rule accessible', () => {
-    expect(canAccessField('author', policy, 'title', 'read')).toBe(true)
-    expect(canAccessField(null, undefined, 'title', 'write')).toBe(true)
+  it('matches role names and wildcards', () => {
+    expect(canAccessField(hr, policy, 'salary', 'read')).toBe(true)
+    expect(canAccessField(author, policy, 'salary', 'read')).toBe(false)
+    expect(canAccessField(author, policy, 'email', 'read')).toBe(true)
   })
 })
 
-describe('field policy helpers', () => {
-  it('computes hidden read fields per role', () => {
-    expect([...hiddenFieldsFor('author', policy)]).toEqual(['salary'])
-    expect([...hiddenFieldsFor('hr', policy)]).toEqual([])
-    expect([...hiddenFieldsFor('admin', policy)]).toEqual([])
+describe('canAccessField (explicit rules)', () => {
+  it('checks read/write permissions', () => {
+    expect(canAccessField(hr, policy, 'ssn', 'read')).toBe(true)
+    expect(canAccessField(author, policy, 'ssn', 'read')).toBe(false)
   })
 
-  it('strips hidden fields without mutating the source row', () => {
-    const row = { id: 1, salary: 100, email: 'a@x.com' }
-    const visible = withoutHiddenFields(row, new Set(['salary']))
-    expect(visible).toEqual({ id: 1, email: 'a@x.com' })
+  it('honours readable/writable flags', () => {
+    expect(canAccessField(author, policy, 'notes', 'write')).toBe(false)
+    expect(canAccessField(author, { notes: { readable: false } }, 'notes', 'read')).toBe(false)
+  })
+
+  it('never exposes credential-like columns and only writes them explicitly', () => {
+    expect(canAccessField(admin, undefined, 'passwordHash', 'read')).toBe(false)
+    expect(canAccessField(admin, undefined, 'clientSecret', 'read')).toBe(false)
+    expect(canAccessField(admin, undefined, 'apiKey', 'read')).toBe(false)
+    expect(canAccessField(admin, undefined, 'tokenHash', 'write')).toBe(false)
+    expect(canAccessField(admin, { tokenHash: { writable: true } }, 'tokenHash', 'write')).toBe(true)
+  })
+
+  it('keeps fields without a rule accessible', () => {
+    expect(canAccessField(author, policy, 'title', 'read')).toBe(true)
+    expect(canAccessField({}, undefined, 'title', 'write')).toBe(true)
+  })
+})
+
+describe('read policy helpers', () => {
+  it('computes hidden and masked keys', () => {
+    expect([...hiddenFieldsFor(author, policy)]).toEqual(['salary', 'ssn'])
+    expect([...hiddenFieldsFor(hr, policy)]).toEqual([])
+    expect([...maskedFieldsFor(hr, policy)]).toEqual(['ssn'])
+    expect([...maskedFieldsFor(author, policy)]).toEqual([])
+  })
+
+  it('hides unreadable fields and masks the rest, including credentials', () => {
+    const row = { id: 1, salary: 100, ssn: '123-45-6789', email: 'a@x.com', tokenHash: 'abc', name: 'A' }
+    expect(applyReadPolicy(author, policy, row)).toEqual({ id: 1, email: 'a@x.com', name: 'A' })
+    expect(applyReadPolicy(hr, policy, row)).toEqual({ id: 1, salary: 100, ssn: '***', email: 'a@x.com', name: 'A' })
     expect(row.salary).toBe(100)
   })
 
   it('reports payload fields the role may not write', () => {
-    expect(deniedWriteFields('author', policy, { salary: 1, title: 'x' })).toEqual(['salary'])
-    expect(deniedWriteFields('hr', policy, { salary: 1, email: 'a@x.com' })).toEqual(['salary'])
-    expect(deniedWriteFields('admin', policy, { salary: 1 })).toEqual([])
+    expect(deniedWriteFields(author, policy, { salary: 1, notes: 'x', title: 'y' })).toEqual(['salary', 'notes'])
+    expect(deniedWriteFields(hr, policy, { salary: 1 })).toEqual([])
+    expect(deniedWriteFields(admin, policy, { salary: 1 })).toEqual([])
+  })
+
+  it('exposes the task-book filter aliases', () => {
+    const row = { id: 1, salary: 100, tokenHash: 'abc', name: 'A' }
+    expect(filterReadableFields(author, policy, row)).toEqual({ id: 1, name: 'A' })
+    expect(filterWritableFields(author, policy, { salary: 1, title: 'x' })).toEqual({ title: 'x' })
+    expect(filterWritableFields(admin, policy, { salary: 1 })).toEqual({ salary: 1 })
   })
 })

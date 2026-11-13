@@ -1,4 +1,10 @@
-import type { ModuleDefinition } from '../../server/core/moduleSdk'
+import type {
+  ModuleApiRouter,
+  ModuleDefinition,
+  ToolRegistry,
+  UiRegistry
+} from '../../server/core/moduleSdk'
+import type { ModuleActor } from './server/context'
 import { exampleMigrations } from './server/database/migrations'
 
 export const exampleModule: ModuleDefinition = {
@@ -13,6 +19,16 @@ export const exampleModule: ModuleDefinition = {
   tools: ['example.notes.count'],
   components: ['example.status'],
   migrations: exampleMigrations,
+  async register(context) {
+    // Lazy import keeps this manifest DB-free so nuxt.config / migrations can
+    // read the catalog without opening a database connection.
+    const { registerExampleModule } = await import('./register')
+    registerExampleModule({
+      api: context.api as unknown as ModuleApiRouter<ModuleActor>,
+      tools: context.tools as unknown as ToolRegistry<ModuleActor>,
+      ui: context.ui as unknown as UiRegistry<unknown, unknown>
+    })
+  },
   lifecycle: {
     onRegister(context) {
       if (!context.enabledModuleIds.includes('example')) throw new Error('Example module is not enabled')

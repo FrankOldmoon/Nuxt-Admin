@@ -2,9 +2,10 @@
 //   1. notes are isolated per organization,
 //   2. a failed audit write rolls the business insert back (same transaction).
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { pool } from '../../../../server/database'
+import { db, pool } from '../../../../server/database'
 import { applyModuleMigrations } from '../../../../server/database/moduleMigrations'
-import { MODULE_DEFINITIONS } from '../../../../server/core/moduleCatalog'
+import { findModuleState, recordModuleState } from '../../../../server/database/moduleStates'
+import { MODULE_DEFINITIONS } from '../../../../modules.catalog'
 import { createNote, listNotes, type ExampleNote } from '../../../../modules/example/server/notes'
 
 describe('example notes organization isolation (database)', () => {
@@ -28,6 +29,16 @@ describe('example notes organization isolation (database)', () => {
 
   beforeAll(async () => {
     await applyModuleMigrations(pool, MODULE_DEFINITIONS)
+    // The shared test database may predate the module_states migration.
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS "module_states" (
+        "module_id" varchar(80) PRIMARY KEY NOT NULL,
+        "version" varchar(40) NOT NULL,
+        "state" varchar(20) NOT NULL,
+        "last_error" text,
+        "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+      )
+    `)
 
     const tenant = await pool.query(
       `INSERT INTO tenants (name, slug) VALUES ($1, $2) RETURNING id`,
@@ -73,6 +84,21 @@ describe('example notes organization isolation (database)', () => {
       [unknownOrganization]
     )
     expect(result.rowCount).toBe(0)
+  })
+
+  it('persists the module lifecycle state and audits the transition', async () => {
+    await recordModuleState(db, {
+      moduleId: 'example',
+      version: '1.0.0',
+      state: 'migrated',
+      source: 'integration-test'
+    })
+    expect((await findModuleState(db, 'example'))?.state).toBe('migrated')
+
+    const audit = await pool.query(
+      `SELECT action, resource FROM audit_logs WHERE module_id = 'example' AND resource = 'module_states'`
+    )
+    expect(audit.rows).toContainEqual({ action: 'module.migrated', resource: 'module_states' })
   })
 
   it('writes a create audit row for the same organization', async () => {

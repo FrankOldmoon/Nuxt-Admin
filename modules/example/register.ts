@@ -6,8 +6,8 @@ import type {
   UiDefinition,
   UiRegistry
 } from '../../server/core/moduleSdk'
-import { db } from '~~/server/database'
-import { writeAudit } from '~~/server/core/audit'
+import { db } from '../../server/database'
+import { writeAudit } from '../../server/core/audit'
 import { canUseExample, requireOrganization, type ModuleActor } from './server/context'
 import { countNotes, createNote, listNotes } from './server/notes'
 
@@ -47,6 +47,11 @@ export const exampleTools: ToolDefinition<ModuleActor>[] = [
     moduleId: 'example',
     description: 'Count the notes visible in the current organization',
     schema: isRecord,
+    outputSchema: isRecord,
+    operation: 'query',
+    permission: 'example:read',
+    approval: 'none',
+    inputJsonSchema: { type: 'object', properties: {}, additionalProperties: false },
     authorize: actor => canUseExample(actor, 'read'),
     async execute(_input, actor) {
       const organization = requireOrganization(actor)
@@ -72,6 +77,7 @@ export const exampleUi: UiDefinition<{ count: number }, { component: string, pro
   id: 'example.status',
   moduleId: 'example',
   label: 'Example note count',
+  version: '1.0',
   schema: value => isRecord(value) && typeof value.count === 'number',
   render: props => ({ component: 'example.status', props: { count: props.count } })
 }
@@ -87,6 +93,7 @@ export function registerExampleModule(registries: ExampleRegistries): void {
   for (const tool of exampleTools) registries.tools.register(tool)
   registries.ui.register({
     id: exampleUi.id,
+    version: exampleUi.version,
     schema: exampleUi.schema,
     render: props => exampleUi.render(props as { count: number })
   })

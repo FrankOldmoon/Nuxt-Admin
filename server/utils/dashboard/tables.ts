@@ -700,6 +700,7 @@ const TABLES: RegisteredTable[] = [
   {
     meta: {
       table: 'roles',
+      exposure: 'generic-crud',
       label: 'Roles',
       icon: 'i-lucide-shield',
       fields: rolesFields,
@@ -715,6 +716,7 @@ const TABLES: RegisteredTable[] = [
   {
     meta: {
       table: 'users',
+      exposure: 'generic-crud',
       label: 'Users',
       icon: 'i-lucide-users',
       fields: usersFields,
@@ -732,6 +734,7 @@ const TABLES: RegisteredTable[] = [
   {
     meta: {
       table: 'configs',
+      exposure: 'custom',
       label: 'System Config',
       icon: 'i-lucide-settings-2',
       fields: [],
@@ -748,6 +751,7 @@ const TABLES: RegisteredTable[] = [
   {
     meta: {
       table: 'files',
+      exposure: 'generic-crud',
       label: 'Files',
       icon: 'i-lucide-folder-open',
       fields: filesFields,
@@ -764,6 +768,7 @@ const TABLES: RegisteredTable[] = [
   {
     meta: {
       table: 'notifications',
+      exposure: 'generic-crud',
       label: 'Notifications',
       icon: 'i-lucide-bell-ring',
       fields: notificationFields,
@@ -780,6 +785,7 @@ const TABLES: RegisteredTable[] = [
   {
     meta: {
       table: 'membershipPlans',
+      exposure: 'generic-crud',
       label: 'Membership Plans',
       icon: 'i-lucide-badge-check',
       fields: membershipPlansFields,
@@ -795,6 +801,7 @@ const TABLES: RegisteredTable[] = [
   {
     meta: {
       table: 'membershipSubscriptions',
+      exposure: 'generic-crud',
       label: 'Membership Subscriptions',
       icon: 'i-lucide-calendar-check',
       fields: membershipSubscriptionsFields,
@@ -810,6 +817,7 @@ const TABLES: RegisteredTable[] = [
   {
     meta: {
       table: 'creditTransactions',
+      exposure: 'generic-crud',
       label: 'Credit Ledger',
       icon: 'i-lucide-coins',
       fields: creditTransactionsFields,
@@ -825,6 +833,7 @@ const TABLES: RegisteredTable[] = [
   {
     meta: {
       table: 'oauthClients',
+      exposure: 'generic-crud',
       label: 'OAuth Clients',
       icon: 'i-lucide-key-round',
       fields: oauthClientsFields,
@@ -840,6 +849,7 @@ const TABLES: RegisteredTable[] = [
   {
     meta: {
       table: 'templates',
+      exposure: 'generic-crud',
       label: 'Templates',
       icon: 'i-lucide-file-text',
       fields: templatesFields,
@@ -886,10 +896,19 @@ const ORIGINAL_TABLES_LENGTH = TABLES.length
  */
 export function registerDashboardTable(
   reg: RegisteredTable,
-  opts: { menuOrder?: number } = {}
+  opts: { menuOrder?: number, exposure?: NonNullable<TableMeta['exposure']> } = {}
 ): void {
   // Reject duplicates — plugin reloads during dev can re-invoke us
   if (TABLES.some(t => t.meta.table === reg.meta.table)) return
+  // Generic CRUD exposure is opt-in. Everything else stays reachable for
+  // relation/pivot metadata but cannot be served by the data API.
+  reg = {
+    ...reg,
+    meta: {
+      ...reg.meta,
+      exposure: opts.exposure ?? reg.meta.exposure ?? 'internal'
+    }
+  }
   // Attach any pivot-discovered many-to-many virtual fields (unless opt-in
   // custom table completely controls its own fields / API).
   if (!reg.meta.custom) {
@@ -1419,6 +1438,61 @@ export function getRegisteredTables(): RegisteredTable[] {
 
 export function getTableMeta(name: string): TableMeta | undefined {
   return getRegisteredTable(name)?.meta
+}
+
+/**
+ * Tables that must never be served by the generic data API, even if some
+ * caller registers them. Lookup uses both TS export keys and SQL names.
+ */
+export const INTERNAL_TABLE_NAMES = new Set([
+  'tokens',
+  'sessions',
+  'auditLogs',
+  'audit_logs',
+  'tenants',
+  'organizations',
+  'organizationMemberships',
+  'organization_memberships',
+  'departments',
+  'privateMessages',
+  'private_messages',
+  'notificationReads',
+  'notification_reads',
+  'oauthAccounts',
+  'oauth_accounts',
+  'oauthAuthorizationCodes',
+  'oauth_authorization_codes',
+  'oauthAccessTokens',
+  'oauth_access_tokens',
+  'oauthRefreshTokens',
+  'oauth_refresh_tokens',
+  'wxUsers',
+  'wx_users',
+  'wxSessions',
+  'wx_sessions'
+])
+
+/** True when a table may be served through `/api/dashboard/data/[table]`. */
+export function isTableExposed(meta: TableMeta): boolean {
+  if (INTERNAL_TABLE_NAMES.has(meta.table)) return false
+  if (meta.exposure === 'generic-crud' || meta.exposure === 'custom') return true
+  // Legacy custom tables remain reachable via their dedicated API.
+  return meta.exposure === undefined && meta.custom === true
+}
+
+/**
+ * Look up a table for the generic CRUD API. Unlike `getRegisteredTable()`
+ * this never falls back to schema auto-discovery and rejects internal tables.
+ */
+export function getExposedTable(name: string): RegisteredTable | undefined {
+  if (INTERNAL_TABLE_NAMES.has(name)) return undefined
+  const reg = TABLES.find(t => t.meta.table === name)
+  if (!reg || !isTableExposed(reg.meta)) return undefined
+  return reg
+}
+
+export function getExposedTableMeta(name: string): TableMeta | undefined {
+  return getExposedTable(name)?.meta
 }
 
 /**
