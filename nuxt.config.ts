@@ -81,7 +81,11 @@ export default defineNuxtConfig({
       // Every hour — escalate approval steps that passed their SLA.
       '0 * * * *': ['sms:approval-escalate'],
       // Every day at 03:00 — pre-aggregate yesterday's attendance.
-      '0 3 * * *': ['sms:daily-report']
+      '0 3 * * *': ['sms:daily-report'],
+      // Every minute — retry pending external notifications and run queued jobs.
+      '* * * * *': ['sms:notification-outbox', 'sms:job-worker'],
+      // Every day at 04:00 — apply retention windows.
+      '0 4 * * *': ['sms:retention']
     },
     compressPublicAssets: true
   },

@@ -37,15 +37,21 @@ export default defineVitestConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      include: ['app/**/*.{ts,vue}', 'server/**/*.ts'],
+      include: ['app/**/*.{ts,vue}', 'server/**/*.ts', 'modules/sms/**/*.ts'],
       exclude: [
         '**/*.d.ts',
         'test/**',
+        'modules/sms/test/**',
         'server/database/migrations/**',
         '**/node_modules/**',
         '**/.nuxt/**',
         '**/.output/**'
-      ]
+      ],
+      // SMS 是本仓库增长最快的模块。先以当前可稳定达到的 25% 行覆盖作为
+      // 回归底线（防倒退），目标逐步提高到 60%。
+      thresholds: {
+        'modules/sms/**/*.ts': { lines: 25 }
+      }
     }
   }
 })

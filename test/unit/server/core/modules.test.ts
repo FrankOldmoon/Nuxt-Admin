@@ -296,6 +296,22 @@ describe('ModuleApiRouter', () => {
     await expect(router.dispatch('get', '/health', {}, undefined, {})).rejects.toThrow('Invalid input for module API example.health')
     expect(authorize).not.toHaveBeenCalled()
   })
+
+  it('uses the injected rate limit store and rejects over-budget calls', async () => {
+    const hits: string[] = []
+    const router = new ModuleApiRouter({
+      hit: async (key) => {
+        hits.push(key)
+        return { allowed: hits.length <= 2, retryAfter: hits.length <= 2 ? 0 : 5 }
+      }
+    })
+    router.register({ ...definition, rateLimit: { max: 2, windowMs: 60_000 }, handler: () => 'pong' })
+
+    await expect(router.dispatch('get', '/health', {}, { userId: 7 }, {})).resolves.toBe('pong')
+    await expect(router.dispatch('get', '/health', {}, { userId: 7 }, {})).resolves.toBe('pong')
+    await expect(router.dispatch('get', '/health', {}, { userId: 7 }, {})).rejects.toThrow('rate limit exceeded')
+    expect(hits).toEqual(['example.health:7', 'example.health:7', 'example.health:7'])
+  })
 })
 
 describe('module lifecycle and migrations', () => {

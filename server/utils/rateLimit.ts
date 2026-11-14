@@ -10,7 +10,7 @@
  */
 
 import type { H3Event } from 'h3'
-import { createError, getRequestIP } from 'h3'
+import { createError, getRequestIP, setResponseHeader } from 'h3'
 
 export interface RateLimitDecision {
   allowed: boolean

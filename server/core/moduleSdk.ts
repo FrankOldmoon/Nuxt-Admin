@@ -1,3 +1,5 @@
+import { getRateLimitStore, type RateLimitStore } from '../utils/rateLimit'
+
 export interface ModuleManifestItem {
   id: string
   [key: string]: unknown
@@ -379,7 +381,12 @@ export class UiRegistry<Props = unknown, Result = unknown> extends ModuleRegistr
 
 export class ModuleApiRouter<Context = unknown> {
   private readonly definitions = new Map<string, ModuleApiDefinition<Context>>()
-  private readonly rateBuckets = new Map<string, { count: number, resetAt: number }>()
+
+  /**
+   * 共享限流存储（默认取全局 store：内存或 Postgres）。
+   * 允许注入便于测试，也避免每个模块各自维护一套内存桶。
+   */
+  constructor(private readonly rateLimitStore?: RateLimitStore) {}
 
   register(definition: ModuleApiDefinition<Context>): void {
     const normalizedPath = definition.path.trim().replace(/^\/+|\/+$/g, '')
@@ -409,26 +416,24 @@ export class ModuleApiRouter<Context = unknown> {
     } catch {
       throw new Error(`Module API authorization denied: ${definition.id}`)
     }
-    this.enforceRateLimit(definition, context)
+    await this.enforceRateLimit(definition, context)
     return definition.handler(event, context, input)
   }
 
-  /** 与 ToolRegistry 相同的固定窗口限流，按 API + 用户隔离。 */
-  private enforceRateLimit(definition: ModuleApiDefinition<Context>, context: Context): void {
+  /**
+   * 通过共享 store 限流，按 API + 用户隔离。
+   * 存储实现可切换为 Postgres，多实例部署时预算才真正共享。
+   */
+  private async enforceRateLimit(definition: ModuleApiDefinition<Context>, context: Context): Promise<void> {
     const limit = definition.rateLimit
     if (!limit) return
     const userId = (context as { userId?: number } | undefined)?.userId ?? 'anonymous'
     const key = `${definition.id}:${userId}`
-    const now = Date.now()
-    const bucket = this.rateBuckets.get(key)
-    if (!bucket || bucket.resetAt <= now) {
-      this.rateBuckets.set(key, { count: 1, resetAt: now + limit.windowMs })
-      return
-    }
-    if (bucket.count >= limit.max) {
+    const store = this.rateLimitStore ?? getRateLimitStore()
+    const decision = await store.hit(key, limit.max, limit.windowMs)
+    if (!decision.allowed) {
       throw new Error(`Module API rate limit exceeded: ${definition.id}`)
     }
-    bucket.count++
   }
 }
 

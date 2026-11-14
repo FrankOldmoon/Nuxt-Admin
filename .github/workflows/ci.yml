@@ -33,6 +33,8 @@ jobs:
       SESSION_SECRET: ci-session-secret-not-for-production
       NUXT_PUBLIC_SITE_URL: http://localhost:3000
       BLOG_ENABLED: 'true'
+      # Pin the independently-cloned SMS layer; override via repo variable.
+      SMS_MODULE_REF: ${{ vars.SMS_MODULE_REF || 'main' }}
     services:
       postgres:
         image: postgres:16-alpine
@@ -54,7 +56,10 @@ jobs:
       # The SMS module lives in its own repository and is mounted as a Nuxt
       # layer; `modules.catalog.ts` expects it at `modules/sms`.
       - name: Checkout SMS module
-        run: git clone --depth 1 https://github.com/FrankOldmoon/Nuxt-Extend-SMS.git modules/sms
+        run: |
+          git clone --depth 1 https://github.com/FrankOldmoon/Nuxt-Extend-SMS.git modules/sms
+          git -C modules/sms fetch --depth 1 origin "$SMS_MODULE_REF"
+          git -C modules/sms checkout --detach FETCH_HEAD
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -138,12 +143,16 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/nuxt_ai
       SESSION_SECRET: ci-session-secret-not-for-production
       NUXT_PUBLIC_SITE_URL: http://localhost:3000
+      SMS_MODULE_REF: ${{ vars.SMS_MODULE_REF || 'main' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Checkout SMS module
-        run: git clone --depth 1 https://github.com/FrankOldmoon/Nuxt-Extend-SMS.git modules/sms
+        run: |
+          git clone --depth 1 https://github.com/FrankOldmoon/Nuxt-Extend-SMS.git modules/sms
+          git -C modules/sms fetch --depth 1 origin "$SMS_MODULE_REF"
+          git -C modules/sms checkout --detach FETCH_HEAD
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -161,3 +170,89 @@ jobs:
 
       - name: Production build without modules
         run: pnpm build
+
+  browser-e2e:
+    name: Browser e2e (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/nuxt_ai
+      SESSION_SECRET: ci-session-secret-not-for-production
+      NUXT_PUBLIC_SITE_URL: http://localhost:3000
+      BLOG_ENABLED: 'false'
+      # SMS layer + seeded demo accounts are required by the role flows.
+      ENABLED_MODULES: example,sms
+      SEED_SMS_DEMO_USERS: 'true'
+      SMS_MODULE_REF: ${{ vars.SMS_MODULE_REF || 'main' }}
+      E2E_BASE_URL: http://localhost:3000
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nuxt_ai
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d nuxt_ai"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Checkout SMS module
+        run: |
+          git clone --depth 1 https://github.com/FrankOldmoon/Nuxt-Extend-SMS.git modules/sms
+          git -C modules/sms fetch --depth 1 origin "$SMS_MODULE_REF"
+          git -C modules/sms checkout --detach FETCH_HEAD
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.18.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Apply database migrations
+        run: pnpm db:migrate:release
+
+      # Use the dev server so NODE_ENV stays development and demo users seed.
+      - name: Start app
+        run: |
+          pnpm dev > /tmp/sms-dev.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:3000/api/health > /dev/null; then
+              echo "app is ready"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "app failed to start"
+          cat /tmp/sms-dev.log
+          exit 1
+
+      - name: Run Playwright
+        run: pnpm test:browser
+
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            test-results
+            playwright-report
+          if-no-files-found: ignore

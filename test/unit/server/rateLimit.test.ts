@@ -20,7 +20,7 @@ const { getRequestIP, createError, setResponseHeader } = vi.hoisted(() => ({
   }),
   setResponseHeader: vi.fn()
 }))
-vi.mock('h3', () => ({ getRequestIP, createError }))
+vi.mock('h3', () => ({ getRequestIP, createError, setResponseHeader }))
 vi.stubGlobal('setResponseHeader', setResponseHeader)
 
 afterEach(() => resetRateLimitStore())
