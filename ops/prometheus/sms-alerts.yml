@@ -1,0 +1,29 @@
+groups:
+  - name: sms-reliability
+    rules:
+      - alert: SmsNotificationOutboxBacklog
+        expr: sum by (organization_id) (sms_notification_outbox_pending) > 50
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "SMS 外部通知积压（组织 {{ $labels.organization_id }}）"
+          description: "待投递 outbox 行超过 50 条，检查 Webhook 网关与 sms:notification-outbox 任务。"
+
+      - alert: SmsNotificationOutboxFailed
+        expr: sum by (organization_id) (sms_notification_outbox_failed + sms_background_jobs_failed) > 0
+        for: 15m
+        labels:
+          severity: critical
+        annotations:
+          summary: "SMS 外部通知/后台任务出现永久失败（组织 {{ $labels.organization_id }}）"
+          description: "存在 status=failed 的行，查看 last_error 并确认网关配置或导入数据。"
+
+      - alert: SmsApprovalOverdue
+        expr: sum by (organization_id) (sms_approvals_overdue) > 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "SMS 审批超时（组织 {{ $labels.organization_id }}）"
+          description: "存在超过 SLA 的待审批任务，请提醒审批人处理。"

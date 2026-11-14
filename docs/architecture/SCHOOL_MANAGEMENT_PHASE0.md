@@ -714,21 +714,23 @@ DROP TABLE IF EXISTS sms_attendance_records;
 - **CSV 公式注入**：错误文件导出对 `= + - @`、制表符、回车开头的内容前置 `'`，避免 Excel 执行公式。
 - **通知 outbox**：站内信与 `sms_notification_outbox` 同事务写入，`sms:notification-outbox` 每分钟投递；指数退避（1→60 分钟）、`attempts/max_attempts/last_error` 可审计，Webhook 支持 HMAC 签名。
 - **附件归属**：作业提交支持 `attachmentFileId`，校验 `files.organization_id` 与未删除状态；`attachmentUrl` 保留兼容。
-- **保留策略**：`sms:retention` 每日清理 90 天通知、180 天 Agent 事件、365 天评估指标/报表运行，并写审计。
+- **保留策略**：`sms:retention` 每日清理 90 天通知、180 天 Agent 事件、365 天评估指标/报表运行，以及 30 天已终结 outbox 行，并写审计。
 - **游标分页**：学生、通知、审计、Agent 事件列表支持可选 `cursor`（`id < cursor`），返回结构保持数组。
 - **管理页**：新增 `/sms/knowledge`（知识库发布/下架）、`/sms/notifications`（分类静音）、`/sms/scores/import`（干跑预览 + 错误 CSV 下载）；移动工作台增加审批收件箱入口与离线请假队列（恢复网络自动补交）。
 - **Prometheus**：`GET /api/modules/sms/metrics/prometheus` 输出 exposition 文本（聚合计数，不含个人信息）。
-- **后台任务队列**：`sms_background_jobs` + `sms:job-worker`；导入支持 `defer=true` 入队，HTTP 只返回 `jobId`。
-- **语义检索（可选）**：配置 `SMS_KB_EMBEDDING_ENDPOINT` 时文章写入 `jsonb` 向量并做 JS 余弦重排；未配置时保留 pg_trgm/ILIKE 关键词检索。
+- **后台任务队列**：`sms_background_jobs` + `sms:job-worker`；导入支持 `defer=true` 入队，HTTP 只返回 `jobId`；任务与 outbox 均通过 `FOR UPDATE SKIP LOCKED` + 短租约抢占，多副本不会重复领取。
+- **语义检索（可选）**：配置 `SMS_KB_EMBEDDING_ENDPOINT` 时文章写入 `jsonb` 向量并做 JS 余弦重排；`sms:embedding-backfill` 每日为存量文章补向量；未配置时保留 pg_trgm/ILIKE 关键词检索。
+- **监控**：Prometheus 端点新增 outbox / background job 积压指标；告警规则见 [SMS_MONITORING.md](../operations/SMS_MONITORING.md) 与 `ops/prometheus/sms-alerts.yml`。
 - **CI**：新增 Playwright job（Postgres + `SEED_SMS_DEMO_USERS=true` + dev server）；SMS layer 通过 `SMS_MODULE_REF` 固定；coverage include 增加 `modules/sms/**`，先以 25% 行覆盖作为防倒退底线（目标 60%）。
 
-**第二轮后规模**：`modules/sms/test` 23 个文件 / 131 个用例；全仓 800 个用例；迁移新增 `sms:020-reliability`。
+**第二轮后规模**：`modules/sms/test` 24 个文件 / 135 个用例；全仓 804 个用例；迁移新增 `sms:020-reliability`。
 
 ### 已知限制
 
-- `sms:job-worker` 为单进程轮询，未做 `SKIP LOCKED` 抢占；多副本部署时同一任务可能被执行多次，导入本身幂等，但建议后续加行锁。
+- 任务租约为 5 分钟：单个任务执行超过租约时，另一个副本可能重复领取；导入本身幂等，超长任务建议拆分。
 - embedding 向量只存储在 `jsonb`，检索在应用侧排序；文章量很大时应迁移到 pgvector。
-- 知识库管理页暂不提供正文回显编辑（列表返回摘要），完整编辑仍通过 Chat/API 完成。
+- 知识库管理页支持正文编辑/预览，但暂不支持图片上传与富文本。
+
 
 
 

@@ -34,7 +34,7 @@ jobs:
       NUXT_PUBLIC_SITE_URL: http://localhost:3000
       BLOG_ENABLED: 'true'
       # Pin the independently-cloned SMS layer; override via repo variable.
-      SMS_MODULE_REF: ${{ vars.SMS_MODULE_REF || 'main' }}
+      SMS_MODULE_REF: ${{ vars.SMS_MODULE_REF || 'v2026.11.14' }}
     services:
       postgres:
         image: postgres:16-alpine
@@ -143,7 +143,7 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/nuxt_ai
       SESSION_SECRET: ci-session-secret-not-for-production
       NUXT_PUBLIC_SITE_URL: http://localhost:3000
-      SMS_MODULE_REF: ${{ vars.SMS_MODULE_REF || 'main' }}
+      SMS_MODULE_REF: ${{ vars.SMS_MODULE_REF || 'v2026.11.14' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -183,7 +183,7 @@ jobs:
       # SMS layer + seeded demo accounts are required by the role flows.
       ENABLED_MODULES: example,sms
       SEED_SMS_DEMO_USERS: 'true'
-      SMS_MODULE_REF: ${{ vars.SMS_MODULE_REF || 'main' }}
+      SMS_MODULE_REF: ${{ vars.SMS_MODULE_REF || 'v2026.11.14' }}
       E2E_BASE_URL: http://localhost:3000
     services:
       postgres:

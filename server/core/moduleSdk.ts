@@ -1,4 +1,4 @@
-import { getRateLimitStore, type RateLimitStore } from '../utils/rateLimit'
+import type { RateLimitStore } from '../utils/rateLimit'
 
 export interface ModuleManifestItem {
   id: string
@@ -429,7 +429,8 @@ export class ModuleApiRouter<Context = unknown> {
     if (!limit) return
     const userId = (context as { userId?: number } | undefined)?.userId ?? 'anonymous'
     const key = `${definition.id}:${userId}`
-    const store = this.rateLimitStore ?? getRateLimitStore()
+    // 延迟加载：迁移脚本等非 Nitro 运行时会加载本文件，不能连带拉起 h3。
+    const store = this.rateLimitStore ?? (await import('../utils/rateLimit')).getRateLimitStore()
     const decision = await store.hit(key, limit.max, limit.windowMs)
     if (!decision.allowed) {
       throw new Error(`Module API rate limit exceeded: ${definition.id}`)

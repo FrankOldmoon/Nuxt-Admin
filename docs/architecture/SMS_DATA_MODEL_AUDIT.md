@@ -39,7 +39,7 @@
 
 1. `sms_leave_requests` 的 `attachment_file_id` 与 `files` 表没有外键约束；跨模块 schema 不便建 FK，已在提交路径校验组织归属。
 2. `sms_knowledge_articles.embedding` 为 `jsonb`，无法走索引；文章量大时应迁移 pgvector 并建 HNSW。
-3. `sms_background_jobs` 的消费端未使用 `SELECT ... FOR UPDATE SKIP LOCKED`；多副本同时运行时可能重复执行，导入本身幂等但仍建议补行锁。
+3. `sms_background_jobs` / `sms_notification_outbox` 已使用 `FOR UPDATE SKIP LOCKED` + 短租约；若单任务执行超过租约（5 分钟），仍可能被第二个副本领取，超长任务建议拆分。
 4. 财务表（`sms_invoices`/`sms_payments`）金额使用 `numeric`，与应用层 `number` 转换存在精度边界；导出/对账已按 2 位小数处理，后续可引入 decimal 库。
 
 ## 5. 迁移与回滚

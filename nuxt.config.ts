@@ -85,7 +85,9 @@ export default defineNuxtConfig({
       // Every minute — retry pending external notifications and run queued jobs.
       '* * * * *': ['sms:notification-outbox', 'sms:job-worker'],
       // Every day at 04:00 — apply retention windows.
-      '0 4 * * *': ['sms:retention']
+      '0 4 * * *': ['sms:retention'],
+      // Every day at 05:00 — backfill knowledge embeddings when configured.
+      '0 5 * * *': ['sms:embedding-backfill']
     },
     compressPublicAssets: true
   },
