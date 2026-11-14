@@ -1,0 +1,11 @@
+{
+  "name": "SMS 学校管理",
+  "short_name": "SMS",
+  "description": "学校管理移动工作台：请假、考勤、成绩与通知",
+  "start_url": "/sms/mobile",
+  "scope": "/sms/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#0f172a",
+  "lang": "zh-CN"
+}

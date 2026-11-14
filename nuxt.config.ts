@@ -77,7 +77,11 @@ export default defineNuxtConfig({
       // Every day at 01:00 — attendance alert scan.
       '0 1 * * *': ['sms:attendance-scan'],
       // Every Monday at 02:00 — previous week's report.
-      '0 2 * * 1': ['sms:weekly-report']
+      '0 2 * * 1': ['sms:weekly-report'],
+      // Every hour — escalate approval steps that passed their SLA.
+      '0 * * * *': ['sms:approval-escalate'],
+      // Every day at 03:00 — pre-aggregate yesterday's attendance.
+      '0 3 * * *': ['sms:daily-report']
     },
     compressPublicAssets: true
   },

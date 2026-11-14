@@ -633,3 +633,30 @@ DROP TABLE IF EXISTS sms_attendance_records;
 | 高敏数据进入聊天上下文 | 合规风险 | 能力层脱敏 + 组件只回聚合 + 心理域独立权限 |
 | 历史数据迁移 | 数据丢失 | 只增列/回填，禁止删列；上线前快照 |
 | 能力数量膨胀 | 模型选择困难 | 按域分组提示词，工具集按权限过滤；单轮上限保持不变 |
+
+---
+
+## 15. 三阶段智能化落地（P0 / P1 / P2）
+
+### P0 可靠底座
+
+- **通知中心**：`sms_notifications`（按组织 + 收件人隔离，站内链接只接受 `/` 开头）。考勤预警、请假提交/审批、退费申请/审批在同一事务内写通知；`sms.notifications.list/send` 能力 + `GET/POST /api/modules/sms/notifications`。
+- **通用审批引擎**：`server/approvals.ts` 统一 `insertApprovalSteps / loadPending / complete / cancel`，请假与退费共用 `sms_approval_tasks`；新增 `due_at / escalated_at`，48h SLA 超时后按 `homeroom → grade_leader → school_admin` 升级，`sms:approval-escalate` 每小时执行。
+- **角色链路 e2e**：`test/browser/sms-roles.pw.ts` 覆盖教师、家长、财务三类账号的允许/拒绝路径（账号未 seed 时跳过）。
+- **跨组织测试**：`integration.test.ts` 增加通知隔离、跨组织请假/退费 404、无权限 403。
+
+### P1 效率与知识
+
+- **校规知识库**：`sms_knowledge_articles` + `sms.knowledge.search/create`，按 `all/staff/student/guardian` 过滤可见范围，学生/家长不会检索到教职工制度。
+- **角色工作台**：`GET /api/modules/sms/workbench` 按权限与班级范围返回未读通知、待审批、考勤预警、待审批退费卡片；`/sms/mobile` 提供移动端工作台与快捷入口，并登记 `manifest.webmanifest`（PWA 基础）。
+- **批量导入**：`sms.students.import` + `POST /api/modules/sms/students/import`，CSV 解析、逐行校验、`dryRun` 预检与导入报告；单次上限 500 行。
+- **日报预聚合**：`sms_report_daily`（组织/日期/班级唯一）+ `sms.reports.daily` 查询；`sms:daily-report` 每天 03:00 生成昨日汇总。
+
+### P2 智能化与教学域
+
+- **任务型 Agent**：`sms_agent_tasks` + 显式状态机（`pending → running ⇄ waiting_approval → done/failed/cancelled`），`sms.agent-tasks.list/create/advance`，步骤与错误持久化，重启后可恢复。
+- **评估体系**：`server/evaluation.ts` 维护 12 条中文 golden case 与 precision/recall 计算，`agentTasks.test.ts` 校验期望能力存在、写能力具备 preview。
+- **教学域最小闭环**：`sms_assignments / sms_assignment_submissions / sms_course_elections`，能力覆盖布置作业、查询、学生提交、批改、选课查询与选课/退选；学生只能操作自己的记录，教师受所授/班主任班级限制。
+
+**当前能力规模**：76 个能力（44 个写能力），16 个角色预设；`modules/sms/test` 20 个文件 / 115 个用例。
+
