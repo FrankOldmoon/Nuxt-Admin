@@ -860,4 +860,11 @@ DROP TABLE IF EXISTS sms_attendance_records;
 - 冲突校验在服务端完成：星期需与课表条目一致、代课教师必须是本组织在职教师、同一时段代课教师不可重复、同一节课同一天不可重复登记；冲突返回 409 并附带 `conflicts`。
 - 新增页面 `/sms/timetable`：周课表网格（按学期/班级/状态筛选、彩色区分草稿与已发布）、新增课表条目、发布课表，以及调课/代课登记与记录列表。
 
+### 考试编排与监考
+
+- 新增 `sms_exam_sessions`（迁移 `sms:024`）：记录考试场次、考场、起止时间、主监考与辅助监考；取消采用 `status=cancelled`，不物理删除。
+- 新增 `GET/POST /api/modules/sms/exams/sessions` 与 `POST /api/modules/sms/exams/sessions/cancel`；读接口沿用 `sms.scores.read` 的数据范围（学生/家长仅能看到已发布考试），写接口沿用 `sms.exams.create` 的班级范围。
+- 冲突校验在服务端完成：同一考试、同一考场、同一监考教师的时间段不可重叠（半开区间，首尾相接允许），冲突返回 409 与 `conflicts`；结束时间必须晚于开始时间，主监考与辅助监考不能相同。
+- 新增页面 `/sms/exams`：考试列表与筛选、新建考试、登记考场/监考、待执行场次列表与取消操作。
+
 
