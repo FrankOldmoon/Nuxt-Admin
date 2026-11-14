@@ -841,3 +841,9 @@ DROP TABLE IF EXISTS sms_attendance_records;
 - 支持转入、转出、休学、复学、毕业五种异动，状态机校验在服务端完成；转出/毕业会结束在读学籍，转入会为班级所在学年补建 active 学籍。
 - 新增 `GET/POST /api/modules/sms/students/movements`，页面 `/sms/students/movements` 支持搜索学生、登记异动、查看流水；学生列表展示状态并可一键进入异动。
 
+### 通知回执/签收
+
+- 通知新增 `requiresAck` 与 `acknowledgedAt`（迁移 `sms:022`），支持发送时要求收件人确认签收。
+- 新增 `POST /api/modules/sms/notifications/ack`，仅收件人本人可签收，未要求签收的通知返回 400。
+- 通知中心新增「待签收」筛选、待签收/已签收标记与一键确认按钮。
+
