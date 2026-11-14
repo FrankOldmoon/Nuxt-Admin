@@ -101,6 +101,11 @@ export interface ModuleDefinition extends ModuleManifest {
   lifecycle?: ModuleLifecycle
   migrations?: readonly ModuleMigration[]
   /**
+   * Idempotent module-owned seed data (roles, defaults). Called at boot after
+   * the core seed, only for enabled modules. Failures are logged, not fatal.
+   */
+  seed?: () => void | Promise<void>
+  /**
    * Register this module's API/tool/UI services. Only called when the module
    * is enabled at build time; Core never imports module code directly.
    */

@@ -69,7 +69,15 @@ export default defineNuxtConfig({
   nitro: {
     experimental: {
       openAPI: true,
-      websocket: true
+      websocket: true,
+      tasks: true
+    },
+    // Nitro scheduled tasks (server/tasks/**). Task names use `:` for folders.
+    scheduledTasks: {
+      // Every day at 01:00 — attendance alert scan.
+      '0 1 * * *': ['sms:attendance-scan'],
+      // Every Monday at 02:00 — previous week's report.
+      '0 2 * * 1': ['sms:weekly-report']
     },
     compressPublicAssets: true
   },

@@ -40,6 +40,8 @@ export default defineNitroPlugin(async () => {
   // Dev retains automatic Drizzle migrations for convenience.
   const autoMigrate = process.env.NODE_ENV !== 'production'
 
+  const resolved = resolveModuleCatalog(MODULE_DEFINITIONS, resolveEnabledModuleIds())
+
   try {
     if (autoMigrate) {
       // 1. Create the target database if it doesn't exist
@@ -53,7 +55,6 @@ export default defineNitroPlugin(async () => {
       })
       // Dev-only convenience: run module migrations through the same
       // orchestrator used by the release entry point.
-      const resolved = resolveModuleCatalog(MODULE_DEFINITIONS, resolveEnabledModuleIds())
       await runModuleLifecycle(resolved.modules, resolved.enabledIds, 'onRegister')
       await runModuleLifecycle(resolved.modules, resolved.enabledIds, 'onEnable')
       try {
@@ -88,6 +89,17 @@ export default defineNitroPlugin(async () => {
 
     // 3. Seed initial data (idempotent: upserts configs, skips roles/users if present)
     await seed(db)
+
+    // 3a. Module-owned seed data (idempotent, enabled modules only). A module
+    // seed failure must not stop the host from booting, so it is logged.
+    for (const module of resolved.modules) {
+      if (!resolved.enabledIds.includes(module.id) || !module.seed) continue
+      try {
+        await module.seed()
+      } catch (e) {
+        console.warn(`[database] module seed failed (${module.id}) (ignored):`, e)
+      }
+    }
 
     // 3b. Ensure dashboard.menu config exists on every startup.
     // This runs AFTER the seed so it always injects the default value
