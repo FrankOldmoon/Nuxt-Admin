@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" role="img" aria-label="SMS 学校管理">
+  <rect width="192" height="192" rx="40" fill="#0f172a"/>
+  <path d="M96 34 40 64v10h112V64L96 34Z" fill="#38bdf8"/>
+  <rect x="52" y="82" width="88" height="66" rx="6" fill="#e2e8f0"/>
+  <rect x="64" y="94" width="14" height="18" rx="2" fill="#0f172a"/>
+  <rect x="89" y="94" width="14" height="18" rx="2" fill="#0f172a"/>
+  <rect x="114" y="94" width="14" height="18" rx="2" fill="#0f172a"/>
+  <rect x="84" y="122" width="24" height="26" rx="2" fill="#0f172a"/>
+</svg>

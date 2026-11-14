@@ -642,7 +642,7 @@ DROP TABLE IF EXISTS sms_attendance_records;
 
 - **通知中心**：`sms_notifications`（按组织 + 收件人隔离，站内链接只接受 `/` 开头）。考勤预警、请假提交/审批、退费申请/审批在同一事务内写通知；`sms.notifications.list/send` 能力 + `GET/POST /api/modules/sms/notifications`。
 - **通用审批引擎**：`server/approvals.ts` 统一 `insertApprovalSteps / loadPending / complete / cancel`，请假与退费共用 `sms_approval_tasks`；新增 `due_at / escalated_at`，48h SLA 超时后按 `homeroom → grade_leader → school_admin` 升级，`sms:approval-escalate` 每小时执行。
-- **角色链路 e2e**：`test/browser/sms-roles.pw.ts` 覆盖教师、家长、财务三类账号的允许/拒绝路径（账号未 seed 时跳过）。
+- **角色链路 e2e**：`test/browser/sms-roles.pw.ts` 覆盖教师、家长、财务三类账号的允许/拒绝路径（仅当未启用演示账号 seed 时跳过）。
 - **跨组织测试**：`integration.test.ts` 增加通知隔离、跨组织请假/退费 404、无权限 403。
 
 ### P1 效率与知识
@@ -655,8 +655,50 @@ DROP TABLE IF EXISTS sms_attendance_records;
 ### P2 智能化与教学域
 
 - **任务型 Agent**：`sms_agent_tasks` + 显式状态机（`pending → running ⇄ waiting_approval → done/failed/cancelled`），`sms.agent-tasks.list/create/advance`，步骤与错误持久化，重启后可恢复。
-- **评估体系**：`server/evaluation.ts` 维护 12 条中文 golden case 与 precision/recall 计算，`agentTasks.test.ts` 校验期望能力存在、写能力具备 preview。
+- **评估体系**：`server/evaluation.ts` 维护中文 golden case 与 precision/recall 计算，`agentTasks.test.ts` 校验期望能力存在、写能力具备 preview。
 - **教学域最小闭环**：`sms_assignments / sms_assignment_submissions / sms_course_elections`，能力覆盖布置作业、查询、学生提交、批改、选课查询与选课/退选；学生只能操作自己的记录，教师受所授/班主任班级限制。
 
 **当前能力规模**：76 个能力（44 个写能力），16 个角色预设；`modules/sms/test` 20 个文件 / 115 个用例。
+
+---
+
+## 16. 16 项优化落地（一致性、可运维性与移动端）
+
+迁移 `sms:019-optimization` 只做增量 DDL（`ADD COLUMN IF NOT EXISTS` / `CREATE TABLE IF NOT EXISTS`），不删列。
+
+### P0 缺陷修复
+
+- **动态聊天提示词**：`chatPrompt.ts` 改为从已注册能力按 actor 权限实时生成“可查/可写”清单，删除过期的“学生不能写”硬编码；学生提示包含提交作业、选课、请假。
+- **作业班级校验**：`teaching.createAssignment` 在组织校验之后增加“所授/班主任班级”校验，非全校角色跨班布置返回 403。
+- **工作台链接**：通知卡片指向 `/notifications`，审批/退费卡片指向新增 `/sms/approvals`，不再出现 404。
+- **定时考勤扫描通知**：`runAttendanceAlertScan` 按学生聚合新增预警后写入站内通知，并记录 `sms_report_runs(kind=attendance_scan)`。
+- **API 限流**：`ModuleApiDefinition.rateLimit` + `ModuleApiRouter` 固定窗口限流，路由返回 429；SMS 默认读 120/分、写 30/分，导入/发布/审批等敏感接口单独收紧。
+
+### P1 效率与一致性
+
+- **日报批量 upsert**：`runDailyReport` 按 200 行分块写入，单条 SQL 完成冲突更新；工作台考勤预警改为 `sms_attendance_alerts innerJoin sms_students` 直接按班级过滤。
+- **知识库**：`sms.knowledge.update` 支持编辑与 `action=archive` 下架（保留引用），检索结果附带 `citation`；迁移创建 `pg_trgm` GIN 索引（无权限时自动跳过）。
+- **导入**：学生导入改为单批 `onConflictDoNothing`（学号天然幂等），返回 `batchId / errorsCsv / imported / skipped`；新增 `sms.scores.import` 成绩 CSV 导入（仅草稿考试，复用 `saveScores`）。
+- **统一审批收件箱**：`listApprovalInbox` 合并请假/退费待办、SLA 超时标记，`sms.approvals.list` 与 `GET /api/modules/sms/approvals` 共用；新增 `reassignApprovalTask` 转交（重置 SLA + 通知 + 审计）。
+- **通知偏好**：`sms_notification_preferences` 按用户 × 分类静音，`createNotifications` 写入前过滤；`SMS_NOTIFICATION_WEBHOOK_URL` / `SMS_NOTIFICATION_EMAIL_MODE=log` 提供外发适配器。
+- **教学域**：作业支持 `rubric`，提交支持 `attachmentUrl`（仅站内路径/http(s)）；`sms_subjects.capacity` 限制选课容量，满员返回 409。
+- **移动端**：`/sms/mobile` 增加原生请假表单与未读通知已读操作；`manifest.webmanifest` 补齐图标，`sw.js` 仅由移动页注册，提供离线提示。
+
+### P2 可观测性与测试
+
+- **Agent 执行器**：`sms_agent_task_events` 事件流、`idempotency_key` 幂等创建、`failed → pending` 重试、取消写入 `cancelledAt`；新增 `sms.agent-tasks.events` 查询。
+- **评估**：golden set 扩到 30 条；`sms_evaluation_metrics` 时序指标 + `sms.evaluation.metrics` 查询/写入接口。
+- **审计与指标**：`sms.audit.query` 只读查询本组织 SMS 审计；`GET /api/modules/sms/metrics` 汇总通知、审批 SLA、导入批次、Agent 失败。
+- **e2e 账号**：`SEED_SMS_DEMO_USERS=true` 时由 `modules/sms/server/demoUsers.ts` 幂等创建 `teacher/guardian/finance` 演示账号与组织成员关系；Playwright 不再无条件跳过。
+
+**优化后规模**：81 个能力（46 个写能力），16 个角色预设；`modules/sms/test` 21 个文件 / 119 个用例。
+
+### 运维开关
+
+| 变量 | 作用 |
+|---|---|
+| `SEED_SMS_DEMO_USERS=true` | 创建 SMS e2e 演示账号（生产环境强制忽略） |
+| `SMS_NOTIFICATION_WEBHOOK_URL` | 站内信落库后异步 POST 到企业微信/网关 |
+| `SMS_NOTIFICATION_EMAIL_MODE=log` | 以日志方式打印邮件载荷（调试用） |
+
 

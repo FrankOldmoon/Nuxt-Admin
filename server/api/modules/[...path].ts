@@ -48,6 +48,9 @@ export default defineEventHandler(async (event) => {
     if (error instanceof Error && error.message.startsWith('Module API authorization denied')) {
       throw createError({ statusCode: 403, statusMessage: 'Forbidden', message: error.message })
     }
+    if (error instanceof Error && error.message.startsWith('Module API rate limit exceeded')) {
+      throw createError({ statusCode: 429, statusMessage: 'Too Many Requests', message: error.message })
+    }
     if (error instanceof Error && error.message.startsWith('Invalid input for module API')) {
       throw createError({ statusCode: 400, statusMessage: 'Bad Request', message: error.message })
     }

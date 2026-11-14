@@ -73,6 +73,8 @@ export interface ModuleApiDefinition<Context = unknown, Result = unknown> {
   schema: ModuleSchema
   authorize: AuthorizationCallback<Context>
   handler: ModuleApiHandler<Context, Result>
+  /** 进程内限流；与能力（Tool）层使用同一套桶算法，避免 API 成为绕过口。 */
+  rateLimit?: { max: number, windowMs: number }
 }
 
 /** Thrown by module handlers when the caller lacks a required scope (mapped to 403). */
@@ -377,6 +379,7 @@ export class UiRegistry<Props = unknown, Result = unknown> extends ModuleRegistr
 
 export class ModuleApiRouter<Context = unknown> {
   private readonly definitions = new Map<string, ModuleApiDefinition<Context>>()
+  private readonly rateBuckets = new Map<string, { count: number, resetAt: number }>()
 
   register(definition: ModuleApiDefinition<Context>): void {
     const normalizedPath = definition.path.trim().replace(/^\/+|\/+$/g, '')
@@ -406,7 +409,26 @@ export class ModuleApiRouter<Context = unknown> {
     } catch {
       throw new Error(`Module API authorization denied: ${definition.id}`)
     }
+    this.enforceRateLimit(definition, context)
     return definition.handler(event, context, input)
+  }
+
+  /** 与 ToolRegistry 相同的固定窗口限流，按 API + 用户隔离。 */
+  private enforceRateLimit(definition: ModuleApiDefinition<Context>, context: Context): void {
+    const limit = definition.rateLimit
+    if (!limit) return
+    const userId = (context as { userId?: number } | undefined)?.userId ?? 'anonymous'
+    const key = `${definition.id}:${userId}`
+    const now = Date.now()
+    const bucket = this.rateBuckets.get(key)
+    if (!bucket || bucket.resetAt <= now) {
+      this.rateBuckets.set(key, { count: 1, resetAt: now + limit.windowMs })
+      return
+    }
+    if (bucket.count >= limit.max) {
+      throw new Error(`Module API rate limit exceeded: ${definition.id}`)
+    }
+    bucket.count++
   }
 }
 
