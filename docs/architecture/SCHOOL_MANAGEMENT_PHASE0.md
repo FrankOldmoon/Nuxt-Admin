@@ -874,4 +874,12 @@ DROP TABLE IF EXISTS sms_attendance_records;
 - 修复家长成绩可见范围：此前只按子女所在班级过滤，可能看到同班其他学生成绩；现在默认仅返回本人子女，指定当前子女后进一步收敛。
 - 新增前端组件 `SmsChildSwitcher`：自动读取子女列表、持久化当前选择，并在学生、成绩、选科、课表页面复用；只有一个子女时不显示切换器。
 
+### 线下缴费与对账
+
+- 明确不接入真实支付网关：收款由收费人在页面手工登记金额、支付方式与流水号，系统只负责账实核对。
+- 新增 `GET /api/modules/sms/payments`：按账单/学生/支付方式/业务日期查询收款，复用财务数据范围（家长只看自己子女）。
+- 新增 `sms_reconciliations`（迁移 `sms:025`）：按日期闭区间与支付方式生成对账批次，记录笔数、合计、状态（`draft`/`confirmed`）、创建人与确认人；同一区间同一方式唯一。
+- 新增 `GET/POST /api/modules/sms/reconciliations` 与 `POST /api/modules/sms/reconciliations/confirm`；批次金额按业务时区（`smsDateString`）过滤收款后汇总，避免 UTC 跨日误差。
+- 新增页面 `/sms/finance`：账单筛选、行内登记缴费、对账批次生成/确认、最近收款流水；无财务写权限的角色只能查看。
+
 
