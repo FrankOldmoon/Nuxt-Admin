@@ -835,6 +835,9 @@ DROP TABLE IF EXISTS sms_attendance_records;
 - 列表页导出为前端生成 CSV，超大数据量需改为服务端异步导出。
 - 批量审批逐条串行执行，单次上限 50 条；跨类型混合审批时权限不足的条目会单独返回失败原因。
 
+### 第五轮：学籍异动
 
-
+- 学生新增 `status`（在读/休学/已转出/已毕业）与 `sms_student_movements` 异动流水表（迁移 `sms:021`）。
+- 支持转入、转出、休学、复学、毕业五种异动，状态机校验在服务端完成；转出/毕业会结束在读学籍，转入会为班级所在学年补建 active 学籍。
+- 新增 `GET/POST /api/modules/sms/students/movements`，页面 `/sms/students/movements` 支持搜索学生、登记异动、查看流水；学生列表展示状态并可一键进入异动。
 
