@@ -57,6 +57,14 @@ export interface ResultColumnDescriptor {
   format?: ResultColumnFormat
 }
 
+/** Chat component attached automatically after a read capability runs. */
+export interface ResultViewComponentDescriptor {
+  /** Registered chat component id (e.g. `sms.student-table`). */
+  id: string
+  /** Input field copied into the component's `query` prop (default: `query`/`q`). */
+  queryKey?: string
+}
+
 /**
  * Fixed presentation for read capabilities. The server decides which columns
  * are shown, so the model can never invent a table layout.
@@ -66,6 +74,12 @@ export interface ResultViewDescriptor {
   columns: ResultColumnDescriptor[]
   /** Maximum rows sent to the client (defaults to 20). */
   maxRows?: number
+  /**
+   * Optional interactive component shown with the result. It is attached
+   * automatically when the model does not emit its own ```component block, so
+   * the viewer always gets a stable, actionable table.
+   */
+  component?: ResultViewComponentDescriptor
 }
 
 /** Wire shape of a result table rendered by the chat client. */
@@ -144,6 +158,9 @@ export function defineCapability<Context, Result>(
     }
     if (definition.resultView.columns.length === 0) {
       throw new TypeError(`Capability ${definition.id} resultView requires at least one column`)
+    }
+    if (definition.resultView.component && !definition.resultView.component.id.trim()) {
+      throw new TypeError(`Capability ${definition.id} resultView component requires an id`)
     }
   }
   return definition

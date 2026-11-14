@@ -106,6 +106,27 @@ describe('API integration tests (reusing the nuxt_ai database)', async () => {
     expect(data.pagination.total).toBeGreaterThan(0)
   })
 
+  it('an admin session gets the chat component catalog with resolved interactions', async () => {
+    const cookie = await loginAsAdmin()
+
+    const data = await $fetch<{
+      components: Array<{ id: string, label: string, interactions: { detail: boolean, edit: boolean } }>
+    }>('/api/agent/components', { headers: { cookie } })
+
+    expect(Array.isArray(data.components)).toBe(true)
+    for (const component of data.components) {
+      expect(component.id, component.id).toBeTruthy()
+      expect(component.label, component.id).toBeTruthy()
+      expect(typeof component.interactions.edit, component.id).toBe('boolean')
+    }
+    // Admin holds '*', so every registered edit interaction is enabled.
+    for (const component of data.components) {
+      if (component.interactions.detail) {
+        expect(component.interactions.edit, component.id).toBe(true)
+      }
+    }
+  })
+
   it('GET /api/dashboard/data/users is blocked without login', async () => {
     await expect($fetch('/api/dashboard/data/users')).rejects.toMatchObject({ statusCode: 401 })
   })

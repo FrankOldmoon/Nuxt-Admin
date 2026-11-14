@@ -159,6 +159,14 @@ export interface ToolDefinition<Context = unknown, Result = unknown> extends Too
   description: string
 }
 
+/** Detail/edit interactions a UI component supports in chat. */
+export interface UiInteractions {
+  /** The component can open a read-only detail view. */
+  detail?: boolean
+  /** Inline editing is offered only to actors holding `permission`. */
+  edit?: { permission: string }
+}
+
 export interface UiRegistration<Props = unknown, Result = unknown> {
   id: string
   schema: ModuleSchema
@@ -167,6 +175,14 @@ export interface UiRegistration<Props = unknown, Result = unknown> {
   version?: string
   /** Human-readable name shown to the model when offering the component. */
   label?: string
+  /** One-line purpose shown in the client component catalog. */
+  description?: string
+  /** Props hint for the model prompt (e.g. "query?: string, limit?: number"). */
+  propsHint?: string
+  /** Optional chat interactions (detail dialog / permission-gated edit). */
+  interactions?: UiInteractions
+  /** Fallback page when the component cannot render inside chat. */
+  appsPath?: string
 }
 
 export interface UiDefinition<Props = unknown, Result = unknown> extends UiRegistration<Props, Result> {

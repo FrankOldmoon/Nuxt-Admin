@@ -166,7 +166,10 @@ Artifact 服务已存在，但**尚无内置文件生成工具**（Planned）。
 | `CapabilityDefinition.resultView` | 只读能力的固定结果表格列定义；服务端投影，模型无法生成列 |
 | `server/core/componentBlock.ts` | ` ```component ` 块解析：仅接受已注册 ID/版本，props 过 `UiRegistry` schema |
 | `app/components/chat/ChatComponentBlock.vue` | 按注册表 ID 渲染模块组件；模块通过 props 传入 id → 组件映射 |
-| `modules/sms/app/components/sms/StudentTable.vue` | `sms.student-table`：模型只传 `query`/`limit`，数据由 API 按权限加载 |
+| `modules/sms/app/components/sms/StudentTable.vue` | `sms.student-table`：模型只传 `query`/`limit`，数据由 API 按权限加载；点姓名弹详情，有权限可编辑 |
+| `modules/sms/app/components/sms/TeacherTable.vue` | `sms.teacher-table`：教师列表/详情/编辑，权限与数据范围由通用 CRUD 接口校验 |
+| `modules/sms/app/components/sms/RecordDialog.vue` | 详情弹窗：只读字段 + 按 `sms.<resource>.update` 显示编辑表单 |
+| `modules/sms/app/composables/useSmsPermission.ts` | 聊天组件的客户端权限判断（`*` / `sms:update` / `sms.<resource>.update`） |
 
 流程：
 
@@ -196,7 +199,7 @@ POST /api/agent/drafts/:id/submit
 
 ## 11. 组件块协议（```component）
 
-助手消息的渲染顺序是：Markdown 正文 → 工具调用卡（含固定 `resultView` 表格）→ 一个可选的组件块。
+助手消息的渲染顺序是：Markdown 正文 → 工具调用卡（含固定 `resultView` 表格）→ 一个可选的组件块。消息带组件块时，工具卡不再重复渲染同一张表。
 
 模型可以在回复末尾输出一个围栏块：
 
@@ -210,15 +213,34 @@ POST /api/agent/drafts/:id/submit
 
 1. 解析最后一个 `component` 块，并从正文中剥离**所有** `component` 块（块不会作为原始文本展示）。
 2. `component` 必须是 `UiRegistry` 中已注册、且随模块启用的 ID；版本不一致直接拒绝。
-3. `props` 必须通过注册时的 schema。SMS 的 `sms.student-table` 只接受 `query`（字符串）与 `limit`（1–200 的整数），显式拒绝 `rows`/`students` 等数据字段。
+3. `props` 必须通过注册时的 schema。SMS 表格组件只接受 `query`（字符串）与 `limit`（1–200 的整数），显式拒绝 `rows`/`students`/`teachers` 等数据字段。
 4. 校验失败时丢弃该块（保留正文），绝不回显任意组件名/JSON。
 5. 通过后落库为消息 `ui: { kind: 'component', component, version?, props }`。
 
-客户端（`ChatComponentBlock.vue`）只从**构建期固定映射**取组件，不做按名字的动态 import；模块在自己的渲染层传入 `id → 组件` 映射（SMS：`MessageList.vue` → `StudentTable.vue`）。未注册/模块已禁用时显示 fail-closed 提示。
+**默认组件**：只读能力可在 `resultView.component` 声明默认组件（如 `sms.students.search → sms.student-table`）。模型没有输出组件块时，服务端从能力输入里取 `query`/`limit`，按同样的 schema 校验后自动附加；模型输出优先。
+
+**组件目录 API**：`GET /api/agent/components` 返回当前 actor 可见的组件：`id`、`version`、`label`、`description`、`propsHint`、`appsPath`、`interactions { detail, edit }`。`interactions.edit` 由 `capabilityPermissionMatches` 计算（支持 `*`、`sms:update`、`sms.<resource>.update`）。客户端只渲染目录中的 ID，并在 `catalogLoaded` 后对未注册/版本漂移 fail-closed。
+
+**客户端映射**：SMS 层通过 `import.meta.glob` 从组件文件名推导 `id → 组件`（`components/sms/StudentTable.vue → sms.student-table`），不再维护手工映射；新增组件只需按约定命名。
+
+**表格组件能力**（学生/教师）：
+
+- 搜索（学生走后端 `q`，教师走通用 CRUD `search`）、排序、分页、勾选 + CSV 导出；
+- 移动端自动切换为卡片列表；空态与无权限态分开展示，错误提供重试与“在 Apps 中打开”；
+- 点击姓名打开详情弹窗（`RecordDialog`），有 `sms.<resource>.update` 时显示编辑；用户 ID 等字段支持 `mask` 脱敏；
+- 详情/编辑统一走 `useChatRecord` → `/api/dashboard/data/<table>/<id>`（权限 + 数据范围 + `audit_logs`），保存前校验 `updatedAt` 防止覆盖他人修改；
+- 加载时显示骨架屏，组件渲染异常由 `ChatComponentBlock` 捕获并提供重试。
+
+**可观测性**：`server/core/componentMetrics.ts` 统计 `block_invalid_json`、`block_unknown_component`、`block_version_mismatch`、`block_invalid_props`、`block_multiple`、`default_component_attached`；开发环境输出结构化日志。
+
+**脚手架**：`pnpm module:add-component <module> <component.id> "<label>"` 生成组件、契约测试和注册项（`server/chatComponents.generated.ts`），客户端映射自动生效。
+
+**测试**：组件块/目录/权限/默认组件/指标均为单元测试；`/api/agent/components` 在 Nuxt e2e 中覆盖；“渲染 → 搜索 → 选择 → 详情 → 编辑”链路已用真实浏览器验证。
 
 安全边界：
 
 - 组件 ID 是闭集，模型不能凭空创建组件或标签。
 - 模型只能传交互参数（查询词、分页），不能传业务行；组件自己按当前用户权限调用模块 API 取数。
 - 组件的写操作仍必须走既有的表单草稿/审批链路，组件块本身不具备写权限。
+- 表格的详情/编辑调用带权限校验和数据范围过滤的通用 CRUD 接口，并写 `audit_logs`；模型不参与具体写入。编辑入口按 `sms.<resource>.update` 显示，无权限时只读。
 - 这与 `resultView` 互补：`resultView` 固定“查询结果长什么样”，组件块固定“用户可以接着操作什么”。

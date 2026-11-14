@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import {
   buildComponentPrompt,
+  buildResultComponentDirective,
   extractComponentBlock,
   type ComponentBlockRegistry
 } from '../../../../server/core/componentBlock'
+import { getComponentMetrics, resetComponentMetrics } from '../../../../server/core/componentMetrics'
 
 const registry: ComponentBlockRegistry = {
   get: id => (id === 'sms.student-table' ? { version: '1.0' } : undefined),
@@ -20,6 +22,8 @@ function block(payload: unknown): string {
 }
 
 describe('component block protocol', () => {
+  beforeEach(() => resetComponentMetrics())
+
   it('leaves replies without a block untouched', () => {
     const result = extractComponentBlock('全部学生都在这里。', registry)
     expect(result).toEqual({ content: '全部学生都在这里。' })
@@ -97,5 +101,51 @@ describe('component block protocol', () => {
     expect(prompt).toContain('sms.student-table')
     expect(prompt).toContain('学生表格')
     expect(prompt).toContain('```component')
+  })
+
+  it('counts invalid and multiple blocks for observability', () => {
+    extractComponentBlock('a\n```component\n{bad}\n```', registry)
+    extractComponentBlock(`${block({ component: 'sms.student-table' })}\n${block({ component: 'sms.student-table' })}`, registry)
+
+    const metrics = getComponentMetrics()
+    expect(metrics.block_invalid_json).toBe(1)
+    expect(metrics.block_multiple).toBe(1)
+  })
+
+  it('attaches a read capability default component from the input query', () => {
+    const directive = buildResultComponentDirective(
+      { resultView: { kind: 'table', columns: [{ key: 'name', label: '姓名' }], component: { id: 'sms.student-table' } } },
+      { query: '张', limit: 10 },
+      registry
+    )
+    expect(directive).toEqual({
+      component: 'sms.student-table',
+      version: '1.0',
+      props: { query: '张', limit: 10 }
+    })
+    expect(getComponentMetrics().default_component_attached).toBe(1)
+  })
+
+  it('falls back to the `q` input and skips invalid default props', () => {
+    const view = { resultView: { kind: 'table' as const, columns: [{ key: 'name', label: '姓名' }], component: { id: 'sms.student-table' } } }
+    expect(buildResultComponentDirective(view, { q: '李' }, registry)?.props).toEqual({ query: '李' })
+
+    // Validation rejects rows, so the default component is not attached.
+    const rejecting: ComponentBlockRegistry = {
+      get: () => ({ version: '1.0' }),
+      validateProps: () => { throw new Error('invalid props') }
+    }
+    expect(buildResultComponentDirective(view, { query: '王' }, rejecting)).toBeUndefined()
+    expect(getComponentMetrics().block_invalid_props).toBe(1)
+  })
+
+  it('does not attach an unregistered default component', () => {
+    const directive = buildResultComponentDirective(
+      { resultView: { kind: 'table', columns: [], component: { id: 'sms.missing' } } },
+      {},
+      registry
+    )
+    expect(directive).toBeUndefined()
+    expect(getComponentMetrics().block_unknown_component).toBe(1)
   })
 })

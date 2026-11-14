@@ -72,6 +72,11 @@
 | 模块 manifest 与能力/权限/表前缀一致 | `modules/sms/test/capabilities.test.ts` |
 | 组件块：未知 ID / 坏 JSON / 版本不一致 / props schema 失败均被丢弃 | `test/unit/server/core/componentBlock.test.ts` |
 | SMS 学生表格组件拒绝 `rows`/`students`，只接受 `query`/`limit` | `modules/sms/test/capabilities.test.ts` |
+| 组件目录按权限解析 `interactions.edit`（`*` / canonical / coarse / 只读） | `test/unit/server/core/componentCatalog.test.ts` |
+| 默认组件：从输入提取 query/limit、props 校验失败不附加、未知 ID 不附加 | `test/unit/server/core/componentBlock.test.ts` |
+| 组件指标：坏 JSON、多块、未知组件、props 失败、默认附加 | 同上 |
+| 客户端 SMS 权限匹配（canonical/coarse/`*`/拒绝） | `modules/sms/test/permissions.test.ts` |
+| 详情字段脱敏与选项展示 | `modules/sms/test/record.test.ts` |
 
 ### S8 模块数据库访问边界
 
@@ -95,6 +100,8 @@
 - 数据访问：无通用 SQL/HTTP 工具；业务写入只经模块 service。
 - 聊天渲染：助手 Markdown 由 `markdown-it`（`html: false`）渲染，原始 HTML 被转义，链接强制 `noopener noreferrer nofollow`；只读结果表格的列由服务端 `resultView` 固定，模型输出不能决定字段。
 - 组件块：` ```component ` 只接受 `UiRegistry` 中已注册且模块启用的 ID，版本与 props schema 均校验；SMS 学生表格只接受 `query`/`limit`，拒绝模型传入行数据；客户端从构建期固定映射渲染，未知组件 fail-closed。
+- 聊天组件内的详情/编辑：详情与编辑调用 `/api/dashboard/data/<table>/<id>`，复用 `requireDashboardAccess`（canonical `sms.<resource>.<action>` + 数据范围）与 `writeCrudAudit`；编辑入口按 `sms.<resource>.update` 显示，模型无法触发写入；保存前比对 `updatedAt`，避免覆盖他人修改；`userId` 等字段在详情中脱敏。
+- 组件目录：`/api/agent/components` 按 actor 权限解析 `interactions.edit`，客户端只渲染目录内组件；只读角色的编辑入口不出现。
 
 ## 4. 依赖审计
 

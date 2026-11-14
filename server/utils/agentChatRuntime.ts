@@ -40,7 +40,8 @@ import type {
   ToolCallCard
 } from '../core/conversation'
 import { asChatUi, asToolCallCards } from '../core/conversation'
-import { buildComponentPrompt, extractComponentBlock } from '../core/componentBlock'
+import { buildComponentPrompt, buildResultComponentDirective, extractComponentBlock } from '../core/componentBlock'
+import type { ComponentDirective } from '../core/componentBlock'
 import type { agentConversations, agentMessages } from '../database/schema'
 import { writeAudit } from '../core/audit'
 import { db } from '../database'
@@ -234,6 +235,28 @@ export function collectToolCards(messages: AgentMessage[]): ToolCallCard[] {
   return cards
 }
 
+/**
+ * Fallback component declared by the last successful read capability. Only
+ * triggered when the model did not emit its own ```component block, so a
+ * read-only answer always comes with its stable, interactive table.
+ */
+export function defaultComponentDirective(messages: AgentMessage[]): ComponentDirective | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const message = messages[i]
+    if (message?.role !== 'assistant' || !message.tool_calls?.length) continue
+    for (let j = message.tool_calls.length - 1; j >= 0; j--) {
+      const call = message.tool_calls[j]!
+      const capability = getCapability(call.function.name)
+      if (!capability?.resultView?.component) continue
+      const toolMessage = messages.find(item => item.role === 'tool' && item.tool_call_id === call.id)
+      if (!toolMessage || errorOf(parseJson(toolMessage.content))) continue
+      const directive = buildResultComponentDirective(capability, parseJson(call.function.arguments), moduleUi)
+      if (directive) return directive
+    }
+  }
+  return undefined
+}
+
 export interface FinalizeChatOptions {
   result: AgentLoopResult
   conversationId: number
@@ -276,11 +299,13 @@ export async function finalizeChatResult(options: FinalizeChatOptions): Promise<
 
   if (result.status === 'completed') {
     // A trailing ```component block may reference a registered component; it is
-    // validated (id/version/props schema) and persisted as message UI.
+    // validated (id/version/props schema) and persisted as message UI. When the
+    // model omits it, the read capability's default component is attached.
     const extraction = extractComponentBlock(result.content, moduleUi)
     const content = extraction.content.trim() || '已完成。'
-    const componentUi: ChatUi | undefined = extraction.directive
-      ? { kind: 'component', ...extraction.directive }
+    const directive = extraction.directive ?? defaultComponentDirective(result.messages)
+    const componentUi: ChatUi | undefined = directive
+      ? { kind: 'component', ...directive }
       : undefined
 
     await addAgentMessage({
