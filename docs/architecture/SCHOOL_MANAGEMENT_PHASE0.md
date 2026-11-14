@@ -853,3 +853,11 @@ DROP TABLE IF EXISTS sms_attendance_records;
 - 新增 `POST /api/modules/sms/elections/batch`：以本次提交的科目集合为准，自动退掉未选科目；逐科校验容量，教师/管理员只能代选自己数据范围内的学生。
 - 新增页面 `/sms/elections`，支持选择学期与学生、勾选科目、查看当前选科；学生本人也可通过搜索自己完成选科。
 
+### 课表编排与调代课
+
+- 新增 `sms_timetable_substitutions`（迁移 `sms:023`）：按具体日期登记某一节课的代课/调课，记录原教师、代课教师、调整教室、原因与操作人；`(organization_id, entry_id, date)` 唯一。
+- 新增 `GET/POST /api/modules/sms/timetable/substitutions`；写接口沿用 `sms.timetable.update`，读接口沿用 `sms.timetable.read`，并复用班级数据范围（教师/家长/学生只看自己班级）。
+- 冲突校验在服务端完成：星期需与课表条目一致、代课教师必须是本组织在职教师、同一时段代课教师不可重复、同一节课同一天不可重复登记；冲突返回 409 并附带 `conflicts`。
+- 新增页面 `/sms/timetable`：周课表网格（按学期/班级/状态筛选、彩色区分草稿与已发布）、新增课表条目、发布课表，以及调课/代课登记与记录列表。
+
+
