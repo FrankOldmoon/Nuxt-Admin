@@ -847,3 +847,9 @@ DROP TABLE IF EXISTS sms_attendance_records;
 - 新增 `POST /api/modules/sms/notifications/ack`，仅收件人本人可签收，未要求签收的通知返回 400。
 - 通知中心新增「待签收」筛选、待签收/已签收标记与一键确认按钮。
 
+### 选科管理
+
+- 选科列表补充学生、科目、学期名称与容量字段，新增 `GET /api/modules/sms/terms` 学期选项接口。
+- 新增 `POST /api/modules/sms/elections/batch`：以本次提交的科目集合为准，自动退掉未选科目；逐科校验容量，教师/管理员只能代选自己数据范围内的学生。
+- 新增页面 `/sms/elections`，支持选择学期与学生、勾选科目、查看当前选科；学生本人也可通过搜索自己完成选科。
+
