@@ -18,7 +18,7 @@ interface DBPaginationMeta {
   totalPages?: number | string
 }
 
-type ResultShape<T> = { items: T[]; pagination: DBPaginationMeta }
+type ResultShape<T> = { items: T[], pagination: DBPaginationMeta }
 
 function normalizePagination(db?: DBPaginationMeta | null): PaginationMeta | null {
   if (!db) return null
@@ -43,7 +43,7 @@ export function usePagedResource<T extends ResultShape<Record<string, unknown>>>
   /** Structured advanced conditions — serialised to `conditions` query param as JSON */
   conditions: globalThis.Ref<unknown[] | undefined> = ref(undefined),
   /** Sort state — serialised to `sort` + `order` query params */
-  sort: globalThis.Ref<{ field: string; order: 'asc' | 'desc' } | null> = ref(null),
+  sort: globalThis.Ref<{ field: string, order: 'asc' | 'desc' } | null> = ref(null),
   defaultPageSize = 10
 ) {
   const page = ref<number>(1)
@@ -62,7 +62,7 @@ export function usePagedResource<T extends ResultShape<Record<string, unknown>>>
     if (Array.isArray(conds) && conds.length > 0) {
       // Drop conditions that have no operator value but require one (avoids
       // spamming the server with incomplete rows while the user is typing).
-      const meaningful = conds.filter(c => {
+      const meaningful = conds.filter((c) => {
         const row = c as Record<string, unknown>
         if (!row.op || !row.field) return false
         const noValueOps = ['isNull', 'isNotNull', 'isEmpty', 'isNotEmpty']
@@ -101,6 +101,9 @@ export function usePagedResource<T extends ResultShape<Record<string, unknown>>>
     }
   }
 
+  watch([pageSize, trashed, filters, conditions, sort], () => {
+    page.value = 1
+  }, { deep: true, flush: 'sync' })
   watch([page, pageSize, trashed, filters, conditions, sort], () => { load() }, { deep: true })
 
   onMounted(() => {
@@ -110,7 +113,7 @@ export function usePagedResource<T extends ResultShape<Record<string, unknown>>>
   function setPage(p: number) { page.value = p }
   function setPageSize(s: number) { pageSize.value = s }
   function setTrashed(t: boolean) { trashed.value = t }
-  function setSort(s: { field: string; order: 'asc' | 'desc' } | null) { sort.value = s }
+  function setSort(s: { field: string, order: 'asc' | 'desc' } | null) { sort.value = s }
   /** re-fetch. Pass `quiet=true` to keep current rows on screen (no loading flash). */
   function refresh(quiet = false) { load(quiet) }
 

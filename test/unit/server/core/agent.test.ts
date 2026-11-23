@@ -212,6 +212,79 @@ describe('runAgentLoop', () => {
     expect(result.status).toBe('completed')
   })
 
+  it.each(['approve', 'reject'] as const)('resumes all six calls after %s of the one gated call', async (decision) => {
+    const { registry, command } = makeRegistry()
+    const calls = [call('q1', 'echo'), call('q2', 'echo'), call('q3', 'echo'),
+      call('gated', 'notes.delete'), call('q4', 'echo'), call('q5', 'echo')]
+    const paused = await runAgentLoop({
+      model: scriptedModel([{ content: '', toolCalls: calls }]),
+      registry: registry as never, context: actor, tools: toolsFor(registry),
+      messages: [{ role: 'user', content: 'Check six sources' }]
+    })
+    expect(paused.status).toBe('pending_confirmation')
+    if (paused.status !== 'pending_confirmation') return
+    expect(paused.pending.map(c => c.id)).toEqual(['gated'])
+    expect(paused.toolCalls).toBe(0)
+    const original = structuredClone(paused.messages)
+    const model = vi.fn(async (messages: AgentMessage[]) => {
+      const replies = messages.filter(m => m.role === 'tool')
+      expect(replies.map(m => m.tool_call_id)).toEqual(calls.map(c => c.id))
+      expect(new Set(replies.map(m => m.tool_call_id)).size).toBe(6)
+      expect(replies[3]!.content).toContain(decision === 'approve' ? 'ok' : 'User rejected')
+      return { content: 'All six calls have a response' }
+    })
+    const resumed = await runAgentLoop({
+      model, registry: registry as never, context: actor, tools: toolsFor(registry),
+      messages: paused.messages, pendingCalls: paused.pending,
+      confirmations: decision === 'approve' ? { approved: new Set(['gated']) } : { rejected: new Set(['gated']) }
+    })
+    expect(resumed.status).toBe('completed')
+    expect(model).toHaveBeenCalledTimes(1)
+    expect(command).toHaveBeenCalledTimes(decision === 'approve' ? 1 : 0)
+    expect(paused.messages).toEqual(original)
+  })
+
+  it('does not repeat results already present in a suspended round', async () => {
+    const { registry, command } = makeRegistry()
+    const query = call('query', 'echo')
+    const approvedCall = call('gated', 'notes.delete')
+    const result = await runAgentLoop({
+      model: scriptedModel([{ content: 'done' }]),
+      registry: registry as never, context: actor, tools: toolsFor(registry),
+      messages: [
+        { role: 'assistant', content: '', tool_calls: [query, approvedCall] },
+        { role: 'tool', tool_call_id: 'gated', content: '{"ok":true}' }
+      ],
+      pendingCalls: [approvedCall], confirmations: { approved: new Set(['gated']) }
+    })
+    expect(result.status).toBe('completed')
+    expect(command).not.toHaveBeenCalled()
+    expect(result.messages.filter(m => m.role === 'tool').map(m => m.tool_call_id).sort()).toEqual(['gated', 'query'])
+  })
+
+  it('keeps undecided sibling commands paused and rejects mismatched resume context', async () => {
+    const { registry, command } = makeRegistry()
+    const first = call('first', 'notes.delete')
+    const second = call('second', 'notes.delete')
+    const model = vi.fn(async () => ({ content: 'must not run' }))
+    const options = {
+      model, registry: registry as never, context: actor, tools: toolsFor(registry),
+      messages: [{ role: 'assistant' as const, content: '', tool_calls: [first, second] }],
+      pendingCalls: [first], confirmations: { approved: new Set(['first']) }
+    }
+    const result = await runAgentLoop(options)
+    expect(result.status).toBe('pending_confirmation')
+    if (result.status === 'pending_confirmation') expect(result.pending).toEqual([second])
+    const invalid = await runAgentLoop({ ...options, pendingCalls: [call('foreign', 'notes.delete')] })
+    expect(invalid.status).toBe('failed')
+    const changedArgs = await runAgentLoop({ ...options, pendingCalls: [call('first', 'notes.delete', '{"id":99}')] })
+    expect(changedArgs.status).toBe('failed')
+    const changedTool = await runAgentLoop({ ...options, pendingCalls: [call('first', 'echo')] })
+    expect(changedTool.status).toBe('failed')
+    expect(command).not.toHaveBeenCalled()
+    expect(model).not.toHaveBeenCalled()
+  })
+
   it('reports authorization failures as tool errors', async () => {
     const { registry } = makeRegistry()
     const audits: AgentAuditEvent[] = []
@@ -228,6 +301,24 @@ describe('runAgentLoop', () => {
     expect(audits[0]).toMatchObject({ outcome: 'failure' })
   })
 
+  it('allows a final answer after the tool-round budget without executing extra tools', async () => {
+    const { registry } = makeRegistry()
+    let turns = 0
+    const result = await runAgentLoop({
+      model: async (_messages, tools) => {
+        turns++
+        if (turns <= 3) return { content: '', toolCalls: [call(`c${turns}`, 'echo', '{"v":1}')] }
+        expect(tools).toEqual([])
+        return { content: 'Summary of three successful queries' }
+      },
+      registry: registry as never, context: actor,
+      messages: [{ role: 'user', content: 'x' }], tools: toolsFor(registry), maxRounds: 3
+    })
+    expect(result.status).toBe('completed')
+    expect(result.toolCalls).toBe(3)
+    expect(turns).toBe(4)
+  })
+
   it('enforces round and tool-call limits', async () => {
     const { registry } = makeRegistry()
     const loop = await runAgentLoop({
@@ -240,6 +331,7 @@ describe('runAgentLoop', () => {
     })
     expect(loop.status).toBe('failed')
     if (loop.status === 'failed') expect(loop.error).toContain('Max tool rounds exceeded')
+    expect(loop.messages.at(-1)?.role).toBe('tool')
 
     const calls = await runAgentLoop({
       model: scriptedModel([{ content: '', toolCalls: [call('1', 'echo'), call('2', 'echo'), call('3', 'echo')] }]),
@@ -251,6 +343,8 @@ describe('runAgentLoop', () => {
     })
     expect(calls.status).toBe('failed')
     if (calls.status === 'failed') expect(calls.error).toContain('Tool call limit exceeded')
+    expect(calls.messages.filter(m => m.role === 'tool').map(m => m.tool_call_id)).toEqual(['1', '2', '3'])
+    expect(calls.messages.at(-1)?.content).toContain('not executed')
   })
 
   it('returns invalid JSON arguments to the model', async () => {

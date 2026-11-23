@@ -21,7 +21,12 @@
     "test": "vitest run",
     "test:browser": "playwright test",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "db:check": "node scripts/local-dev.mjs db:check",
+    "local:stop": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ops/windows/stop-local.ps1",
+    "db:start": "node scripts/local-dev.mjs db:start",
+    "dev:local": "node scripts/local-dev.mjs",
+    "test:contributions": "vitest run --config test/config/vitest-contributions.config.mjs --configLoader native"
   },
   "dependencies": {
     "@iconify-json/lucide": "^1.2.121",

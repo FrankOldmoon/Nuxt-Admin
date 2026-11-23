@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util'
 import { capabilityPermissionMatches } from './capability'
 import type { ModelUsage } from './modelGateway'
 import type { ToolDefinition, ToolRegistry } from './moduleSdk'
@@ -62,7 +63,7 @@ export interface AgentLoopOptions {
   context: unknown
   messages: AgentMessage[]
   tools: AgentToolDescriptor[]
-  /** Calls from a previous `pending_confirmation` result to resume. */
+  /** Approval subset from a previous result; resume all unanswered calls in that round. */
   pendingCalls?: AgentToolCall[]
   maxRounds?: number
   maxToolCalls?: number
@@ -182,19 +183,41 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
   }
 
   let resumeCalls = options.pendingCalls
-  for (let round = 0; round < maxRounds; round++) {
+  // Reserve one model-only turn after the last tool round to summarize results.
+  for (let round = 0; round <= maxRounds; round++) {
+    const summaryOnly = round === maxRounds
     let content = ''
     let calls: AgentToolCall[]
 
     if (resumeCalls?.length) {
-      // The assistant tool_calls message is already in `messages`; execute the
-      // pending calls first, then let the model continue.
-      calls = resumeCalls
+      // Approval records contain only calls needing a decision, but suspension
+      // pauses the ENTIRE round. Recover its query siblings from the transcript
+      // so every tool_call_id gets a response before the next model request.
+      const assistantIndex = messages.findLastIndex(message => message.role === 'assistant')
+      const roundCalls = messages[assistantIndex]?.tool_calls
+      let matchesApproval = false
+      try {
+        matchesApproval = !!roundCalls?.length && resumeCalls.every(call => roundCalls.some(original =>
+          original.id === call.id && original.function.name === call.function.name
+          && isDeepStrictEqual(parseArguments(original.function.arguments), parseArguments(call.function.arguments))))
+      } catch { /* Invalid approved arguments must not be executed. */ }
+      if (!roundCalls?.length || !matchesApproval) {
+        return { status: 'failed', error: 'Invalid tool approval resume context', messages, toolCalls, ...usageFields() }
+      }
+      const answered = new Set(messages.slice(assistantIndex + 1)
+        .filter(message => message.role === 'tool')
+        .map(message => message.tool_call_id))
+      calls = roundCalls.filter(call => !answered.has(call.id))
       resumeCalls = undefined
     } else {
       let turn: AgentModelTurn
       try {
-        turn = await options.model(messages, options.tools)
+        turn = await options.model(summaryOnly
+          ? [...messages, {
+              role: 'system',
+              content: 'Tool execution budget reached. Answer using the results already obtained. Do not call more tools. Clearly state any missing scope or data; do not invent a complete answer from partial results.'
+            }]
+          : messages, summaryOnly ? [] : options.tools)
       } catch (error) {
         return {
           status: 'failed',
@@ -216,6 +239,12 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       if (calls.length === 0) {
         return { status: 'completed', content, messages, toolCalls, ...usageFields() }
       }
+      if (summaryOnly) {
+        for (const call of calls) {
+          messages.push(toolMessage(call, { error: 'Tool round limit reached; this call was not executed' }))
+        }
+        break
+      }
     }
 
     // A command without an explicit decision blocks this round entirely.
@@ -236,9 +265,12 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<AgentLoop
       }
     }
 
-    for (const call of calls) {
+    for (const [index, call] of calls.entries()) {
       toolCalls++
       if (toolCalls > maxToolCalls) {
+        for (const skipped of calls.slice(index)) {
+          messages.push(toolMessage(skipped, { error: 'Tool call limit reached; this call was not executed' }))
+        }
         return { status: 'failed', error: `Tool call limit exceeded (${maxToolCalls})`, messages, toolCalls, ...usageFields() }
       }
 

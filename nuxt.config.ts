@@ -48,6 +48,8 @@ const ENABLED_MODULES = (() => {
 })()
 
 export default defineNuxtConfig({
+  // Keep local startup non-interactive.
+
   // Mount the blog layer plus every catalog module enabled through
   // `ENABLED_MODULES` (and any extra paths from `EXTENDS_MODULES`).
   extends: [...new Set([...ENV_EXTENDS, ...ENABLED_MODULES])],
@@ -91,6 +93,9 @@ export default defineNuxtConfig({
     },
     compressPublicAssets: true
   },
+
+  // Keep local startup non-interactive.
+  telemetry: false,
 
   eslint: {
     config: {

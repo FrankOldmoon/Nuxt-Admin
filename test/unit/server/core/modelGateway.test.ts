@@ -117,6 +117,35 @@ describe('ModelGateway', () => {
 })
 
 describe('createOpenAiCompatibleProvider', () => {
+  it('round-trips namespaced tools and history without collisions or mutation', async () => {
+    const names = ['sms.students.search', 'sms_students_search', 'sms-students-search', 'tool_reserved', '查询学生', 'a'.repeat(100)]
+    const tools = names.map(name => ({ type: 'function', function: { name, parameters: { type: 'object' } } }))
+    const calls = names.map((name, i) => ({ id: `c${i}`, type: 'function' as const, function: { name, arguments: '{}' } }))
+    const messages = [
+      { role: 'assistant' as const, content: '', tool_calls: calls },
+      ...calls.map(call => ({ role: 'tool' as const, content: '{}', name: call.function.name, tool_call_id: call.id }))
+    ]
+    const original = JSON.stringify({ tools, messages })
+    const fetchImpl = vi.fn(async (_url: unknown, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body))
+      const aliases = body.tools.map((tool: { function: { name: string } }) => tool.function.name)
+      expect(new Set(aliases).size).toBe(names.length)
+      for (const name of aliases) expect(name).toMatch(/^[a-zA-Z0-9_-]{1,64}$/)
+      expect(aliases[1]).toBe('sms_students_search')
+      expect(body.messages[0].tool_calls.map((call: { function: { name: string } }) => call.function.name)).toEqual(aliases)
+      expect(body.messages.slice(1).map((message: { name: string }) => message.name)).toEqual(aliases)
+      return new Response(JSON.stringify({ choices: [{ message: { content: '', tool_calls: body.messages[0].tool_calls } }] }))
+    })
+    const adapter = createOpenAiCompatibleProvider({ baseUrl: 'https://example.test', apiKey: 'test', fetchImpl: fetchImpl as typeof fetch })
+    const result = await adapter.chat({ tools, messages })
+    expect(result.toolCalls).toEqual(calls)
+    expect(JSON.stringify({ tools, messages })).toBe(original)
+    // Stable aliases across a fresh provider instance (including resumed turns).
+    const other = createOpenAiCompatibleProvider({ baseUrl: 'https://example.test', apiKey: 'test', fetchImpl: fetchImpl as typeof fetch })
+    await other.chat({ tools, messages })
+    expect(JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body))).toEqual(JSON.parse(String(fetchImpl.mock.calls[1]?.[1]?.body)))
+  })
+
   it('sends credentials server-side and normalizes the response', async () => {
     const fetchImpl = vi.fn(async () => new Response(JSON.stringify({
       model: 'm',

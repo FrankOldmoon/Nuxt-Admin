@@ -2,24 +2,11 @@
  * Generic Excel export composable — shared by all dashboard tables.
  *
  * Consistent with the original export logic in users.vue:
- *   1. Dynamically load SheetJS (xlsx CDN)
- *   2. Call the list API to fetch all data
+ *   1. Dynamically load the installed SheetJS package
+ *   2. Call the scoped export API to fetch matching data
  *   3. Use meta.fields for header mapping, generate the .xlsx file and trigger a download
  */
-import type { TableMeta } from '~/types/dashboard'
-
-let xlsxLoaded = false
-
-function loadXlsx(): Promise<boolean> {
-  if (xlsxLoaded && (window as any).XLSX) return Promise.resolve(true)
-  return new Promise((resolve) => {
-    const script = document.createElement('script')
-    script.src = 'https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js'
-    script.onload = () => { xlsxLoaded = true; resolve(true) }
-    script.onerror = () => resolve(false)
-    document.head.appendChild(script)
-  })
-}
+import type { AdvancedFilterCondition, TableMeta, TableMetaWithOptions } from '~/types/dashboard'
 
 export function useExcelExport() {
   const toast = useToast()
@@ -36,57 +23,62 @@ export function useExcelExport() {
    * @param mapRow      optional custom row mapper (users table uses it for custom columns/format)
    */
   async function exportTableExcel(
-    meta: TableMeta,
+    meta: TableMeta & Partial<Pick<TableMetaWithOptions, 'relationOptions'>>,
     baseUrl: string,
     filters: Record<string, string> = {},
     trashed = false,
     mapRow?: (row: Record<string, unknown>) => Record<string, unknown>,
+    conditions: AdvancedFilterCondition[] = [],
+    sort?: { field: string, order: 'asc' | 'desc' } | null
   ) {
     exporting.value = true
     try {
-      const ok = await loadXlsx()
-      if (!ok) {
-        toast.add({ title: t('dashboard.excel.libLoadFailed'), color: 'error' })
-        return
-      }
-      // Fetch all data (pageSize=9999, same as in users.vue)
+      const XLSX = await import('xlsx')
       const params = new URLSearchParams()
-      params.set('pageSize', '9999')
+      params.set('format', 'json')
+      if (conditions.length) params.set('conditions', JSON.stringify(conditions))
+      if (sort) {
+        params.set('sort', sort.field)
+        params.set('order', sort.order)
+      }
       if (trashed) params.set('trashed', 'true')
       for (const [k, v] of Object.entries(filters)) {
         if (v) params.set(k, v)
       }
       const qs = params.toString()
-      const url = `${baseUrl}${qs ? `?${qs}` : ''}`
+      const url = `${baseUrl}/export?${qs}`
       const res = await fetch(url, { credentials: 'include' })
       if (!res.ok) {
         const txt = await res.text().catch(() => '')
         throw new Error(txt || res.statusText || 'Export failed')
       }
-      const json = await res.json() as { items?: Record<string, unknown>[] }
-      const rows = json.items ?? []
-
-      const XLSX = (window as any).XLSX
+      const rows = await res.json() as Record<string, unknown>[]
 
       // Build headers: take showInTable fields, use their label as column name
-      const fields = meta.fields.filter((f: any) => f.showInTable && f.type !== 'many-to-many')
-      const headers = fields.map((f: any) => f.label)
+      const fields = meta.fields.filter(f => f.showInTable && f.type !== 'many-to-many')
+      const headers = fields.map(f => f.label)
 
       let data: Record<string, unknown>[]
       if (mapRow) {
         data = rows.map(mapRow)
       } else {
-        data = rows.map(row => {
+        data = rows.map((row) => {
           const obj: Record<string, unknown> = {}
-          fields.forEach((f: any) => {
+          fields.forEach((f) => {
             const raw = row[f.key]
-            // Format date/time
+            const options = meta.relationOptions?.[f.key] ?? f.options
+            const option = options?.find(o => String(o.value) === String(raw))
+            // Format date/time and relation labels using the same metadata as the table.
             if (raw && (f.type === 'datetime' || f.type === 'date')) {
-              try { obj[f.label] = new Date(raw as string).toLocaleString() } catch { obj[f.label] = raw }
+              try {
+                obj[f.label] = new Date(raw as string).toLocaleString()
+              } catch {
+                obj[f.label] = raw
+              }
             } else if (raw === null || raw === undefined) {
               obj[f.label] = ''
             } else {
-              obj[f.label] = raw
+              obj[f.label] = option?.label ?? raw
             }
           })
           return obj

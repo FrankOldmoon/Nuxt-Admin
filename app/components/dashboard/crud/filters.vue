@@ -222,6 +222,7 @@ const hasCustomSlot = !!useSlots().default
         variant="ghost"
         color="neutral"
         class="shrink-0"
+        aria-label="筛选"
         @click="showFilters = !showFilters"
       >
         <UIcon name="i-lucide-sliders-horizontal" />
@@ -244,6 +245,7 @@ const hasCustomSlot = !!useSlots().default
         v-model="localSearch"
         icon="i-lucide-search"
         :placeholder="t('common.searchPlaceholder')"
+        :aria-label="t('common.searchPlaceholder')"
         class="flex-1"
       />
 
@@ -257,8 +259,14 @@ const hasCustomSlot = !!useSlots().default
       class="space-y-3 rounded border border-default bg-muted/30 p-3"
     >
       <!-- Quick filter custom slot (pages can inject e.g. role/mimeType selects) -->
-      <div v-if="hasCustomSlot" class="flex flex-wrap items-end gap-3 border-b border-default pb-3">
-        <slot :set="set" :filters="props.filters ?? {}" />
+      <div
+        v-if="hasCustomSlot"
+        class="flex flex-wrap items-end gap-3 border-b border-default pb-3"
+      >
+        <slot
+          :set="set"
+          :filters="props.filters ?? {}"
+        />
       </div>
 
       <!-- Advanced condition builder: one row per condition -->
@@ -269,7 +277,10 @@ const hasCustomSlot = !!useSlots().default
           class="flex items-end gap-2"
         >
           <!-- Logic connector (AND/OR) — hidden for the very first row -->
-          <div v-if="i === 0" class="w-16 shrink-0" />
+          <div
+            v-if="i === 0"
+            class="w-16 shrink-0"
+          />
           <USelectMenu
             v-else
             v-model="row.logic"
@@ -304,7 +315,10 @@ const hasCustomSlot = !!useSlots().default
                All value inputs use flex-1 so they have the same width. -->
           <template v-if="currentOperator(row)?.needsValue">
             <!-- between (min/max pair) -->
-            <div v-if="currentOperator(row)?.valueKind === 'between'" class="flex items-end gap-1 flex-1 min-w-0">
+            <div
+              v-if="currentOperator(row)?.valueKind === 'between'"
+              class="flex items-end gap-1 flex-1 min-w-0"
+            >
               <UInput
                 :model-value="String(betweenMin(row))"
                 :type="(fieldByKey(row.field)?.type === 'number' || fieldByKey(row.field)?.type === 'relation' || fieldByKey(row.field)?.type === 'select') ? 'number' : fieldByKey(row.field)?.type === 'date' ? 'date' : fieldByKey(row.field)?.type === 'datetime' ? 'datetime-local' : 'text'"
@@ -382,7 +396,10 @@ const hasCustomSlot = !!useSlots().default
             />
           </template>
           <!-- No-value operators (isNull etc.) — fill space to align remove button -->
-          <div v-else class="flex-1 min-w-0" />
+          <div
+            v-else
+            class="flex-1 min-w-0"
+          />
 
           <!-- Remove row button -->
           <UButton

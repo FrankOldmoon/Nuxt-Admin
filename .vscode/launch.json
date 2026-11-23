@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Start Nuxt Admin",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "node",
+      "program": "${workspaceFolder}/scripts/local-dev.mjs",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "autoAttachChildProcesses": true,
+      "skipFiles": [
+        "<node_internals>/**",
+        "**/node_modules/**"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Nuxt Admin",
+      "type": "process",
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/scripts/local-dev.mjs"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Check PostgreSQL connection",
+      "type": "process",
+      "command": "node",
+      "args": [
+        "${workspaceFolder}/scripts/local-dev.mjs",
+        "db:check"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Stop Nuxt Admin",
+      "type": "process",
+      "command": "${env:WINDIR}/System32/WindowsPowerShell/v1.0/powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/ops/windows/stop-local.ps1"
+      ],
+      "problemMatcher": []
+    }
+  ]
+}

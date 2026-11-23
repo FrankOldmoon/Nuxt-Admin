@@ -1,6 +1,6 @@
 // GET /api/dashboard/meta/[table]
 // Returns TableMeta + preloaded relation option lists for `select` / `relation` fields.
-// Admin-only.
+// Requires the registered table read permission, including module permissions.
 
 import { createError, getRouterParams } from 'h3'
 import { requireDashboardAccess } from '~~/server/utils/auth'
@@ -10,7 +10,7 @@ import type { TableMeta, TableMetaWithOptions } from '~/types/dashboard'
 
 export default defineEventHandler(async (event): Promise<TableMetaWithOptions> => {
   const params = getRouterParams(event) as { table: string }
-  const actor = await requireDashboardAccess(event, params.table)
+  const actor = await requireDashboardAccess(event, params.table, 'read')
   const tableName = params.table
   const meta: TableMeta | undefined = getExposedTableMeta(tableName)
   if (!meta) {

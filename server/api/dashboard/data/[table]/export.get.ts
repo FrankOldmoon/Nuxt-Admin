@@ -10,7 +10,7 @@ import {
   loadRelationOptions,
   parsePageQuery,
   rowsToSheetRows,
-  toDataScopeActor,
+  toDataScopeActor
 } from '~~/server/utils/dashboard/crudService'
 import { writeAudit } from '~~/server/core/audit'
 import { db } from '~~/server/database'
@@ -32,7 +32,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const query = getQuery(event) as Record<string, unknown>
-  const { search, filters, sort } = parsePageQuery(query, meta)
+  const { search, filters, conditions, sort } = parsePageQuery(query, meta)
   const format = query.format === 'json' ? 'json' : 'csv'
   const trashed = query.trashed === 'true' || query.trashed === '1'
 
@@ -47,7 +47,8 @@ export default defineEventHandler(async (event) => {
     trashed,
     search,
     filters,
-    sort,
+    conditions,
+    sort
   }, scopeActor)
 
   await writeAudit(db, {
@@ -66,7 +67,7 @@ export default defineEventHandler(async (event) => {
     setHeader(
       event,
       'Content-Disposition',
-      `attachment; filename="${encodeURIComponent(table)}_${new Date().toISOString().slice(0, 10)}.json"`,
+      `attachment; filename="${encodeURIComponent(table)}_${new Date().toISOString().slice(0, 10)}.json"`
     )
     return rows
   }
@@ -82,7 +83,7 @@ export default defineEventHandler(async (event) => {
   setHeader(
     event,
     'Content-Disposition',
-    `attachment; filename="${encodeURIComponent(table)}_${new Date().toISOString().slice(0, 10)}.csv"`,
+    `attachment; filename="${encodeURIComponent(table)}_${new Date().toISOString().slice(0, 10)}.csv"`
   )
   return body
 })
