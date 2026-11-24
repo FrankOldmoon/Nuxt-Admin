@@ -600,8 +600,8 @@ export async function runChatLoop(input: {
     tools: input.tools,
     pendingCalls: input.pendingCalls,
     confirmations: input.confirmations,
-    maxRounds: 3,
-    maxToolCalls: 6,
+    maxRounds: 8,
+    maxToolCalls: 24,
     audit: createAgentAudit({
       executionId: input.executionId,
       actor: input.actor,

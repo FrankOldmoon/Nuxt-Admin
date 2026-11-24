@@ -6,6 +6,8 @@ defineProps<{
   subtitle?: string
   createLabel?: string
   trashed?: boolean
+  compact?: boolean
+  showTrash?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -15,9 +17,9 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="mb-6 flex items-center justify-between">
+  <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
     <div>
-      <h1 class="text-3xl font-bold text-highlighted">
+      <h1 :class="compact ? 'text-lg font-semibold text-highlighted' : 'text-3xl font-bold text-highlighted'">
         {{ title }}
         <span
           v-if="trashed"
@@ -31,8 +33,9 @@ const emit = defineEmits<{
         {{ subtitle }}
       </p>
     </div>
-    <div class="flex items-center gap-2">
+    <div class="flex flex-wrap items-center gap-2">
       <UButton
+        v-if="showTrash !== false"
         :icon="trashed ? 'i-lucide-arrow-left' : 'i-lucide-trash-2'"
         :color="trashed ? 'primary' : 'error'"
         :variant="trashed ? 'soft' : 'ghost'"

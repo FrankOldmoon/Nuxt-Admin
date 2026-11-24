@@ -1,0 +1,19 @@
+{
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.nuxt": true,
+    "**/.output": true
+  },
+  "search.exclude": {
+    "**/node_modules/**": true,
+    "**/.nuxt/**": true
+  },
+  "files.watcherExclude": {
+    "**/node_modules/**": true,
+    "**/.nuxt/**": true
+  },
+  "git.autoRepositoryDetection": "subFolders",
+  "git.scanRepositories": [
+    "modules/sms"
+  ]
+}

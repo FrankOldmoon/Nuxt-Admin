@@ -1,10 +1,13 @@
 <script setup lang="ts" generic="T">
+import type { TableMeta } from '~/types/dashboard'
+
 const { t } = useI18n()
 const { can } = usePermission()
 
 withDefaults(defineProps<{
   item: T
   table: string
+  permissions?: TableMeta['permissions']
   mode?: 'active' | 'trashed'
   showDetail?: boolean
 }>(), {
@@ -24,7 +27,7 @@ const emit = defineEmits<{
   <div class="flex justify-end gap-1">
     <template v-if="mode === 'trashed'">
       <UButton
-        v-if="can(table, 'update')"
+        v-if="can({ table, permissions }, 'update')"
         icon="i-lucide-rotate-ccw"
         size="xs"
         color="success"
@@ -33,7 +36,7 @@ const emit = defineEmits<{
         @click="emit('restore', item)"
       />
       <BaseConfirmButton
-        v-if="can(table, 'delete')"
+        v-if="can({ table, permissions }, 'delete')"
         icon="i-lucide-x-circle"
         size="xs"
         color="error"
@@ -45,7 +48,7 @@ const emit = defineEmits<{
     </template>
     <template v-else>
       <UButton
-        v-if="showDetail && can(table, 'read')"
+        v-if="showDetail && can({ table, permissions }, 'read')"
         icon="i-lucide-eye"
         size="xs"
         color="neutral"
@@ -54,7 +57,7 @@ const emit = defineEmits<{
         @click="emit('detail', item)"
       />
       <UButton
-        v-if="can(table, 'update')"
+        v-if="can({ table, permissions }, 'update')"
         icon="i-lucide-pencil"
         size="xs"
         color="neutral"
@@ -63,7 +66,7 @@ const emit = defineEmits<{
         @click="emit('edit', item)"
       />
       <BaseConfirmButton
-        v-if="can(table, 'delete')"
+        v-if="can({ table, permissions }, 'delete')"
         icon="i-lucide-trash"
         size="xs"
         color="error"

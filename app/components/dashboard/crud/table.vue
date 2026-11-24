@@ -24,18 +24,20 @@ const props = defineProps<{
   page?: number
   pageSize?: number
   sort?: SortState
+  /** Business lists supply their own commands; never expose generic mutations. */
+  business?: boolean
 }>()
 
 const emit = defineEmits<{
-  detail: [item: Record<string, unknown>]
-  edit: [item: Record<string, unknown>]
-  delete: [item: Record<string, unknown>]
-  restore: [item: Record<string, unknown>]
-  permanentDelete: [item: Record<string, unknown>]
-  batchAction: [action: 'soft-delete' | 'restore' | 'permanent-delete', ids: Array<string | number>]
+  'detail': [item: Record<string, unknown>]
+  'edit': [item: Record<string, unknown>]
+  'delete': [item: Record<string, unknown>]
+  'restore': [item: Record<string, unknown>]
+  'permanentDelete': [item: Record<string, unknown>]
+  'batchAction': [action: 'soft-delete' | 'restore' | 'permanent-delete', ids: Array<string | number>]
   'update:page': [number]
   'update:pageSize': [number]
-  sort: [SortState]
+  'sort': [SortState]
 }>()
 
 const { t } = useI18n()
@@ -95,7 +97,7 @@ const columns = computed<TableColumn<Row>[]>(() => {
   const cols: TableColumn<Row>[] = []
 
   // Select column (pinned left)
-  cols.push({
+  if (!props.business) cols.push({
     id: 'select',
     size: 48,
     enableSorting: false,
@@ -137,7 +139,7 @@ const columns = computed<TableColumn<Row>[]>(() => {
   }
 
   // Actions column (pinned right)
-  cols.push({
+  if (!props.business || slots['table-actions']) cols.push({
     id: 'actions',
     size: 144,
     enableSorting: false,
@@ -145,10 +147,12 @@ const columns = computed<TableColumn<Row>[]>(() => {
     meta: { class: { th: 'text-right', td: 'text-right' } },
     header: () => t('dashboard.crud.action'),
     cell: ({ row }) => {
+      if (props.business) return slots['table-actions']?.({ item: row.original })
       const prepend = slots['table-actions-prepend']
       const actions = h(RowActions, {
         item: row.original,
         table: props.meta.table,
+        permissions: props.meta.permissions,
         mode: props.trashed ? 'trashed' : 'active',
         showDetail: props.meta.features.detail !== false,
         onDetail: () => emit('detail', row.original),
@@ -172,10 +176,10 @@ const columnPinning = ref<{ left: string[], right: string[] }>({
   right: ['actions']
 })
 
-watch(() => props.visibleFields[0]?.key, (key) => {
+watch(() => [props.visibleFields[0]?.key, props.business] as const, ([key]) => {
   columnPinning.value = {
-    left: key ? ['select', key] : ['select'],
-    right: ['actions']
+    left: [...(props.business ? [] : ['select']), ...(key ? [key] : [])],
+    right: !props.business || slots['table-actions'] ? ['actions'] : []
   }
 }, { immediate: true })
 
@@ -188,14 +192,14 @@ function getRowId(row: Record<string, unknown>): string {
 <template>
   <!-- Batch action bar (above table, shown when items are selected) -->
   <div
-    v-if="hasSelection"
+    v-if="!business && hasSelection"
     class="mb-2 flex items-center justify-between rounded-md border border-default bg-elevated px-3 py-2"
   >
     <span class="text-sm text-muted">{{ t('dashboard.crud.selectedCount', { count: [...selectedIds].length }) }}</span>
     <div class="flex gap-2">
       <template v-if="!trashed">
         <BaseConfirmButton
-          v-if="meta.features.softDelete && can(meta.table, 'delete')"
+          v-if="meta.features.softDelete && can(meta, 'delete')"
           :label="t('dashboard.crud.batchDelete')"
           :confirm-label="t('dashboard.crud.batchDeleteConfirm')"
           color="warning"
@@ -204,7 +208,7 @@ function getRowId(row: Record<string, unknown>): string {
           @confirm="emitBatch('soft-delete')"
         />
         <BaseConfirmButton
-          v-if="can(meta.table, 'delete')"
+          v-if="can(meta, 'delete')"
           :label="t('dashboard.crud.permanentDelete')"
           :confirm-label="t('dashboard.crud.permanentDeleteConfirm')"
           color="error"
@@ -215,13 +219,16 @@ function getRowId(row: Record<string, unknown>): string {
       </template>
       <template v-else>
         <UButton
-          v-if="can(meta.table, 'update')"
-          size="xs" variant="solid" color="success" @click="emitBatch('restore')"
+          v-if="can(meta, 'update')"
+          size="xs"
+          variant="solid"
+          color="success"
+          @click="emitBatch('restore')"
         >
           {{ t('dashboard.crud.batchRestore') }}
         </UButton>
         <BaseConfirmButton
-          v-if="can(meta.table, 'delete')"
+          v-if="can(meta, 'delete')"
           :label="t('dashboard.crud.permanentDelete')"
           :confirm-label="t('dashboard.crud.permanentDeleteConfirm')"
           color="error"
@@ -234,8 +241,18 @@ function getRowId(row: Record<string, unknown>): string {
   </div>
 
   <UCard>
-    <div v-if="pending" class="py-12 text-center text-muted">{{ t('common.loading') }}</div>
-    <div v-else-if="items.length === 0" class="py-12 text-center text-muted">{{ t('dashboard.crud.empty') }}</div>
+    <div
+      v-if="pending"
+      class="py-12 text-center text-muted"
+    >
+      {{ t('common.loading') }}
+    </div>
+    <div
+      v-else-if="items.length === 0"
+      class="py-12 text-center text-muted"
+    >
+      {{ t('dashboard.crud.empty') }}
+    </div>
     <template v-else>
       <BasePaginationBar
         :pagination="pagination"
@@ -245,10 +262,10 @@ function getRowId(row: Record<string, unknown>): string {
         @update:page-size="emit('update:pageSize', $event)"
       />
       <UTable
-        :data="items"
-        :columns="columns"
         v-model:column-pinning="columnPinning"
         v-model:sorting="sorting"
+        :data="items"
+        :columns="columns"
         :sorting-options="{ manualSorting: true }"
         :get-row-id="getRowId"
         sticky

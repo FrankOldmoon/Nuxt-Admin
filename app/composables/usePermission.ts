@@ -1,35 +1,19 @@
-/**
- * Frontend button-level permission control.
- * Keeps in sync with permMatches / roleCanTableAction in server/utils/auth.ts:
- *   - '*'           → every table, every action
- *   - 'table'       → every action on that table
- *   - 'table:action'→ a single action on that table (read/create/update/delete)
- * The admin role always has all permissions.
- */
-export type TableAction = 'read' | 'create' | 'update' | 'delete'
+import { authorize, permMatches, type ResourceRef, type TableAction } from '~~/server/core/permissions'
 
-export function permMatches(perm: string, table: string, action?: TableAction): boolean {
-  if (perm === '*') return true
-  const idx = perm.indexOf(':')
-  if (idx < 0) return perm === table // plain table name → all actions on that table
-  const t = perm.slice(0, idx)
-  const a = perm.slice(idx + 1)
-  if (t !== table) return false
-  if (action === undefined) return true // no action specified → table match is enough
-  return a === action
-}
+export { permMatches }
+export type { TableAction }
 
+/** Accept metadata so module canonical permissions match the server guard. */
 export function usePermission() {
   const { user } = useAuth()
   const isAdmin = computed(() => user.value?.role?.name === 'admin')
-
-  /** Whether the current user has `action` permission on `table` (no action means any operation on that table). */
-  function can(table: string, action?: TableAction): boolean {
-    if (isAdmin.value) return true
-    const perms = user.value?.role?.permissions
-    if (!Array.isArray(perms)) return false
-    return perms.some(p => permMatches(p, table, action))
+  function can(resource: string | Omit<ResourceRef, 'action'>, action?: TableAction): boolean {
+    if (!user.value) return false
+    return authorize({
+      userId: user.value.id,
+      roleName: user.value.role?.name,
+      permissions: user.value.role?.permissions
+    }, { ...(typeof resource === 'string' ? { table: resource } : resource), action }).allowed
   }
-
   return { isAdmin, can }
 }

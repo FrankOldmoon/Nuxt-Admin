@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import type { AgentMessage, AgentToolCall } from './agent'
 
 /** Normalized token usage reported by a provider. */
@@ -217,6 +218,41 @@ function numberOrUndefined(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined
 }
 
+/** Stable transport aliases; registry IDs and permission checks stay unchanged. */
+function toolNameTransport(request: ModelRequest) {
+  const originals = new Map<string, string>()
+  const encode = (name: string) => {
+    // Reserve the prefix so a real tool cannot collide with an encoded alias.
+    const alias = /^[a-zA-Z0-9_-]{1,64}$/.test(name) && !name.startsWith('tool_')
+      ? name
+      : `tool_${createHash('sha256').update(name).digest('hex').slice(0, 59)}`
+    const previous = originals.get(alias)
+    if (previous !== undefined && previous !== name) throw new Error('Tool name alias collision')
+    originals.set(alias, name)
+    return alias
+  }
+  const tools = request.tools?.map((raw) => {
+    if (!raw || typeof raw !== 'object') return raw
+    const tool = raw as Record<string, unknown>
+    if (tool.type !== 'function' || !tool.function || typeof tool.function !== 'object') return raw
+    const fn = tool.function as Record<string, unknown>
+    if (typeof fn.name !== 'string') return raw
+    return { ...tool, function: { ...fn, name: encode(fn.name) } }
+  })
+  const messages = request.messages.map(message => ({
+    ...message,
+    ...(message.name ? { name: encode(message.name) } : {}),
+    ...(message.tool_calls
+      ? {
+          tool_calls: message.tool_calls.map(call => ({
+            ...call, function: { ...call.function, name: encode(call.function.name) }
+          }))
+        }
+      : {})
+  }))
+  return { tools, messages, decode: (name: string) => originals.get(name) ?? name }
+}
+
 /** OpenAI / OpenAI-compatible provider adapter. Credentials stay server-side. */
 export function createOpenAiCompatibleProvider(options: OpenAiCompatibleOptions): ModelProvider {
   const baseUrl = options.baseUrl.replace(/\/$/, '')
@@ -225,6 +261,7 @@ export function createOpenAiCompatibleProvider(options: OpenAiCompatibleOptions)
     id: options.id ?? 'openai-compatible',
     async chat(request) {
       if (!options.apiKey) throw new Error('Model provider API key is not configured')
+      const transport = toolNameTransport(request)
       const response = await fetchImpl(`${baseUrl}/chat/completions`, {
         method: 'POST',
         headers: {
@@ -233,11 +270,11 @@ export function createOpenAiCompatibleProvider(options: OpenAiCompatibleOptions)
         },
         body: JSON.stringify({
           model: request.model,
-          messages: request.messages,
+          messages: transport.messages,
           temperature: request.temperature,
           max_tokens: request.maxTokens,
           stream: false,
-          ...(request.tools?.length ? { tools: request.tools, tool_choice: 'auto' } : {})
+          ...(transport.tools?.length ? { tools: transport.tools, tool_choice: 'auto' } : {})
         }),
         signal: request.signal
       })
@@ -246,7 +283,13 @@ export function createOpenAiCompatibleProvider(options: OpenAiCompatibleOptions)
         throw new Error(`Upstream API error (${response.status}): ${text.slice(0, 500)}`)
       }
       const json = await response.json() as unknown
-      return parseOpenAiCompletion(json, request.model)
+      const completion = parseOpenAiCompletion(json, request.model)
+      return {
+        ...completion,
+        toolCalls: completion.toolCalls?.map(call => ({
+          ...call, function: { ...call.function, name: transport.decode(call.function.name) }
+        }))
+      }
     }
   }
 }

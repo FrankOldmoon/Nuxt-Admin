@@ -159,3 +159,14 @@ public/ort/
 
 # Runtime data written by the tools layer (downloader files, quota)
 .data/
+
+# Local Windows runtime and persistent development database
+.local/
+
+# Private local fixtures, backups and data
+scripts/seed-hk-demo.mjs
+backups/
+outputs/
+*.dump
+*.backup
+pgdata/

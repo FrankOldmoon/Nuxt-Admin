@@ -25,10 +25,18 @@ const props = withDefaults(defineProps<{
   apiBase?: string
   /** Show a "Export JSON" button in the toolbar (uses /export?format=json with current filters) */
   jsonExport?: boolean
+  compact?: boolean
+  allowImport?: boolean
+  allowSeed?: boolean
+  initialFilters?: Record<string, string>
 }>(), {
   transformPayload: undefined,
   apiBase: '/api/dashboard/data',
-  jsonExport: false
+  jsonExport: false,
+  compact: false,
+  allowImport: true,
+  allowSeed: true,
+  initialFilters: () => ({})
 })
 
 const emit = defineEmits<{
@@ -46,9 +54,9 @@ const toast = useToast()
 const { fieldLabel, tableLabel } = useDashboardLabels()
 const { can } = usePermission()
 
-const filters = ref<Record<string, string>>({})
+const filters = ref<Record<string, string>>({ ...props.initialFilters })
 const conditions = ref<AdvancedFilterCondition[]>([])
-const sort = ref<{ field: string; order: 'asc' | 'desc' } | null>(null)
+const sort = ref<{ field: string, order: 'asc' | 'desc' } | null>(null)
 
 // ---- Column visibility (persisted to localStorage per table) ----
 const storageKey = computed(() => `crud-columns-${props.meta.table}`)
@@ -96,7 +104,7 @@ const columnToggleItems = computed(() =>
 
 const baseUrl = computed(() => `${props.apiBase.replace(/\/$/, '')}/${props.meta.table}`)
 const {
-  data, pending, page, pageSize, pagination, trashed, sort: sortState, setTrashed, setPage, setPageSize, setSort, refresh
+  data, pending, error: listError, page, pageSize, pagination, trashed, sort: sortState, setTrashed, setPage, setPageSize, setSort, refresh
 } = usePagedResource<{ items: Record<string, unknown>[], pagination: any }>(
   `dashboard:list:${props.meta.table}`,
   baseUrl.value,
@@ -117,7 +125,7 @@ const importOpen = ref(false)
 const { exporting, exportTableExcel } = useExcelExport()
 
 async function runExport() {
-  await exportTableExcel(props.meta, baseUrl.value, filters.value, trashed.value)
+  await exportTableExcel(props.meta, baseUrl.value, filters.value, trashed.value, undefined, conditions.value, sort.value)
 }
 
 // --- Seed UI ---
@@ -201,6 +209,7 @@ function openCreate() {
   errorMsg.value = ''
   fieldErrors.value = {}
   // Allow parent to override form state for fully custom forms
+  // eslint-disable-next-line vue/no-ref-as-operand -- Public hook receives the Ref so consumers can replace form.value.
   emit('before-create', form)
   modalOpen.value = true
 }
@@ -224,6 +233,7 @@ async function openEdit(row: Record<string, unknown>) {
   }
   form.value = fullRow
   // Allow parent to override form state for fully custom forms (e.g. DB row → QuestionFormState)
+  // eslint-disable-next-line vue/no-ref-as-operand -- Preserve the same mutable Ref contract as before-create.
   emit('before-edit', row, form)
   modalOpen.value = true
 }
@@ -349,19 +359,26 @@ defineExpose({ refresh })
 </script>
 
 <template>
-  <UContainer class="py-10">
+  <UContainer :class="compact ? 'py-4' : 'py-10'">
     <DashboardCrudHeader
       :title="tableLabel(meta.table, meta.label)"
-      :create-label="t('dashboard.crud.createLabel', { name: tableLabel(meta.table, meta.label).slice(0, -1) })"
+      :create-label="t('dashboard.crud.createLabel', { name: tableLabel(meta.table, meta.label) })"
       :trashed="trashed"
+      :compact="compact"
+      :show-trash="meta.features.softDelete"
       @create="openCreate"
       @update:trashed="setTrashed"
     >
       <template #header-actions>
-        <slot name="toolbar" :refresh="doRefresh" :trashed="trashed" :open-create="openCreate">
+        <slot
+          name="toolbar"
+          :refresh="doRefresh"
+          :trashed="trashed"
+          :open-create="openCreate"
+        >
           <div class="flex items-center gap-2">
             <UButton
-              v-if="props.jsonExport && can(meta.table, 'read')"
+              v-if="props.jsonExport && can(meta, 'read')"
               icon="i-lucide-file-json"
               variant="ghost"
               color="warning"
@@ -370,7 +387,7 @@ defineExpose({ refresh })
               @click="exportJson"
             />
             <UButton
-              v-if="can(meta.table, 'read')"
+              v-if="can(meta, 'read')"
               icon="i-lucide-download"
               variant="ghost"
               color="warning"
@@ -379,7 +396,7 @@ defineExpose({ refresh })
               @click="runExport"
             />
             <UButton
-              v-if="!trashed && can(meta.table, 'create')"
+              v-if="allowSeed && !trashed && can(meta, 'create')"
               icon="i-lucide-wand-2"
               variant="ghost"
               color="success"
@@ -387,7 +404,7 @@ defineExpose({ refresh })
               @click="seedOpen = true"
             />
             <UButton
-              v-if="can(meta.table, 'create')"
+              v-if="allowImport && can(meta, 'create')"
               icon="i-lucide-upload"
               variant="ghost"
               color="primary"
@@ -395,14 +412,19 @@ defineExpose({ refresh })
               @click="importOpen = true"
             />
             <UButton
-              v-if="!trashed && can(meta.table, 'create')"
+              v-if="!trashed && can(meta, 'create')"
               icon="i-lucide-plus"
               color="primary"
-              :label="t('dashboard.crud.createLabel', { name: meta.label.slice(0, -1) })"
+              :label="t('dashboard.crud.createLabel', { name: tableLabel(meta.table, meta.label) })"
               @click="openCreate"
             />
           </div>
         </slot>
+        <slot
+          name="toolbar-append"
+          :trashed="trashed"
+          :refresh="doRefresh"
+        />
       </template>
     </DashboardCrudHeader>
 
@@ -412,7 +434,11 @@ defineExpose({ refresh })
       :meta="meta"
     >
       <template #default="{ set, filters: currentFilters }">
-        <slot name="filters" :set="set" :filters="currentFilters" />
+        <slot
+          name="filters"
+          :set="set"
+          :filters="currentFilters"
+        />
       </template>
 
       <!-- Columns toggle (right of search bar) -->
@@ -430,12 +456,20 @@ defineExpose({ refresh })
           <summary class="inline-flex cursor-pointer list-none items-center gap-1 rounded px-2 py-1.5 text-sm text-muted transition hover:bg-elevated">
             <UIcon name="i-lucide-columns-3" />
             <span>{{ t('dashboard.crud.columns') }}</span>
-            <UIcon name="i-lucide-chevron-down" class="transition group-open:rotate-180" />
+            <UIcon
+              name="i-lucide-chevron-down"
+              class="transition group-open:rotate-180"
+            />
           </summary>
           <div class="absolute right-0 z-50 mt-1 min-w-56 rounded border border-default bg-default shadow-lg">
             <div class="flex items-center justify-between border-b border-default px-3 py-2">
               <span class="text-xs font-medium text-muted">{{ t('dashboard.crud.columnVisibility') }}</span>
-              <UButton size="xs" variant="ghost" :label="t('dashboard.crud.showAllColumns')" @click="showAllColumns" />
+              <UButton
+                size="xs"
+                variant="ghost"
+                :label="t('dashboard.crud.showAllColumns')"
+                @click="showAllColumns"
+              />
             </div>
             <div class="max-h-64 overflow-y-auto p-2">
               <label
@@ -454,6 +488,13 @@ defineExpose({ refresh })
         </details>
       </template>
     </DashboardCrudFilters>
+
+    <UAlert
+      v-if="listError"
+      color="error"
+      :description="extractErrorMessage(listError, t('dashboard.table.loadFailed'))"
+      class="mb-4"
+    />
 
     <DashboardCrudTable
       :meta="meta"
@@ -480,16 +521,22 @@ defineExpose({ refresh })
         :key="`slot-table-${f.key}`"
         #[`table-${f.key}`]="scoped"
       >
-        <slot :name="`table-${f.key}`" v-bind="scoped" />
+        <slot
+          :name="`table-${f.key}`"
+          v-bind="scoped"
+        />
       </template>
       <template #table-actions-prepend="scoped">
-        <slot name="table-actions-prepend" v-bind="scoped" />
+        <slot
+          name="table-actions-prepend"
+          v-bind="scoped"
+        />
       </template>
     </DashboardCrudTable>
 
     <DashboardCrudFormModal
       :modal-open="modalOpen"
-      :modal-title="modalMode === 'create' ? t('dashboard.crud.createLabel', { name: meta.label.slice(0, -1) }) : t('dashboard.crud.editLabel', { name: meta.label.slice(0, -1) })"
+      :modal-title="modalMode === 'create' ? t('dashboard.crud.createLabel', { name: tableLabel(meta.table, meta.label) }) : t('dashboard.crud.editLabel', { name: tableLabel(meta.table, meta.label) })"
       :saving="saving"
       :error-msg="errorMsg"
       @update:modal-open="(v) => { modalOpen = v; if (!v) { editing = null } }"
@@ -508,8 +555,8 @@ defineExpose({ refresh })
         />
         <DashboardCrudForm
           v-else
-          :meta="meta"
           v-model="form"
+          :meta="meta"
           :mode="modalMode"
           :errors="fieldErrors"
         >
@@ -518,17 +565,30 @@ defineExpose({ refresh })
             :key="`slot-form-${f.key}`"
             #[`form-${f.key}`]="scoped"
           >
-            <slot :name="`form-${f.key}`" v-bind="scoped" />
+            <slot
+              :name="`form-${f.key}`"
+              v-bind="scoped"
+            />
           </template>
-          <template #form-before="scoped"><slot name="form-before" v-bind="scoped" /></template>
-          <template #form-after="scoped"><slot name="form-after" v-bind="scoped" /></template>
+          <template #form-before="scoped">
+            <slot
+              name="form-before"
+              v-bind="scoped"
+            />
+          </template>
+          <template #form-after="scoped">
+            <slot
+              name="form-after"
+              v-bind="scoped"
+            />
+          </template>
         </DashboardCrudForm>
       </template>
     </DashboardCrudFormModal>
 
     <DashboardCrudDetailModal
       :detail-open="detailOpen"
-      :detail-title="t('dashboard.crud.detailLabel', { name: meta.label.slice(0, -1) })"
+      :detail-title="t('dashboard.crud.detailLabel', { name: tableLabel(meta.table, meta.label) })"
       @update:detail-open="(v) => { detailOpen = v; if (!v) { detailItem = null } }"
     >
       <template #detail>
@@ -539,16 +599,34 @@ defineExpose({ refresh })
           :item="detailItem"
           :loading="detailLoading"
         />
-        <DashboardCrudDetail v-else :meta="meta" :item="detailItem" :loading="detailLoading">
+        <DashboardCrudDetail
+          v-else
+          :meta="meta"
+          :item="detailItem"
+          :loading="detailLoading"
+        >
           <template
             v-for="f in meta.fields.filter(f => f.showInDetail && slots[`detail-${f.key}`])"
             :key="`slot-detail-${f.key}`"
             #[`detail-${f.key}`]="scoped"
           >
-            <slot :name="`detail-${f.key}`" v-bind="scoped" />
+            <slot
+              :name="`detail-${f.key}`"
+              v-bind="scoped"
+            />
           </template>
-          <template #detail-before="scoped"><slot name="detail-before" v-bind="scoped" /></template>
-          <template #detail-after="scoped"><slot name="detail-after" v-bind="scoped" /></template>
+          <template #detail-before="scoped">
+            <slot
+              name="detail-before"
+              v-bind="scoped"
+            />
+          </template>
+          <template #detail-after="scoped">
+            <slot
+              name="detail-after"
+              v-bind="scoped"
+            />
+          </template>
         </DashboardCrudDetail>
       </template>
     </DashboardCrudDetailModal>
@@ -563,12 +641,14 @@ defineExpose({ refresh })
     <!-- Seed modal: insert N generated rows -->
     <UModal
       :open="seedOpen"
-      :title="t('dashboard.crud.seedTitle', { name: meta.label.slice(0, -1) })"
+      :title="t('dashboard.crud.seedTitle', { name: tableLabel(meta.table, meta.label) })"
       @update:open="seedOpen = $event"
     >
       <template #body>
         <div class="space-y-4">
-          <p class="text-sm text-muted">{{ t('dashboard.crud.seedDescription') }}</p>
+          <p class="text-sm text-muted">
+            {{ t('dashboard.crud.seedDescription') }}
+          </p>
           <div class="flex items-center gap-3">
             <span class="shrink-0 text-sm">{{ t('dashboard.crud.seedCount') }}</span>
             <UInput
@@ -583,8 +663,18 @@ defineExpose({ refresh })
       </template>
       <template #footer>
         <div class="flex justify-end gap-2">
-          <UButton color="neutral" variant="ghost" :label="t('common.cancel')" @click="seedOpen = false" />
-          <UButton color="success" :label="t('dashboard.crud.seed')" :loading="seeding" @click="runSeed" />
+          <UButton
+            color="neutral"
+            variant="ghost"
+            :label="t('common.cancel')"
+            @click="seedOpen = false"
+          />
+          <UButton
+            color="success"
+            :label="t('dashboard.crud.seed')"
+            :loading="seeding"
+            @click="runSeed"
+          />
         </div>
       </template>
     </UModal>
